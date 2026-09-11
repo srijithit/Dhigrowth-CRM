@@ -1,0 +1,208 @@
+import React, { useState } from 'react';
+import {
+  Zap,
+  CheckCircle2,
+  Sparkles,
+  ArrowRight,
+  ShieldCheck,
+  Building,
+  HelpCircle,
+  ExternalLink
+} from 'lucide-react';
+import { useApp } from '../../context/AppContext';
+
+export const PlansPricingPage = () => {
+  const { currentPlan, setCurrentPlan, showToast, setActiveTab } = useApp();
+
+  const [interval, setInterval] = useState('monthly'); // 'monthly' | 'quarterly' | 'half-yearly' | 'yearly'
+
+  const INTERVALS = [
+    { id: 'monthly', label: 'Monthly', discount: null },
+    { id: 'quarterly', label: 'Quarterly', discount: 'Save 10%' },
+    { id: 'half-yearly', label: 'Half-Yearly', discount: 'Save 20%' },
+    { id: 'yearly', label: 'Yearly', discount: 'Save 25%' },
+  ];
+
+  const PLANS = [
+    {
+      id: 'Creator Lite',
+      name: 'Creator Lite',
+      subtitle: 'Creators on Instagram & Messenger',
+      channelsText: '2 channels',
+      channelsIcons: ['instagram', 'messenger'],
+      priceINR: interval === 'yearly' ? '974' : '1,299',
+      priceGST: interval === 'yearly' ? '₹1,149' : '₹1,533',
+      isBestValue: false,
+      isCurrent: currentPlan === 'Creator Lite',
+    },
+    {
+      id: 'Creator Plus',
+      name: 'Creator Plus',
+      subtitle: 'Creators scaling DMs & content',
+      channelsText: '2 channels',
+      channelsIcons: ['instagram', 'messenger'],
+      priceINR: interval === 'yearly' ? '1,274' : '1,699',
+      priceGST: interval === 'yearly' ? '₹1,503' : '₹2,005',
+      isBestValue: false,
+      isCurrent: currentPlan === 'Creator Plus',
+    },
+    {
+      id: 'Growth',
+      name: 'Growth',
+      subtitle: 'Perfect for solo founders',
+      channelsText: 'Any 1 of 3',
+      channelsIcons: ['whatsapp', 'instagram', 'messenger'],
+      priceINR: interval === 'yearly' ? '1,424' : '1,899',
+      priceGST: interval === 'yearly' ? '₹1,680' : '₹2,241',
+      isBestValue: true,
+      isCurrent: currentPlan === 'Growth',
+    },
+    {
+      id: 'Business',
+      name: 'Business',
+      subtitle: 'Omnichannel brands scaling with AI',
+      channelsText: 'All 4 Channels',
+      channelsIcons: ['whatsapp', 'instagram', 'messenger', 'line'],
+      priceINR: interval === 'yearly' ? '3,749' : '4,999',
+      priceGST: interval === 'yearly' ? '₹4,423' : '₹5,898',
+      isBestValue: false,
+      isCurrent: currentPlan === 'Business',
+    },
+  ];
+
+  const handlePlanSelect = (planName) => {
+    setCurrentPlan(planName);
+    showToast(`Switched plan to ${planName}!`, 'success');
+  };
+
+  return (
+    <div className="p-6 lg:p-10 space-y-10 max-w-[1300px] mx-auto font-sans">
+      {/* 1. Centered Header */}
+      <div className="text-center space-y-2 max-w-xl mx-auto">
+        <h1 className="text-3xl font-extrabold text-[#101828] tracking-tight">
+          Choose Your Plan
+        </h1>
+        <p className="text-xs lg:text-sm text-[#475467]">
+          Scale your business with the right plan. Upgrade or downgrade anytime.
+        </p>
+      </div>
+
+      {/* 2. Billing Switcher Pills */}
+      <div className="flex flex-col items-center gap-3">
+        <div className="flex items-center bg-[#F9FAFB] border border-[#EAECF0] p-1 rounded-full text-xs font-semibold">
+          {INTERVALS.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setInterval(item.id)}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-full transition-all cursor-pointer ${
+                interval === item.id
+                  ? 'bg-[#7C3AED] text-white shadow-2xs font-bold'
+                  : 'text-[#667085] hover:text-[#101828]'
+              }`}
+            >
+              <span>{item.label}</span>
+              {item.discount && (
+                <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
+                  interval === item.id ? 'bg-white/20 text-white' : 'bg-[#DCFCE7] text-[#16A34A]'
+                }`}>
+                  {item.discount}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        <a
+          href="https://sendiee.com/pricing"
+          target="_blank"
+          rel="noreferrer"
+          className="text-xs font-semibold text-[#7C3AED] hover:underline flex items-center gap-1"
+        >
+          <span>Compare all features &amp; limits in detail</span>
+          <span className="font-sans">↗</span>
+        </a>
+      </div>
+
+      {/* 3. 4 Plan Cards Grid matching screenshot */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch pt-4">
+        {PLANS.map((p) => (
+          <div
+            key={p.id}
+            className={`bg-white border rounded-3xl p-6 space-y-6 flex flex-col justify-between transition-all relative ${
+              p.isBestValue
+                ? 'border-[#7C3AED] ring-2 ring-[#7C3AED]/20 shadow-lg shadow-purple-600/10'
+                : 'border-[#EAECF0] shadow-2xs hover:border-[#D0D5DD]'
+            }`}
+          >
+            {/* BEST VALUE floating pill badge */}
+            {p.isBestValue && (
+              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#7C3AED] text-white text-[10px] font-mono font-extrabold uppercase px-3 py-1 rounded-full shadow-xs">
+                BEST VALUE
+              </div>
+            )}
+
+            <div className="space-y-4">
+              {/* Icon Box */}
+              <div className="w-11 h-11 rounded-2xl bg-[#FAF8F5] border border-[#EAECF0] flex items-center justify-center text-[#7C3AED]">
+                <Zap className="w-5 h-5 text-[#7C3AED]" />
+              </div>
+
+              {/* Title & Subtitle */}
+              <div>
+                <h3 className="text-lg font-bold text-[#101828]">{p.name}</h3>
+                <p className="text-xs text-[#667085] mt-0.5">{p.subtitle}</p>
+              </div>
+
+              {/* Channels Row */}
+              <div className="flex items-center gap-2 pt-1">
+                <div className="flex -space-x-1">
+                  {p.channelsIcons.map((ic) => (
+                    <div
+                      key={ic}
+                      className={`w-5 h-5 rounded-full border border-white flex items-center justify-center text-[10px] text-white ${
+                        ic === 'whatsapp' ? 'bg-[#25D366]' : ic === 'instagram' ? 'bg-[#E1306C]' : ic === 'messenger' ? 'bg-[#0866FF]' : 'bg-[#00B900]'
+                      }`}
+                    >
+                      •
+                    </div>
+                  ))}
+                </div>
+                <span className="text-xs text-[#667085] font-medium">{p.channelsText}</span>
+              </div>
+
+              {/* Price */}
+              <div className="pt-2 border-t border-[#F2F4F7]">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl font-extrabold text-[#101828]">₹{p.priceINR}</span>
+                  <span className="text-xs text-[#667085]">/ month</span>
+                </div>
+                <div className="text-[11px] text-[#98A2B3] font-mono mt-0.5">
+                  {p.priceGST} (includes 18% GST)
+                </div>
+              </div>
+            </div>
+
+            {/* Action Button */}
+            <div>
+              {p.isCurrent ? (
+                <button
+                  disabled
+                  className="w-full py-2.5 bg-[#DCFCE7] text-[#16A34A] border border-[#BBF7D0] rounded-xl text-xs font-bold cursor-default"
+                >
+                  Current Plan (Active ✓)
+                </button>
+              ) : (
+                <button
+                  onClick={() => handlePlanSelect(p.name)}
+                  className="w-full py-2.5 bg-[#FAF8F5] hover:bg-[#F2F4F7] border border-[#EAECF0] text-[#344054] rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer"
+                >
+                  <span>{p.id === 'Business' ? 'Upgrade Plan' : '↘ Downgrade'}</span>
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};

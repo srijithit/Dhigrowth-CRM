@@ -1,0 +1,27 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: dhigrowth_crm_db
+    restart: always
+    environment:
+      POSTGRES_DB: dhigrowth_crm
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+
+  adminer:
+    image: adminer:latest
+    container_name: dhigrowth_crm_adminer
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:

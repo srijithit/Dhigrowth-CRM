@@ -1,0 +1,328 @@
+import React from 'react';
+import {
+  LayoutGrid,
+  Mail,
+  UserCheck,
+  BarChart3,
+  Bot,
+  Wrench,
+  Target,
+  GitFork,
+  Megaphone,
+  GitBranch,
+  Percent,
+  LayoutTemplate,
+  ArrowUpRight,
+  ChevronsUpDown,
+  Folder,
+  Layers,
+  ShoppingBag,
+  Puzzle,
+  Code,
+  Grid,
+  Settings,
+  Wallet,
+  Crown,
+  LogOut,
+  Key,
+} from 'lucide-react';
+import { useApp } from '../../context/AppContext';
+
+export const Sidebar = () => {
+  const {
+    activeTab,
+    setActiveTab,
+    isSidebarCollapsed,
+    toggleSidebar,
+    setIsUpgradeModalOpen,
+    currentUser,
+    logout,
+  } = useApp();
+
+  const NAV_SECTIONS = [
+    {
+      title: 'WORKSPACE',
+      items: [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutGrid, hasArrow: false, hasDot: false },
+        { id: 'inbox', label: 'Inbox', icon: Mail, hasArrow: true, hasDot: false },
+        { id: 'leads', label: 'Leads', icon: UserCheck, hasArrow: false, hasDot: false },
+        { id: 'insights', label: 'Insights', icon: BarChart3, hasArrow: false, hasDot: true },
+        { id: 'files', label: 'Files', icon: Folder, hasArrow: false, hasDot: false },
+      ],
+    },
+    {
+      title: 'AI',
+      items: [
+        { id: 'ai-assistants', label: 'AI Assistants', icon: Bot, hasArrow: false, hasDot: false },
+        { id: 'tools', label: 'Tools', icon: Wrench, hasArrow: false, hasDot: false },
+        { id: 'lead-studio', label: 'Lead Studio', icon: Target, hasArrow: false, hasDot: true },
+        { id: 'segmentation', label: 'Segmentation', icon: GitFork, hasArrow: false, hasDot: false },
+      ],
+    },
+    {
+      title: 'ENGAGEMENT',
+      items: [
+        { id: 'campaigns', label: 'Campaigns', icon: Megaphone, hasArrow: false, hasDot: false },
+        { id: 'drip-campaigns', label: 'Drip Campaigns', icon: GitBranch, hasArrow: false, hasDot: false },
+        { id: 'automations', label: 'Automations', icon: Percent, hasArrow: false, hasDot: false },
+        { id: 'templates', label: 'Templates', icon: LayoutTemplate, hasArrow: false, hasDot: true },
+      ],
+    },
+    {
+      title: 'CHANNELS',
+      items: [
+        {
+          id: 'channel-whatsapp',
+          label: 'WhatsApp',
+          customIcon: (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-[#475467]">
+              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+            </svg>
+          ),
+          dotColor: 'bg-[#22C55E]',
+        },
+        {
+          id: 'channel-instagram',
+          label: 'Instagram',
+          customIcon: (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-[#475467]">
+              <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+              <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+              <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+            </svg>
+          ),
+          dotColor: 'bg-[#E11D48]',
+        },
+        {
+          id: 'channel-messenger',
+          label: 'Messenger',
+          customIcon: (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-[#475467]">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+          ),
+          dotColor: 'bg-[#2563EB]',
+        },
+        {
+          id: 'channel-line',
+          label: 'LINE',
+          customIcon: (
+            <div className="w-3.5 h-3.5 rounded-full bg-[#98A2B3] text-white flex items-center justify-center font-bold text-[7px] shrink-0">
+              L
+            </div>
+          ),
+          dotColor: 'bg-[#98A2B3]',
+        },
+        { id: 'channels', label: 'All Channels', icon: Layers, hasArrow: false, hasDot: false },
+      ],
+    },
+    {
+      title: 'INTEGRATIONS',
+      items: [
+        { id: 'meta-api', label: 'Meta Cloud API', icon: Key, hasArrow: false, hasDot: true },
+        { id: 'shopify', label: 'Shopify', icon: ShoppingBag, hasArrow: false, hasDot: false },
+        { id: 'zoho', label: 'Zoho', icon: Puzzle, hasArrow: false, hasDot: false },
+        { id: 'api', label: 'API', icon: Code, hasArrow: false, hasDot: false },
+        { id: 'apps', label: 'Apps', icon: Grid, hasArrow: false, hasDot: false },
+      ],
+    },
+    {
+      title: 'ACCOUNT',
+      items: [
+        { id: 'manage', label: 'Manage', icon: Settings, hasArrow: false, hasDot: false },
+        { id: 'wallet', label: 'Wallet', icon: Wallet, hasArrow: false, hasDot: false },
+        { id: 'plans', label: 'Plans', icon: Crown, hasArrow: false, hasDot: false, isUpgrade: true },
+      ],
+    },
+  ];
+
+  return (
+    <aside
+      className={`bg-white border-r border-[#EAECF0] flex flex-col justify-between h-screen shrink-0 sticky top-0 font-sans transition-all duration-300 ease-in-out z-20 ${
+        isSidebarCollapsed ? 'w-[76px]' : 'w-60'
+      }`}
+    >
+      <div className="overflow-y-auto no-scrollbar">
+        {/* Brand Top Header */}
+        <div className={`h-16 flex items-center border-b border-[#F2F4F7] ${isSidebarCollapsed ? 'justify-between px-2.5' : 'justify-between px-4'}`}>
+          {!isSidebarCollapsed ? (
+            <div
+              onClick={() => setActiveTab('dashboard')}
+              className="flex items-center gap-2.5 min-w-0 cursor-pointer"
+            >
+              <img
+                src="/logo.webp"
+                alt="Dhigrowth CRM Logo"
+                className="w-7 h-7 object-contain rounded-full shrink-0"
+              />
+              <span className="font-extrabold text-sm tracking-tight text-[#101828]">
+                Dhigrowth CRM
+              </span>
+            </div>
+          ) : (
+            <img
+              src="/logo.webp"
+              alt="Logo"
+              onClick={() => setActiveTab('dashboard')}
+              className="w-6 h-6 object-contain rounded-full shrink-0 cursor-pointer"
+            />
+          )}
+
+          {/* Sidebar Collapse/Expand Toggle Button */}
+          <button
+            onClick={toggleSidebar}
+            className="w-7 h-7 rounded-xl border border-[#EAECF0] bg-white hover:bg-[#F9FAFB] hover:border-[#D0D5DD] flex items-center justify-center text-[#475467] hover:text-[#101828] transition-all shadow-2xs cursor-pointer shrink-0"
+            title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={`transition-transform duration-200 ${isSidebarCollapsed ? 'rotate-180' : ''}`}
+            >
+              <rect width="18" height="18" x="3" y="3" rx="4" />
+              <path d="M9 3v18" />
+              <path d="m14 9-3 3 3 3" />
+            </svg>
+          </button>
+        </div>
+
+        {/* User Workspace Box */}
+        <div className="p-3">
+          <div
+            className={`flex items-center rounded-xl border border-[#EAECF0] bg-[#F9FAFB] hover:bg-[#F2F4F7] transition-colors cursor-pointer ${
+              isSidebarCollapsed ? 'justify-center p-2' : 'justify-between p-2.5'
+            }`}
+            title="Sri's Workspace"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <img
+                src="/workspace-avatar.png"
+                alt="Workspace"
+                className="w-8 h-8 rounded-lg object-cover ring-1 ring-[#EAECF0] shrink-0"
+              />
+              {!isSidebarCollapsed && (
+                <div className="min-w-0 text-left">
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs font-bold text-[#101828] truncate">sri</span>
+                    <span className="text-xs">👑</span>
+                  </div>
+                  <div className="text-[10px] font-medium text-[#98A2B3] uppercase tracking-wider font-mono">
+                    WORKSPACE
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {!isSidebarCollapsed && (
+              <ChevronsUpDown className="w-4 h-4 text-[#98A2B3] shrink-0" />
+            )}
+          </div>
+        </div>
+
+        {/* Navigation Sections */}
+        <div className={`space-y-4 mt-1 pb-4 ${isSidebarCollapsed ? 'px-2' : 'px-3'}`}>
+          {NAV_SECTIONS.map((section) => (
+            <div key={section.title} className="space-y-1">
+              {!isSidebarCollapsed && (
+                <div className="px-3 text-[10px] font-bold text-[#98A2B3] uppercase tracking-wider font-mono">
+                  {section.title}
+                </div>
+              )}
+
+              <div className="space-y-0.5">
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        if (item.isUpgrade) {
+                          setIsUpgradeModalOpen(true);
+                        } else {
+                          setActiveTab(item.id);
+                        }
+                      }}
+                      title={isSidebarCollapsed ? item.label : undefined}
+                      className={`w-full flex items-center rounded-xl text-xs font-medium transition-all group cursor-pointer ${
+                        isSidebarCollapsed ? 'justify-center p-2.5' : 'justify-between px-3 py-2'
+                      } ${
+                        isActive
+                          ? 'bg-[#F4F0FD] text-[#7C3AED] font-semibold'
+                          : 'text-[#475467] hover:text-[#101828] hover:bg-[#F9FAFB]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {item.customIcon ? (
+                          item.customIcon
+                        ) : (
+                          <Icon
+                            className={`w-4 h-4 shrink-0 ${
+                              isActive ? 'text-[#7C3AED]' : 'text-[#667085] group-hover:text-[#344054]'
+                            }`}
+                          />
+                        )}
+                        {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
+                      </div>
+
+                      {!isSidebarCollapsed && (
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {item.dotColor && (
+                            <span className={`w-2 h-2 rounded-full ${item.dotColor}`} />
+                          )}
+                          {item.hasDot && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#7C3AED]" />
+                          )}
+                          {item.hasArrow && (
+                            <ArrowUpRight className="w-3.5 h-3.5 text-[#98A2B3]" />
+                          )}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* User Account & Logout */}
+      <div className={`border-t border-[#F2F4F7] ${isSidebarCollapsed ? 'p-2' : 'p-3'} flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'} gap-2`}>
+          {!isSidebarCollapsed ? (
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-7 h-7 rounded-full bg-[#7C3AED] text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-2xs">
+                {(currentUser?.name?.[0] || currentUser?.username?.[0] || 'S').toUpperCase()}
+              </div>
+              <div className="text-left min-w-0">
+                <div className="text-xs font-bold text-[#101828] truncate">
+                  {currentUser?.name || 'Administrator'}
+                </div>
+                <div className="text-[10px] text-[#667085] truncate font-mono">
+                  {currentUser?.role || 'Workspace Owner'}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="w-7 h-7 rounded-full bg-[#7C3AED] text-white flex items-center justify-center text-xs font-bold shadow-2xs">
+              {(currentUser?.name?.[0] || currentUser?.username?.[0] || 'S').toUpperCase()}
+            </div>
+          )}
+
+          <button
+            onClick={logout}
+            className="p-1.5 rounded-lg text-[#98A2B3] hover:text-[#DC2626] hover:bg-[#FEF2F2] transition-colors cursor-pointer shrink-0"
+            title="Sign Out / Lock Workspace"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
+    </aside>
+  );
+};

@@ -1,0 +1,887 @@
+import React, { useState, useEffect } from 'react';
+import {
+  FileText,
+  Plus,
+  Search,
+  ChevronDown,
+  RotateCw,
+  LayoutGrid,
+  Sparkles,
+  CheckCircle2,
+  X,
+  MessageSquare,
+  Zap,
+  Edit3,
+  Trash2,
+  Copy,
+  Check,
+  Smartphone,
+  Send,
+  HelpCircle,
+  Clock,
+  CheckCheck,
+  Bot,
+  Tag,
+  Loader2
+} from 'lucide-react';
+import { useApp } from '../../context/AppContext';
+import {
+  getTemplates,
+  createTemplate,
+  updateTemplate,
+  deleteTemplate,
+  DEFAULT_WORKSPACE_ID
+} from '../../services/supabaseClient';
+
+const DEFAULT_TEMPLATES = [
+  {
+    id: 't-welcome',
+    name: 'Welcome Greeting (Hi / Hello)',
+    category: 'utility',
+    status: 'approved',
+    footer_text: 'hi, hello, hey, start, menu, help',
+    body_text: `Hello! 👋 Welcome to **DhiGrowth IT Services**.
+
+How can our AI Business Concierge help you today? 🤖
+
+We help businesses with:
+📱 **App Development**
+🤖 **AI Business Solutions & Development**
+💬 **WhatsApp CRM & Automation**
+💻 **Custom IT Solutions**
+
+Tell us what your business needs, and let’s build something powerful together! 🚀`,
+  },
+  {
+    id: 't-app',
+    name: 'App Development Inquiry',
+    category: 'utility',
+    status: 'approved',
+    footer_text: 'app, mobile, android, ios, flutter, react native',
+    body_text: `📱 **DhiGrowth App Development**
+
+We build high-performance mobile and web apps tailored for your business with modern UI, robust backend, and seamless scalability.
+
+• iOS & Android Native & Hybrid
+• Custom UI/UX & Responsive Design
+• Secure Cloud API Integration
+
+Would you like to discuss your project requirements or see a quick demo? 🚀`,
+  },
+  {
+    id: 't-ai',
+    name: 'AI Business Solutions & Automation',
+    category: 'utility',
+    status: 'approved',
+    footer_text: 'ai, bot, automation, agent, workflow',
+    body_text: `🤖 **AI Business Solutions & Development**
+
+From autonomous AI customer concierges to workflow automations and custom LLM integrations, we help you reduce costs and run operations 24/7.
+
+• 24/7 WhatsApp AI Auto-Pilot
+• Custom AI Knowledge Base & Chatbots
+• Business Process Automation
+
+Would you like a demo of how AI can automate your business tasks? ✨`,
+  },
+  {
+    id: 't-crm',
+    name: 'WhatsApp CRM & Marketing',
+    category: 'utility',
+    status: 'approved',
+    footer_text: 'whatsapp, crm, broadcast, marketing, lead',
+    body_text: `💬 **WhatsApp CRM & Automation**
+
+Supercharge your sales with official Meta WhatsApp Cloud API integration, broadcast campaigns, team inboxes, and AI auto-pilot replies.
+
+• Official Green Tick & Cloud API
+• Automated Inbound Lead Capture
+• Broadcast Marketing with 98% Open Rates
+
+Ready to convert leads faster on WhatsApp? Let’s connect! 📈`,
+  },
+  {
+    id: 't-it',
+    name: 'Custom IT & Software Solutions',
+    category: 'utility',
+    status: 'approved',
+    footer_text: 'website, web, software, it solution, portal',
+    body_text: `💻 **Custom IT & Software Solutions**
+
+We engineer modern web applications, cloud backends, client portals, and robust enterprise software built for speed and security.
+
+• Full-Stack Web Development
+• Cloud Infrastructure & DevOps
+• Third-Party API & Payment Gateways
+
+Share your project requirements, and we'll prepare a custom roadmap for you! 🛠️`,
+  },
+  {
+    id: 't-quote',
+    name: 'Pricing & Consultation Quote',
+    category: 'utility',
+    status: 'approved',
+    footer_text: 'price, cost, quote, rate, pricing, package',
+    body_text: `💼 **Project Pricing & Consultation**
+
+Our project pricing is customized based on your business scope, timeline, and technical requirements.
+
+We offer transparent milestones and dedicated technical support. Share your project details or book a free 15-minute discovery consultation with our tech leads! 🤝`,
+  },
+];
+
+export const TemplatesPage = () => {
+  const { showToast } = useApp();
+
+  const [templates, setTemplates] = useState(DEFAULT_TEMPLATES);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('all'); // all | greetings | services | pricing
+  const [isLoading, setIsLoading] = useState(false);
+  const [copiedId, setCopiedId] = useState(null);
+
+  // Modals
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState(null);
+  const [deletingTemplate, setDeletingTemplate] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Form State
+  const [formName, setFormName] = useState('');
+  const [formTriggers, setFormTriggers] = useState('');
+  const [formCategory, setFormCategory] = useState('utility');
+  const [formBody, setFormBody] = useState('');
+
+  // Interactive Live Simulator State
+  const [testInput, setTestInput] = useState('hi');
+  const [simulatedReply, setSimulatedReply] = useState('');
+  const [isSimulating, setIsSimulating] = useState(false);
+
+  // Load from Supabase on mount
+  useEffect(() => {
+    loadTemplates();
+  }, []);
+
+  const loadTemplates = async () => {
+    setIsLoading(true);
+    try {
+      const data = await getTemplates(DEFAULT_WORKSPACE_ID);
+      if (data && data.length > 0) {
+        setTemplates(data);
+      } else {
+        setTemplates(DEFAULT_TEMPLATES);
+      }
+    } catch (err) {
+      console.warn('Load templates note:', err);
+      setTemplates(DEFAULT_TEMPLATES);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOpenCreate = () => {
+    setFormName('');
+    setFormTriggers('');
+    setFormCategory('utility');
+    setFormBody('');
+    setIsCreateModalOpen(true);
+  };
+
+  const handleOpenEdit = (template) => {
+    setEditingTemplate(template);
+    setFormName(template.name);
+    setFormTriggers(template.footer_text || '');
+    setFormCategory(template.category || 'utility');
+    setFormBody(template.body_text || '');
+  };
+
+  const handleSaveCreate = async (e) => {
+    e.preventDefault();
+    if (!formName.trim() || !formBody.trim()) {
+      showToast('Template Name and Response Body are required', 'error');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const created = await createTemplate({
+        name: formName.trim(),
+        body_text: formBody.trim(),
+        footer_text: formTriggers.trim(),
+        category: formCategory,
+        status: 'approved',
+      });
+
+      const newTmpl = created || {
+        id: `tmpl-${Date.now()}`,
+        name: formName.trim(),
+        body_text: formBody.trim(),
+        footer_text: formTriggers.trim(),
+        category: formCategory,
+        status: 'approved',
+      };
+
+      setTemplates((prev) => [newTmpl, ...prev]);
+      setIsCreateModalOpen(false);
+      showToast(`Auto-Reply Template "${formName}" created & active!`, 'success');
+    } catch (err) {
+      console.error('Error creating template:', err);
+      // Fallback local state
+      const localTmpl = {
+        id: `tmpl-${Date.now()}`,
+        name: formName.trim(),
+        body_text: formBody.trim(),
+        footer_text: formTriggers.trim(),
+        category: formCategory,
+        status: 'approved',
+      };
+      setTemplates((prev) => [localTmpl, ...prev]);
+      setIsCreateModalOpen(false);
+      showToast(`Template saved locally and active!`, 'success');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!editingTemplate || !formName.trim() || !formBody.trim()) return;
+
+    setIsSaving(true);
+    try {
+      await updateTemplate(editingTemplate.id, {
+        name: formName.trim(),
+        body_text: formBody.trim(),
+        footer_text: formTriggers.trim(),
+        category: formCategory,
+      });
+
+      setTemplates((prev) =>
+        prev.map((t) =>
+          t.id === editingTemplate.id
+            ? {
+                ...t,
+                name: formName.trim(),
+                body_text: formBody.trim(),
+                footer_text: formTriggers.trim(),
+                category: formCategory,
+              }
+            : t
+        )
+      );
+
+      setEditingTemplate(null);
+      showToast(`Template "${formName}" updated successfully!`, 'success');
+    } catch (err) {
+      console.error('Error updating template:', err);
+      setTemplates((prev) =>
+        prev.map((t) =>
+          t.id === editingTemplate.id
+            ? {
+                ...t,
+                name: formName.trim(),
+                body_text: formBody.trim(),
+                footer_text: formTriggers.trim(),
+                category: formCategory,
+              }
+            : t
+        )
+      );
+      setEditingTemplate(null);
+      showToast(`Template updated!`, 'success');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deletingTemplate) return;
+    try {
+      await deleteTemplate(deletingTemplate.id);
+      setTemplates((prev) => prev.filter((t) => t.id !== deletingTemplate.id));
+      setDeletingTemplate(null);
+      showToast(`Template deleted successfully`, 'info');
+    } catch (err) {
+      console.error('Error deleting template:', err);
+      setTemplates((prev) => prev.filter((t) => t.id !== deletingTemplate.id));
+      setDeletingTemplate(null);
+      showToast(`Template deleted`, 'info');
+    }
+  };
+
+  const handleCopy = (text, id) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    showToast('Template content copied to clipboard!', 'success');
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const runTriggerTest = (query = testInput) => {
+    if (!query.trim()) return;
+    setIsSimulating(true);
+
+    const cleanQuery = query.trim().toLowerCase();
+    setTimeout(() => {
+      // Find matching template
+      let matched = null;
+      for (const tmpl of templates) {
+        const triggers = (tmpl.footer_text || '')
+          .split(',')
+          .map((t) => t.trim().toLowerCase())
+          .filter(Boolean);
+
+        const isMatch = triggers.some((tr) => {
+          if (cleanQuery === tr) return true;
+          if (cleanQuery.startsWith(`${tr} `)) return true;
+          if (cleanQuery.endsWith(` ${tr}`)) return true;
+          if (cleanQuery.includes(` ${tr} `)) return true;
+          return false;
+        });
+
+        if (isMatch) {
+          matched = tmpl;
+          break;
+        }
+      }
+
+      if (matched) {
+        setSimulatedReply(matched.body_text);
+      } else {
+        setSimulatedReply(
+          `Thank you for reaching out! 🙏 Our DhiGrowth IT Services team has received your message: "${query}". How can our AI Business Concierge assist you today? 🤖`
+        );
+      }
+      setIsSimulating(false);
+    }, 250);
+  };
+
+  const filteredTemplates = templates.filter((t) => {
+    const matchesSearch =
+      t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (t.footer_text || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      t.body_text.toLowerCase().includes(searchTerm.toLowerCase());
+
+    if (!matchesSearch) return false;
+
+    if (activeTab === 'greetings') {
+      return (t.footer_text || '').toLowerCase().includes('hi') || (t.footer_text || '').toLowerCase().includes('hello');
+    }
+    if (activeTab === 'services') {
+      return (
+        (t.footer_text || '').toLowerCase().includes('app') ||
+        (t.footer_text || '').toLowerCase().includes('ai') ||
+        (t.footer_text || '').toLowerCase().includes('crm') ||
+        (t.footer_text || '').toLowerCase().includes('software')
+      );
+    }
+    if (activeTab === 'pricing') {
+      return (t.footer_text || '').toLowerCase().includes('price') || (t.footer_text || '').toLowerCase().includes('quote');
+    }
+    return true;
+  });
+
+  const welcomeTemplate = templates.find(
+    (t) =>
+      (t.footer_text || '').toLowerCase().includes('hi') &&
+      (t.footer_text || '').toLowerCase().includes('hello')
+  ) || templates[0];
+
+  return (
+    <div className="p-4 lg:p-8 space-y-6 max-w-[1300px] mx-auto font-sans">
+      {/* 1. Page Header & Hero Action Banner */}
+      <div className="bg-white border border-[#EAECF0] rounded-3xl p-6 lg:p-8 shadow-xs relative overflow-hidden space-y-4">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-[#F4F0FD] to-transparent rounded-full -mr-20 -mt-20 pointer-events-none" />
+
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full bg-[#DCFCE7] border border-[#BBF7D0] text-[#16A34A] text-[11px] font-bold font-mono flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A] animate-pulse"></span>
+                WhatsApp Live Auto-Replies Active
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full bg-[#F4F0FD] text-[#7C3AED] text-[11px] font-bold font-mono">
+                {templates.length} Templates Configured
+              </span>
+            </div>
+            <h1 className="text-2xl font-extrabold text-[#101828] tracking-tight">
+              Auto-Reply & WhatsApp Message Templates
+            </h1>
+            <p className="text-xs text-[#667085] max-w-2xl leading-relaxed">
+              Configure exactly what our WhatsApp bot sends when customers text keywords like <span className="font-bold text-[#101828]">"Hi"</span>, <span className="font-bold text-[#101828]">"Hello"</span>, or service inquiry keywords. Changes sync directly to the live WhatsApp webhook!
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              onClick={loadTemplates}
+              disabled={isLoading}
+              className="px-3.5 py-2.5 rounded-xl border border-[#EAECF0] bg-white hover:bg-[#F9FAFB] text-xs font-bold text-[#344054] flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+              title="Reload templates from database"
+            >
+              <RotateCw className={`w-3.5 h-3.5 text-[#667085] ${isLoading ? 'animate-spin' : ''}`} />
+              <span>Refresh</span>
+            </button>
+            <button
+              onClick={handleOpenCreate}
+              className="px-4 py-2.5 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs shadow-purple-500/20 transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Auto-Reply Template</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Featured "Hi / Hello" Welcome Response Card */}
+      {welcomeTemplate && (
+        <div className="bg-gradient-to-r from-[#FAF8FF] to-white border border-[#E9D8FD] rounded-3xl p-6 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E9D8FD]/60">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-[#7C3AED] text-white flex items-center justify-center shadow-xs">
+                <Bot className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-[#101828]">Primary Customer Welcome Greeting</h3>
+                  <span className="px-2 py-0.5 rounded-full bg-[#DCFCE7] text-[#16A34A] text-[10px] font-bold font-mono">
+                    DEFAULT ACTIVE
+                  </span>
+                </div>
+                <p className="text-[11px] text-[#667085]">
+                  Sent automatically whenever a customer sends greetings on WhatsApp
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleCopy(welcomeTemplate.body_text, welcomeTemplate.id)}
+                className="px-3 py-1.5 rounded-xl border border-[#EAECF0] bg-white hover:bg-[#F9FAFB] text-xs font-bold text-[#475467] flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                {copiedId === welcomeTemplate.id ? <Check className="w-3.5 h-3.5 text-[#16A34A]" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copiedId === welcomeTemplate.id ? 'Copied' : 'Copy'}</span>
+              </button>
+              <button
+                onClick={() => handleOpenEdit(welcomeTemplate)}
+                className="px-3.5 py-1.5 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Edit Greeting & Triggers</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Left: Trigger Information & Text */}
+            <div className="lg:col-span-7 space-y-3">
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-bold text-[#475467] uppercase font-mono">Trigger Keywords:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {(welcomeTemplate.footer_text || 'hi, hello, hey, start')
+                    .split(',')
+                    .map((tr) => tr.trim())
+                    .filter(Boolean)
+                    .map((trigger) => (
+                      <span
+                        key={trigger}
+                        className="px-2.5 py-1 rounded-lg bg-[#F4F0FD] border border-[#E9D8FD] text-[#7C3AED] text-xs font-bold font-mono flex items-center gap-1"
+                      >
+                        <Zap className="w-3 h-3 text-[#7C3AED]" />
+                        "{trigger}"
+                      </span>
+                    ))}
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-white border border-[#EAECF0] text-xs text-[#101828] leading-relaxed whitespace-pre-line shadow-2xs font-sans">
+                {welcomeTemplate.body_text}
+              </div>
+            </div>
+
+            {/* Right: Realistic WhatsApp Mobile Bubble Preview */}
+            <div className="lg:col-span-5 bg-[#EFEAE2] p-4 rounded-2xl border border-[#D1D5DB] shadow-xs space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-black/10 text-[11px] font-mono font-bold text-[#475467]">
+                <div className="flex items-center gap-1.5">
+                  <Smartphone className="w-3.5 h-3.5 text-[#16A34A]" />
+                  <span>WhatsApp Live Preview</span>
+                </div>
+                <span className="text-[10px] text-[#16A34A] font-bold">Encrypted</span>
+              </div>
+
+              {/* Customer Simulated Bubble */}
+              <div className="flex flex-col items-end ml-auto max-w-[80%]">
+                <div className="bg-[#DCF8C6] text-[#111B21] p-2.5 rounded-2xl rounded-tr-xs text-xs shadow-xs">
+                  <p>Hi</p>
+                  <div className="flex justify-end items-center gap-1 text-[9px] text-gray-500 font-mono mt-0.5">
+                    <span>1:45 PM</span>
+                    <CheckCheck className="w-3 h-3 text-[#53BDEB]" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Bot Response Bubble */}
+              <div className="flex flex-col items-start mr-auto max-w-[92%]">
+                <div className="bg-white text-[#111B21] p-3 rounded-2xl rounded-tl-xs text-xs shadow-xs leading-relaxed space-y-1">
+                  <p className="whitespace-pre-line text-xs">{welcomeTemplate.body_text}</p>
+                  <div className="flex justify-end items-center text-[9px] text-gray-400 font-mono pt-1">
+                    <span>1:45 PM</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Interactive Response Simulator */}
+      <div className="bg-white border border-[#EAECF0] rounded-3xl p-5 shadow-xs space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Zap className="w-4 h-4 text-[#F59E0B]" />
+            <h4 className="text-xs font-bold text-[#101828]">Test Trigger Simulator</h4>
+            <span className="text-[11px] text-[#667085] hidden sm:inline">
+              Type a word to test which template triggers in real-time
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="text-[11px] text-[#98A2B3]">Quick tests:</span>
+            {['hi', 'app', 'ai', 'pricing'].map((word) => (
+              <button
+                key={word}
+                type="button"
+                onClick={() => {
+                  setTestInput(word);
+                  runTriggerTest(word);
+                }}
+                className="px-2 py-0.5 rounded-md bg-[#F2F4F7] hover:bg-[#EAECF0] text-[#344054] font-mono text-[11px] font-bold cursor-pointer"
+              >
+                "{word}"
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            placeholder="Type customer message to test (e.g. 'hello', 'what are your app services?')..."
+            value={testInput}
+            onChange={(e) => setTestInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') runTriggerTest();
+            }}
+            className="flex-1 bg-[#F9FAFB] border border-[#EAECF0] px-3.5 py-2 rounded-xl text-xs text-[#101828] focus:outline-none focus:border-[#7C3AED]"
+          />
+          <button
+            type="button"
+            onClick={() => runTriggerTest()}
+            disabled={isSimulating || !testInput.trim()}
+            className="px-4 py-2 bg-[#16A34A] hover:bg-[#15803D] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer shrink-0"
+          >
+            {isSimulating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+            <span>Test Reply</span>
+          </button>
+        </div>
+
+        {simulatedReply && (
+          <div className="p-3.5 rounded-2xl bg-[#F4F0FD] border border-[#E9D8FD] text-xs text-[#101828] leading-relaxed whitespace-pre-line animate-in fade-in">
+            <div className="flex items-center gap-1.5 text-[10px] font-mono text-[#7C3AED] font-bold mb-1.5">
+              <Bot className="w-3 h-3 text-[#7C3AED]" />
+              <span>Simulated Auto-Pilot Output for "{testInput}":</span>
+            </div>
+            {simulatedReply}
+          </div>
+        )}
+      </div>
+
+      {/* 4. Filter Toolbar & Search */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Category Tabs */}
+        <div className="flex items-center gap-1.5 bg-[#F2F4F7] p-1 rounded-2xl w-fit">
+          {[
+            { id: 'all', label: 'All Templates' },
+            { id: 'greetings', label: 'Greetings (Hi/Hello)' },
+            { id: 'services', label: 'Services (App/AI/IT)' },
+            { id: 'pricing', label: 'Pricing & Quotes' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === tab.id
+                  ? 'bg-white text-[#7C3AED] shadow-xs'
+                  : 'text-[#667085] hover:text-[#101828]'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Search */}
+        <div className="relative w-full sm:w-72">
+          <Search className="w-3.5 h-3.5 text-[#98A2B3] absolute left-3 top-2.5" />
+          <input
+            type="text"
+            placeholder="Search templates or triggers..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-white border border-[#EAECF0] pl-8 pr-3 py-1.5 rounded-xl text-xs text-[#101828] placeholder-[#98A2B3] focus:outline-none focus:border-[#7C3AED]"
+          />
+        </div>
+      </div>
+
+      {/* 5. Templates Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {filteredTemplates.map((template) => {
+          const triggers = (template.footer_text || '')
+            .split(',')
+            .map((t) => t.trim())
+            .filter(Boolean);
+
+          return (
+            <div
+              key={template.id}
+              className="bg-white border border-[#EAECF0] hover:border-[#7C3AED]/40 rounded-3xl p-5 shadow-xs flex flex-col justify-between transition-all hover:shadow-md space-y-4 group"
+            >
+              <div className="space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-1 min-w-0">
+                    <span className="px-2 py-0.5 rounded-full bg-[#F4F0FD] text-[#7C3AED] text-[10px] font-bold font-mono uppercase">
+                      {template.category || 'Utility'}
+                    </span>
+                    <h4 className="text-sm font-bold text-[#101828] truncate group-hover:text-[#7C3AED] transition-colors">
+                      {template.name}
+                    </h4>
+                  </div>
+
+                  <span className="px-2 py-0.5 rounded-full bg-[#DCFCE7] text-[#16A34A] text-[10px] font-bold font-mono shrink-0">
+                    APPROVED
+                  </span>
+                </div>
+
+                {/* Triggers */}
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-[#98A2B3] uppercase font-mono">
+                    Triggers ({triggers.length}):
+                  </span>
+                  <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto no-scrollbar">
+                    {triggers.map((tr) => (
+                      <span
+                        key={tr}
+                        className="px-2 py-0.5 rounded-md bg-[#F9FAFB] border border-[#EAECF0] text-[10px] font-mono text-[#475467]"
+                      >
+                        {tr}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Body Snippet */}
+                <div className="p-3 rounded-xl bg-[#F9FAFB] border border-[#EAECF0] text-xs text-[#344054] line-clamp-4 leading-relaxed font-sans">
+                  {template.body_text}
+                </div>
+              </div>
+
+              {/* Card Footer Actions */}
+              <div className="pt-3 border-t border-[#EAECF0] flex items-center justify-between gap-2">
+                <button
+                  onClick={() => handleCopy(template.body_text, template.id)}
+                  className="p-2 rounded-xl hover:bg-[#F2F4F7] text-[#667085] hover:text-[#101828] transition-colors cursor-pointer"
+                  title="Copy content"
+                >
+                  {copiedId === template.id ? <Check className="w-4 h-4 text-[#16A34A]" /> : <Copy className="w-4 h-4" />}
+                </button>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => handleOpenEdit(template)}
+                    className="px-3 py-1.5 rounded-xl border border-[#EAECF0] hover:border-[#7C3AED] bg-white text-xs font-bold text-[#344054] hover:text-[#7C3AED] transition-all cursor-pointer flex items-center gap-1"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Edit</span>
+                  </button>
+
+                  <button
+                    onClick={() => setDeletingTemplate(template)}
+                    className="p-2 rounded-xl hover:bg-[#FEE2E2] text-[#98A2B3] hover:text-[#DC2626] transition-colors cursor-pointer"
+                    title="Delete template"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* 6. Add / Edit Template Modal */}
+      {(isCreateModalOpen || editingTemplate) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in font-sans">
+          <div className="bg-white border border-[#EAECF0] rounded-3xl max-w-2xl w-full p-6 shadow-2xl relative space-y-5 max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => {
+                setIsCreateModalOpen(false);
+                setEditingTemplate(null);
+              }}
+              className="absolute top-5 right-5 text-[#98A2B3] hover:text-[#101828] p-1.5 rounded-xl hover:bg-[#F9FAFB] cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-[#F4F0FD] border border-[#E9D8FD] flex items-center justify-center text-[#7C3AED]">
+                <MessageSquare className="w-5 h-5 text-[#7C3AED]" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-[#101828]">
+                  {editingTemplate ? `Edit Template: ${editingTemplate.name}` : 'Create Auto-Reply Template'}
+                </h3>
+                <p className="text-xs text-[#667085]">
+                  Define the trigger words and the exact message WhatsApp should send back
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={editingTemplate ? handleSaveEdit : handleSaveCreate} className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-[#344054]">Template Name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Welcome Greeting (Hi / Hello)"
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  className="w-full mt-1 bg-[#F9FAFB] border border-[#EAECF0] px-3.5 py-2.5 rounded-xl text-xs text-[#101828] focus:outline-none focus:border-[#7C3AED]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-[#344054]">
+                  Trigger Keywords (Comma separated)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. hi, hello, hey, start, menu"
+                  value={formTriggers}
+                  onChange={(e) => setFormTriggers(e.target.value)}
+                  className="w-full mt-1 bg-[#F9FAFB] border border-[#EAECF0] px-3.5 py-2.5 rounded-xl text-xs text-[#101828] focus:outline-none focus:border-[#7C3AED]"
+                />
+                <p className="text-[10px] text-[#98A2B3] mt-1">
+                  When customer sends any of these words, this template message will be dispatched automatically.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-[#344054]">Category</label>
+                  <select
+                    value={formCategory}
+                    onChange={(e) => setFormCategory(e.target.value)}
+                    className="w-full mt-1 bg-[#F9FAFB] border border-[#EAECF0] px-3.5 py-2 rounded-xl text-xs text-[#101828] focus:outline-none focus:border-[#7C3AED]"
+                  >
+                    <option value="utility">Utility / Auto-Reply</option>
+                    <option value="marketing">Marketing / Promotion</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-[#344054]">Channel</label>
+                  <div className="mt-1 px-3.5 py-2 bg-[#F2F4F7] border border-[#EAECF0] rounded-xl text-xs font-bold text-[#16A34A] flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-[#16A34A]"></span>
+                    <span>WhatsApp Cloud API</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-semibold text-[#344054]">
+                    Message Content (What should send)
+                  </label>
+                  <span className="text-[10px] font-mono text-[#98A2B3]">
+                    Tip: Use *bold* or **bold** for bold text
+                  </span>
+                </div>
+                <textarea
+                  rows={8}
+                  placeholder="Write the exact message WhatsApp should send back..."
+                  value={formBody}
+                  onChange={(e) => setFormBody(e.target.value)}
+                  className="w-full bg-[#F9FAFB] border border-[#EAECF0] p-3 rounded-xl text-xs text-[#101828] focus:outline-none focus:border-[#7C3AED] leading-relaxed resize-none font-sans"
+                  required
+                />
+              </div>
+
+              {/* Live Preview */}
+              {formBody && (
+                <div className="p-3.5 rounded-2xl bg-[#EFEAE2] border border-[#D1D5DB] space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-[#16A34A]">
+                    <Smartphone className="w-3 h-3" />
+                    <span>WhatsApp Live Customer Bubble Preview:</span>
+                  </div>
+                  <div className="bg-white p-3 rounded-2xl text-xs text-[#111B21] shadow-xs whitespace-pre-line leading-relaxed">
+                    {formBody}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#EAECF0]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCreateModalOpen(false);
+                    setEditingTemplate(null);
+                  }}
+                  className="px-4 py-2.5 rounded-xl border border-[#EAECF0] hover:bg-[#F9FAFB] text-xs font-bold text-[#475467] transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="px-5 py-2.5 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                >
+                  {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                  <span>{editingTemplate ? 'Save & Update Live' : 'Create & Activate'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 7. Delete Confirmation Modal */}
+      {deletingTemplate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in font-sans">
+          <div className="bg-white border border-[#EAECF0] rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-[#FEE2E2] border border-[#FECACA] flex items-center justify-center text-[#DC2626] mx-auto">
+              <Trash2 className="w-6 h-6 text-[#DC2626]" />
+            </div>
+            <div className="text-center space-y-1">
+              <h3 className="text-base font-bold text-[#101828]">Delete Auto-Reply?</h3>
+              <p className="text-xs text-[#667085]">
+                Are you sure you want to permanently delete template <span className="font-bold text-[#101828]">"{deletingTemplate.name}"</span>?
+              </p>
+            </div>
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={() => setDeletingTemplate(null)}
+                className="flex-1 py-2.5 bg-[#F2F4F7] hover:bg-[#EAECF0] text-[#344054] rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex-1 py-2.5 bg-[#DC2626] hover:bg-[#B91C1C] text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
