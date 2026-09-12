@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
+import bcrypt from 'bcryptjs';
 import {
   isSupabaseConfigured,
   getWalletData,
@@ -120,6 +121,16 @@ export const AppProvider = ({ children }) => {
     fetchMetaConfig();
   }, []);
 
+  // Bcrypt hashed passwords for secure authentication (Cost Factor: 10)
+  const USER_PASSWORD_HASHES = {
+    admin: '$2b$10$pXOt6.GRAajCsYXj1nAI4umTXtdKYfVzxr5f8sZeedXag/b5vZ.zO', // DhiGrowth@admin
+    sri: '$2b$10$5ZDjuHTdcawqR3JfLwxc6uckYA9dVEQDZ0J9Lhv4W28Se8hmoyiXy', // dhigrowth2026
+    kiki: [
+      '$2b$10$9GRXc/Yq5N.PUsjUOQitGuxAHOQttXJBV/x6WUBLPA./rhRs8.QBG', // kiki123
+      '$2b$10$sUBNkFJ1ooejU8FVDVAhje5qd4dg1kWf2XKaQyu4bNyvT1GK7fWza', // kiki2026
+    ],
+  };
+
   const login = async ({ username, password, remember = true }) => {
     const cleanUser = username?.trim().toLowerCase();
     const cleanPass = password?.trim();
@@ -133,18 +144,52 @@ export const AppProvider = ({ children }) => {
     const isKiki = cleanUser === 'kiki' || cleanUser === 'kiki@dhigrowth.com';
     const isValidKiki =
       isKiki &&
-      (cleanPass === 'kiki123' || cleanPass === 'kiki2026');
+      Boolean(cleanPass) &&
+      USER_PASSWORD_HASHES.kiki.some((hash) => {
+        try {
+          return bcrypt.compareSync(cleanPass, hash);
+        } catch {
+          return false;
+        }
+      });
 
     const isSri = cleanUser === 'sri' || cleanUser === 'sri@dhigrowth.com';
-    const isValidSri = isSri && (cleanPass === 'dhigrowth2026');
+    const isValidSri =
+      isSri &&
+      Boolean(cleanPass) &&
+      (() => {
+        try {
+          return bcrypt.compareSync(cleanPass, USER_PASSWORD_HASHES.sri);
+        } catch {
+          return false;
+        }
+      })();
 
     const isAdmin = cleanUser === 'admin' || cleanUser === 'admin@dhigrowth.com';
-    const isValidAdmin = isAdmin && (cleanPass === 'DhiGrowth@admin');
+    const isValidAdmin =
+      isAdmin &&
+      Boolean(cleanPass) &&
+      (() => {
+        try {
+          return bcrypt.compareSync(cleanPass, USER_PASSWORD_HASHES.admin);
+        } catch {
+          return false;
+        }
+      })();
 
     const isValidCustom = 
       savedCreds &&
       (cleanUser === savedCreds.username?.toLowerCase() || cleanUser === savedCreds.email?.toLowerCase()) &&
-      cleanPass === savedCreds.password;
+      Boolean(cleanPass) &&
+      (savedCreds.passwordHash
+        ? (() => {
+            try {
+              return bcrypt.compareSync(cleanPass, savedCreds.passwordHash);
+            } catch {
+              return false;
+            }
+          })()
+        : cleanPass === savedCreds.password);
 
     if (!isValidAdmin && !isValidSri && !isValidCustom && !isValidKiki) {
       throw new Error('Invalid username or password. Please try again.');
