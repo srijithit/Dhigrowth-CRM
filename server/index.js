@@ -10,6 +10,7 @@ import {
   createAndSendInvoice,
   markInvoicePaid,
   renderCheckoutHtml,
+  broadcastDueInvoicesToAll,
 } from './invoiceService.js';
 import { generateInvoicePdf } from './invoicePdfGenerator.js';
 
@@ -42,6 +43,7 @@ function loadMetaConfig() {
 loadMetaConfig();
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 4000;
 
 app.use(cors());
@@ -281,7 +283,7 @@ app.post('/api/invoices/create-and-send', async (req, res) => {
       return res.status(400).json({ error: 'Customer phone number is required' });
     }
 
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const baseUrl = (process.env.RENDER_EXTERNAL_URL || process.env.VITE_BACKEND_URL || `${req.protocol}://${req.get('host')}`).replace(/\/+$/, '');
     const result = await createAndSendInvoice({
       customerName,
       phone,
@@ -300,6 +302,31 @@ app.post('/api/invoices/create-and-send', async (req, res) => {
     });
   } catch (err) {
     console.error('[Create & Send Invoice Route Error]:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 7.1.1 Broadcast Payment Due Invoice PDFs to All Contacts
+app.post('/api/invoices/broadcast-due-to-all', async (req, res) => {
+  try {
+    const { contacts, description, amount } = req.body || {};
+    const baseUrl = (process.env.RENDER_EXTERNAL_URL || process.env.VITE_BACKEND_URL || `${req.protocol}://${req.get('host')}`).replace(/\/+$/, '');
+
+    console.log(`📡 [Broadcast API Request] Base URL: ${baseUrl} | Amount: ${amount || 2499}`);
+
+    const summary = await broadcastDueInvoicesToAll({
+      contacts,
+      description,
+      amount,
+      baseUrl,
+    });
+
+    res.json({
+      success: true,
+      summary,
+    });
+  } catch (err) {
+    console.error('[Broadcast Invoices Route Error]:', err);
     res.status(500).json({ error: err.message });
   }
 });

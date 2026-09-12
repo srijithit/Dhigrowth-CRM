@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { ContactAvatar } from '../common/ContactAvatar';
+import { BACKEND_URL } from '../../services/apiConfig';
 
 export const TeamInbox = () => {
   const {
@@ -54,6 +55,8 @@ export const TeamInbox = () => {
     updateLead,
     deleteLead,
     showToast,
+    isBroadcastDueModalOpen,
+    setIsBroadcastDueModalOpen,
   } = useApp();
 
   const [inputMessage, setInputMessage] = useState('');
@@ -197,6 +200,50 @@ export const TeamInbox = () => {
     setIsInvoiceModalOpen(true);
   };
 
+  // Broadcast Payment Due Invoices to All Contacts State
+  const [broadcastDesc, setBroadcastDesc] = useState('DhiGrowth WhatsApp CRM & AI Business Concierge');
+  const [broadcastAmount, setBroadcastAmount] = useState('2499');
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
+  const [broadcastSummary, setBroadcastSummary] = useState(null);
+
+  const handleBroadcastDueInvoices = async (e) => {
+    e?.preventDefault();
+    setIsBroadcasting(true);
+    setBroadcastSummary(null);
+
+    try {
+      const targetContacts = (chats || []).map((c) => ({
+        name: c.contactName || 'Valued Client',
+        phone: c.phone || '',
+        email: c.email || '',
+        city: c.city || 'India',
+        conversationId: c.conversationId || c.id,
+      }));
+
+      const res = await fetch(`${BACKEND_URL}/api/invoices/broadcast-due-to-all`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contacts: targetContacts,
+          description: broadcastDesc,
+          amount: broadcastAmount,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.summary) {
+        setBroadcastSummary(data.summary);
+        showToast(`🚀 Dispatched Payment Due PDFs to ${data.summary.dispatched} contacts on WhatsApp!`, 'success');
+      } else {
+        showToast(data.error || 'Failed to broadcast invoices', 'error');
+      }
+    } catch (err) {
+      showToast('Error broadcasting invoices: ' + err.message, 'error');
+    } finally {
+      setIsBroadcasting(false);
+    }
+  };
+
   const handleCreateAndSendInvoice = async (e) => {
     e?.preventDefault();
     if (!invoicePhone) {
@@ -205,7 +252,7 @@ export const TeamInbox = () => {
     }
     setIsSendingInvoice(true);
     try {
-      const res = await fetch('http://localhost:4000/api/invoices/create-and-send', {
+      const res = await fetch(`${BACKEND_URL}/api/invoices/create-and-send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -239,7 +286,7 @@ export const TeamInbox = () => {
   const handleMarkInvoicePaid = async (invoiceId) => {
     setMarkingPaidId(invoiceId);
     try {
-      const res = await fetch(`http://localhost:4000/api/invoices/${invoiceId}/mark-paid`, {
+      const res = await fetch(`${BACKEND_URL}/api/invoices/${invoiceId}/mark-paid`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -597,13 +644,28 @@ export const TeamInbox = () => {
                 {chats.length}
               </span>
             </div>
-            <button
-              onClick={() => setIsAddContactModalOpen(true)}
-              className="flex items-center gap-1 text-[11px] font-bold text-white bg-[#7C3AED] hover:bg-[#6D28D9] px-2.5 py-1 rounded-lg transition-all cursor-pointer shadow-2xs"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>New Contact</span>
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setBroadcastSummary(null);
+                  setIsBroadcastDueModalOpen(true);
+                }}
+                className="flex items-center gap-1 text-[11px] font-bold text-[#7C3AED] bg-[#F4F0FD] hover:bg-[#EDE5FA] border border-[#E9D8FD] px-2.5 py-1 rounded-lg transition-all cursor-pointer shadow-2xs group"
+                title="Send Payment Due PDF with payment link to all WhatsApp contacts"
+              >
+                <Zap className="w-3.5 h-3.5 text-[#7C3AED] group-hover:scale-110 transition-transform" />
+                <span>Send Due to All</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsAddContactModalOpen(true)}
+                className="flex items-center gap-1 text-[11px] font-bold text-white bg-[#7C3AED] hover:bg-[#6D28D9] px-2.5 py-1 rounded-lg transition-all cursor-pointer shadow-2xs"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>New Contact</span>
+              </button>
+            </div>
           </div>
 
           <div className="relative">
@@ -1304,8 +1366,18 @@ export const TeamInbox = () => {
                   ))}
                 </div>
 
-                {/* Contact Actions: Edit & Delete */}
+                {/* Contact Actions: Invoices, Edit & Delete */}
                 <div className="pt-2 border-t border-[#EAECF0] space-y-2">
+                  <button
+                    type="button"
+                    onClick={handleOpenInvoiceModal}
+                    className="w-full py-2 px-3 border border-[#E9D8FD] bg-[#F4F0FD] hover:bg-[#EDE5FA] text-[#7C3AED] rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                    title="Send customized Payment Due PDF to this contact"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-[#7C3AED]" />
+                    <span>Send Due Invoice PDF</span>
+                  </button>
+
                   <button
                     onClick={() => handleOpenEditModal(activeChat)}
                     className="w-full py-2 px-3 border border-[#D0D5DD] bg-white hover:bg-[#F9FAFB] text-[#344054] rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
@@ -1798,7 +1870,180 @@ export const TeamInbox = () => {
           </div>
         </div>
       )}
+
+      {/* Broadcast Payment Due Invoices to All Contacts Modal */}
+      {isBroadcastDueModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in font-sans">
+          <div className="bg-white border border-[#EAECF0] rounded-3xl max-w-xl w-full p-6 shadow-2xl relative space-y-4 max-h-[92vh] overflow-y-auto">
+            <button
+              type="button"
+              onClick={() => {
+                setIsBroadcastDueModalOpen(false);
+                setBroadcastSummary(null);
+              }}
+              className="absolute top-5 right-5 text-[#98A2B3] hover:text-[#101828] p-1.5 rounded-xl hover:bg-[#F9FAFB] cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-[#F4F0FD] border border-[#E9D8FD] flex items-center justify-center text-[#7C3AED] shadow-xs">
+                <Zap className="w-6 h-6 text-[#7C3AED]" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-[#101828]">Broadcast Due Invoices (All Contacts)</h3>
+                <p className="text-xs text-[#667085]">Dispatches official Due PDF + 1-Click Pay Link to each contact on WhatsApp</p>
+              </div>
+            </div>
+
+            {broadcastSummary ? (
+              <div className="space-y-4 py-2">
+                <div className="p-4 bg-[#F0FDF4] border-2 border-[#86EFAC] rounded-2xl space-y-2">
+                  <div className="flex items-center gap-2 text-[#15803D] font-bold text-sm">
+                    <CheckCircle2 className="w-5 h-5 text-[#16A34A]" />
+                    <span>Broadcast Completed Successfully!</span>
+                  </div>
+                  <p className="text-xs text-[#166534]">
+                    Dispatched <strong>{broadcastSummary.dispatched}</strong> of <strong>{broadcastSummary.total}</strong> Payment Due PDFs with interactive payment links directly to WhatsApp.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5 max-h-48 overflow-y-auto border border-[#EAECF0] rounded-2xl p-3 bg-[#F9FAFB]">
+                  <div className="text-[10px] font-bold text-[#667085] uppercase tracking-wider font-mono mb-1">
+                    Dispatch Log:
+                  </div>
+                  {broadcastSummary.results?.map((res, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-xs py-1 border-b border-[#EAECF0] last:border-none">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-[#101828]">{res.name}</span>
+                        <span className="font-mono text-[11px] text-[#667085]">({res.phone})</span>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${res.success ? 'bg-[#DCFCE7] text-[#15803D]' : 'bg-[#FEE2E2] text-[#DC2626]'}`}>
+                        {res.success ? `Sent (${res.invoiceId})` : 'Failed'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="p-3.5 bg-[#F4F0FD] border border-[#E9D8FD] rounded-2xl text-xs text-[#6D28D9] flex items-start gap-2.5">
+                  <Sparkles className="w-4 h-4 text-[#7C3AED] shrink-0 mt-0.5" />
+                  <p className="leading-relaxed">
+                    <strong>Auto-Receipt Trigger Active:</strong> The moment any customer clicks their payment link and completes payment, our backend automatically generates and sends their official <strong>Paid Receipt PDF</strong> to their WhatsApp without any manual action required!
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsBroadcastDueModalOpen(false);
+                    setBroadcastSummary(null);
+                  }}
+                  className="w-full py-3 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer"
+                >
+                  Done & Return to Inbox
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleBroadcastDueInvoices} className="space-y-4">
+                {/* Recipients Overview */}
+                <div className="p-3.5 bg-[#FAF8F5] border border-[#EAECF0] rounded-2xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#344054]">Target Recipients</span>
+                    <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#F4F0FD] text-[#7C3AED] font-mono border border-[#E9D8FD]">
+                      {chats.length} Contacts
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+                    {chats.map((c) => (
+                      <span
+                        key={c.id}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-semibold bg-white border border-[#EAECF0] text-[#344054] shadow-2xs"
+                      >
+                        <ContactAvatar name={c.contactName} size="xs" />
+                        <span>{c.contactName}</span>
+                        <span className="font-mono text-[#98A2B3] text-[10px]">({c.phone?.slice(-4) || 'WA'})</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-semibold text-[#475467]">Invoice Description / Service Name</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="DhiGrowth WhatsApp CRM & AI Business Concierge"
+                      value={broadcastDesc}
+                      onChange={(e) => setBroadcastDesc(e.target.value)}
+                      className="w-full mt-1 bg-[#F9FAFB] border border-[#EAECF0] px-3.5 py-2.5 rounded-xl text-xs text-[#101828] focus:outline-none focus:border-[#7C3AED]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-[#475467]">Due Amount per Contact (INR ₹)</label>
+                    <div className="relative mt-1">
+                      <span className="absolute left-3.5 top-2.5 text-xs font-bold text-[#667085]">₹</span>
+                      <input
+                        type="number"
+                        required
+                        min="1"
+                        placeholder="2499"
+                        value={broadcastAmount}
+                        onChange={(e) => setBroadcastAmount(e.target.value)}
+                        className="w-full bg-[#F9FAFB] border border-[#EAECF0] pl-8 pr-3.5 py-2.5 rounded-xl text-xs text-[#101828] font-bold focus:outline-none focus:border-[#7C3AED]"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Workflow Explanation Banner */}
+                <div className="p-3.5 bg-[#F4F0FD] border border-[#E9D8FD] rounded-2xl text-[11px] text-[#6D28D9] space-y-1.5">
+                  <div className="font-bold flex items-center gap-1.5 text-[#7C3AED]">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>How the Automated Flow Works:</span>
+                  </div>
+                  <ul className="list-disc pl-4 space-y-1 text-[11px] text-[#5B21B6]">
+                    <li><strong>Step 1:</strong> Generates unique Payment Due PDF invoices and dispatches them via Meta Cloud API directly into each customer's WhatsApp chat.</li>
+                    <li><strong>Step 2:</strong> Includes a 1-click secure payment link supporting UPI, GPay, PhonePe, Cards, and NetBanking.</li>
+                    <li><strong>Step 3 (Auto-Receipt):</strong> As soon as any contact pays, our system immediately generates and sends their official <strong>Green Paid Receipt PDF</strong> to their WhatsApp automatically!</li>
+                  </ul>
+                </div>
+
+                <div className="flex gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsBroadcastDueModalOpen(false)}
+                    disabled={isBroadcasting}
+                    className="flex-1 py-3 border border-[#D0D5DD] bg-white hover:bg-[#F9FAFB] text-[#344054] rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isBroadcasting}
+                    className="flex-1 py-3 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75"
+                  >
+                    {isBroadcasting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Broadcasting to WhatsApp ({chats.length})...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-4 h-4" />
+                        <span>Send Due PDFs to All Contacts Now</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
 

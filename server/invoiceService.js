@@ -695,3 +695,98 @@ export function renderCheckoutHtml(invoice) {
 </body>
 </html>`;
 }
+
+/**
+ * Broadcast Payment Due Invoice PDFs to all contacts
+ * If a customer pays via the payment link, markInvoicePaid will automatically dispatch their Paid Receipt PDF to WhatsApp!
+ */
+export async function broadcastDueInvoicesToAll({
+  contacts = [],
+  description = 'DhiGrowth WhatsApp CRM & AI Business Concierge',
+  amount = 2499,
+  baseUrl = 'https://dhigrowth-backend-8tlq.onrender.com',
+} = {}) {
+  let targetContacts = [...(contacts || [])];
+
+  // If no contacts passed from frontend, query all contacts from Supabase
+  if (targetContacts.length === 0) {
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+    if (supabaseUrl && supabaseAnonKey) {
+      try {
+        const { createClient } = await import('@supabase/supabase-js');
+        const supabase = createClient(supabaseUrl, supabaseAnonKey);
+        const { data, error } = await supabase.from('contacts').select('*');
+        if (!error && data && data.length > 0) {
+          targetContacts = data.map((c) => ({
+            name: c.full_name || 'Valued Client',
+            phone: c.phone_number,
+            email: c.email || '',
+            city: c.custom_attributes?.city || 'India',
+          }));
+        }
+      } catch (e) {
+        console.warn('[Broadcast] Error querying Supabase contacts:', e.message);
+      }
+    }
+  }
+
+  // Deduplicate and filter contacts with phone numbers
+  const seenPhones = new Set();
+  const validContacts = [];
+  for (const c of targetContacts) {
+    const raw = c.phone || c.phone_number || '';
+    const clean = raw.replace(/[^0-9]/g, '');
+    if (clean && !seenPhones.has(clean)) {
+      seenPhones.add(clean);
+      validContacts.push({
+        ...c,
+        phone: clean,
+      });
+    }
+  }
+
+  console.log(`📢 [Broadcast Invoices] Starting broadcast to ${validContacts.length} contacts...`);
+  const results = [];
+
+  for (const contact of validContacts) {
+    try {
+      const result = await createAndSendInvoice({
+        customerName: contact.name || contact.full_name || 'Valued Client',
+        phone: contact.phone,
+        email: contact.email || '',
+        city: contact.city || 'India',
+        description,
+        amount: Number(amount) || 2499,
+        conversationId: contact.conversationId || null,
+        baseUrl,
+      });
+
+      results.push({
+        name: contact.name || contact.phone,
+        phone: contact.phone,
+        invoiceId: result.invoice?.id,
+        paymentLink: result.invoice?.paymentLink,
+        success: true,
+        metaDelivered: Boolean(result.metaResult?.messageId),
+      });
+    } catch (err) {
+      console.error(`❌ [Broadcast Invoices] Error for ${contact.phone}:`, err.message);
+      results.push({
+        name: contact.name || contact.phone,
+        phone: contact.phone,
+        success: false,
+        error: err.message,
+      });
+    }
+  }
+
+  console.log(`✅ [Broadcast Invoices] Completed: ${results.filter((r) => r.success).length}/${validContacts.length} sent.`);
+
+  return {
+    total: validContacts.length,
+    dispatched: results.filter((r) => r.success).length,
+    results,
+  };
+}
+

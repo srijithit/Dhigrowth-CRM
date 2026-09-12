@@ -30,6 +30,7 @@ export const AppProvider = ({ children }) => {
   const [isUsageModalOpen, setIsUsageModalOpen] = useState(false);
   const [isWidgetOpen, setIsWidgetOpen] = useState(false);
   const [isWorkspaceDropdownOpen, setIsWorkspaceDropdownOpen] = useState(false);
+  const [isBroadcastDueModalOpen, setIsBroadcastDueModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
 
   // User & Wallet State
@@ -948,6 +949,8 @@ export const AppProvider = ({ children }) => {
         setIsWidgetOpen,
         isWorkspaceDropdownOpen,
         setIsWorkspaceDropdownOpen,
+        isBroadcastDueModalOpen,
+        setIsBroadcastDueModalOpen,
         toastMessage,
         showToast,
         currentUser,
