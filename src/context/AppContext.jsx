@@ -15,6 +15,7 @@ import {
   subscribeToNewMessages,
   DEFAULT_WORKSPACE_ID,
 } from '../services/supabaseClient';
+import { BACKEND_URL } from '../services/apiConfig';
 
 const AppContext = createContext();
 
@@ -62,7 +63,7 @@ export const AppProvider = ({ children }) => {
 
   const fetchMetaConfig = async () => {
     try {
-      const res = await fetch('http://localhost:4000/api/meta-config');
+      const res = await fetch(`${BACKEND_URL}/api/meta-config`);
       if (res.ok) {
         const data = await res.json();
         setMetaConfig(data);
@@ -75,7 +76,7 @@ export const AppProvider = ({ children }) => {
   const saveMetaConfig = async (newConfig) => {
     setIsMetaLoading(true);
     try {
-      const res = await fetch('http://localhost:4000/api/meta-config', {
+      const res = await fetch(`${BACKEND_URL}/api/meta-config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -102,7 +103,7 @@ export const AppProvider = ({ children }) => {
 
   const testMetaConfig = async (configToTest) => {
     try {
-      const res = await fetch('http://localhost:4000/api/meta-config/test', {
+      const res = await fetch(`${BACKEND_URL}/api/meta-config/test`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(configToTest || {}),

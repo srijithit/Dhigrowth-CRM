@@ -48,6 +48,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { BACKEND_URL } from '../../services/apiConfig';
 
 export const ClientPortal = () => {
   const {
@@ -241,7 +242,7 @@ export const ClientPortal = () => {
 
     try {
       if (phoneNumberId.trim() && accessToken.trim()) {
-        fetch('http://localhost:4000/api/send-manual-message', {
+        fetch(`${BACKEND_URL}/api/send-manual-message`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -684,7 +685,7 @@ export const ClientPortal = () => {
 
     setIsSending(true);
     try {
-      const res = await fetch('http://localhost:4000/api/send-manual-message', {
+      const res = await fetch(`${BACKEND_URL}/api/send-manual-message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1113,7 +1114,7 @@ export const ClientPortal = () => {
                       <div className="flex items-center justify-between">
                         <span className="text-[#667085] text-[11px]">Webhook Endpoint URL</span>
                         <button
-                          onClick={() => copyToClipboard('http://localhost:4000/webhook', 'Webhook URL')}
+                          onClick={() => copyToClipboard(`${BACKEND_URL}/webhook`, 'Webhook URL')}
                           className="text-[#7C3AED] hover:underline text-[10px] font-bold flex items-center gap-1 cursor-pointer"
                         >
                           <Copy className="w-3 h-3" />
@@ -1121,7 +1122,7 @@ export const ClientPortal = () => {
                         </button>
                       </div>
                       <div className="font-mono text-[11px] text-[#344054] truncate">
-                        http://localhost:4000/webhook
+                        {BACKEND_URL}/webhook
                       </div>
                     </div>
                   </div>
@@ -1982,7 +1983,7 @@ export const ClientPortal = () => {
                         </label>
                         <button
                           type="button"
-                          onClick={() => copyToClipboard('http://localhost:4000/webhook', 'Webhook URL')}
+                          onClick={() => copyToClipboard(`${BACKEND_URL}/webhook`, 'Webhook URL')}
                           className="text-[11px] text-[#7C3AED] hover:text-[#6D28D9] font-semibold cursor-pointer flex items-center gap-1"
                         >
                           {copiedKey === 'Webhook URL' ? <Check className="w-3 h-3 text-[#16A34A]" /> : <Copy className="w-3 h-3" />}
@@ -1990,7 +1991,7 @@ export const ClientPortal = () => {
                         </button>
                       </div>
                       <div className="flex items-center bg-[#F9FAFB] border border-[#EAECF0] rounded-xl px-3.5 py-2 text-xs font-mono text-[#7C3AED]">
-                        http://localhost:4000/webhook
+                        {BACKEND_URL}/webhook
                       </div>
                     </div>
 
