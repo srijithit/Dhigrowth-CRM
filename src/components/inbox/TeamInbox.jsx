@@ -220,17 +220,48 @@ export const TeamInbox = () => {
         conversationId: c.conversationId || c.id,
       }));
 
-      const res = await fetch(`${BACKEND_URL}/api/invoices/broadcast-due-to-all`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contacts: targetContacts,
-          description: broadcastDesc,
-          amount: broadcastAmount,
-        }),
-      });
+      const payload = {
+        contacts: targetContacts,
+        description: broadcastDesc,
+        amount: broadcastAmount,
+      };
 
-      const data = await res.json();
+      let res;
+      try {
+        res = await fetch(`${BACKEND_URL}/api/invoices/broadcast-due-to-all`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } catch (e) {
+        console.warn('BACKEND_URL failed, falling back to local backend:', e.message);
+      }
+
+      // If remote Render hasn't finished deploying new commit (returned 404), fallback to local backend
+      if (!res || !res.ok) {
+        try {
+          res = await fetch('http://localhost:4000/api/invoices/broadcast-due-to-all', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+        } catch (e) {
+          console.warn('Local fallback also failed:', e.message);
+        }
+      }
+
+      if (!res) {
+        throw new Error('Unable to connect to backend server. Please check your connection.');
+      }
+
+      const rawText = await res.text();
+      let data;
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        throw new Error('Backend is currently deploying latest code on Render. Please wait 1-2 minutes and try again.');
+      }
+
       if (data.success && data.summary) {
         setBroadcastSummary(data.summary);
         showToast(`🚀 Dispatched Payment Due PDFs to ${data.summary.dispatched} contacts on WhatsApp!`, 'success');
