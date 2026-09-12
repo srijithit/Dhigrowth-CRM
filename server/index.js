@@ -433,11 +433,31 @@ app.post('/api/invoices/:id/pay', async (req, res) => {
 app.post('/api/invoices/:id/mark-paid', async (req, res) => {
   try {
     const invoiceId = req.params.id;
-    const { paymentMethod = 'Manual CRM Confirmation', transactionId } = req.body;
+    const {
+      paymentMethod = 'Manual CRM Confirmation',
+      transactionId,
+      customerName,
+      phone,
+      email,
+      city,
+      description,
+      amount,
+      conversationId,
+    } = req.body || {};
+
+    const baseUrl = (process.env.RENDER_EXTERNAL_URL || process.env.VITE_BACKEND_URL || `${req.protocol}://${req.get('host')}`).replace(/\/+$/, '');
 
     const result = await markInvoicePaid(invoiceId, {
       paymentMethod,
       transactionId,
+      customerName,
+      phone,
+      email,
+      city,
+      description,
+      amount,
+      conversationId,
+      baseUrl,
     });
 
     res.json({

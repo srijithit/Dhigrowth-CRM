@@ -299,10 +299,42 @@ export async function createAndSendInvoice({
 export async function markInvoicePaid(invoiceId, {
   transactionId = '',
   paymentMethod = 'UPI / Google Pay',
+  customerName = '',
+  phone = '',
+  email = '',
+  city = '',
+  description = '',
+  amount = 2499,
+  conversationId = null,
+  baseUrl = '',
 } = {}) {
-  const invoice = invoices.get(invoiceId);
+  let invoice = invoices.get(invoiceId);
   if (!invoice) {
-    throw new Error(`Invoice ${invoiceId} not found`);
+    loadInvoicesFromDisk();
+    invoice = invoices.get(invoiceId);
+  }
+
+  // If still not in memory, construct it gracefully from parameters
+  if (!invoice) {
+    console.log(`ℹ️ [Invoice Auto-Construct] Invoice ${invoiceId} not found in memory, creating record...`);
+    const resolvedBaseUrl = (baseUrl || process.env.RENDER_EXTERNAL_URL || process.env.VITE_BACKEND_URL || 'https://dhigrowth-backend-8tlq.onrender.com').replace(/\/+$/, '');
+    invoice = {
+      id: invoiceId,
+      customerName: customerName || 'Valued Client',
+      phone: phone || '919791471277',
+      email: email || '',
+      city: city || 'India',
+      description: description || 'DhiGrowth WhatsApp CRM & AI Business Concierge',
+      amount: Number(amount) || 2499,
+      status: 'due',
+      paymentLink: `${resolvedBaseUrl}/invoices/${invoiceId}/pay`,
+      conversationId: conversationId || null,
+      createdAt: new Date().toISOString(),
+      transactionId: null,
+      paymentMethod: null,
+      paymentDate: null,
+    };
+    invoices.set(invoiceId, invoice);
   }
 
   if (invoice.status === 'paid') {

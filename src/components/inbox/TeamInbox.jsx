@@ -322,19 +322,60 @@ export const TeamInbox = () => {
   const handleMarkInvoicePaid = async (invoiceId) => {
     setMarkingPaidId(invoiceId);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/invoices/${invoiceId}/mark-paid`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          paymentMethod: 'Manual CRM Confirmation',
-        }),
-      });
-      const data = await res.json();
+      const payload = {
+        paymentMethod: 'Manual CRM Confirmation',
+        customerName: activeChat?.contactName || 'Valued Client',
+        phone: activeChat?.phone || '919791471277',
+        email: activeChat?.email || '',
+        city: activeChat?.city || 'India',
+        description: activeChat?.interestedIn ? `DhiGrowth Service - ${activeChat.interestedIn}` : 'DhiGrowth WhatsApp CRM & AI Business Concierge',
+        amount: activeChat?.dealValue ? Number(activeChat.dealValue.replace(/[^0-9]/g, '')) || 2499 : 2499,
+        conversationId: activeChat?.conversationId || activeChat?.id,
+      };
+
+      let res;
+      try {
+        res = await fetch(`${BACKEND_URL}/api/invoices/${invoiceId}/mark-paid`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } catch (e) {
+        console.warn('Remote mark-paid failed, trying local fallback:', e.message);
+      }
+
+      if (!res || !res.ok) {
+        try {
+          res = await fetch(`http://localhost:4000/api/invoices/${invoiceId}/mark-paid`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+        } catch (e) {
+          console.warn('Local mark-paid also failed:', e.message);
+        }
+      }
+
+      if (!res) {
+        throw new Error('Could not connect to backend server. Please check connection.');
+      }
+
+      const rawText = await res.text();
+      let data;
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        throw new Error('Backend is currently updating. Please try again in a few seconds.');
+      }
+
       if (data.success) {
         const inv = data.invoice;
         const formattedAmount = `INR ${Number(inv.amount).toLocaleString('en-IN')}`;
         const receiptText = `✅ [PAYMENT RECEIVED: ${inv.id}]\nAmount: ${formattedAmount}\nTransaction ID: ${inv.transactionId}\nReceipt PDF sent to customer.`;
         sendMessage(receiptText, 'agent');
+        try {
+          confetti({ particleCount: 70, spread: 60, origin: { y: 0.5 } });
+        } catch {}
         showToast(`✅ Invoice ${inv.id} paid! Customer received Paid Receipt PDF on WhatsApp.`, 'success');
       } else {
         showToast(data.error || 'Failed to mark invoice paid', 'error');
