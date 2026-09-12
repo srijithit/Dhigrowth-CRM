@@ -133,18 +133,20 @@ export const AppProvider = ({ children }) => {
     const isKiki = cleanUser === 'kiki' || cleanUser === 'kiki@dhigrowth.com';
     const isValidKiki =
       isKiki &&
-      (cleanPass === 'kiki123' || cleanPass === 'password123' || cleanPass === 'dhigrowth2026' || cleanPass === 'kiki2026');
+      (cleanPass === 'kiki123' || cleanPass === 'kiki2026');
 
-    const isValidAdmin = 
-      (cleanUser === 'admin' || cleanUser === 'sri' || cleanUser === 'admin@dhigrowth.com') &&
-      (cleanPass === 'password123' || cleanPass === 'admin123' || cleanPass === 'dhigrowth2026');
+    const isSri = cleanUser === 'sri' || cleanUser === 'sri@dhigrowth.com';
+    const isValidSri = isSri && (cleanPass === 'dhigrowth2026');
+
+    const isAdmin = cleanUser === 'admin' || cleanUser === 'admin@dhigrowth.com';
+    const isValidAdmin = isAdmin && (cleanPass === 'DhiGrowth@admin');
 
     const isValidCustom = 
       savedCreds &&
       (cleanUser === savedCreds.username?.toLowerCase() || cleanUser === savedCreds.email?.toLowerCase()) &&
       cleanPass === savedCreds.password;
 
-    if (!isValidAdmin && !isValidCustom && !isValidKiki) {
+    if (!isValidAdmin && !isValidSri && !isValidCustom && !isValidKiki) {
       throw new Error('Invalid username or password. Please try again.');
     }
 

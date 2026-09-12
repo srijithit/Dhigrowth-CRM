@@ -19,7 +19,7 @@ export const LoginPage = () => {
   const { login } = useApp();
 
   const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('password123');
+  const [password, setPassword] = useState('DhiGrowth@admin');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -187,7 +187,7 @@ export const LoginPage = () => {
                 </label>
                 <button
                   type="button"
-                  onClick={() => alert('Default workspace logins:\n• admin / password123 (Administrator)\n• sri / dhigrowth2026 (Workspace Owner)\n• kiki / kiki123 (Meta API & Channel Admin)')}
+                  onClick={() => alert('Dhigrowth CRM Login Support:\n• Admin: admin / DhiGrowth@admin\n• Sri: sri / dhigrowth2026\n• Kiki: kiki / kiki123')}
                   className="text-[11px] font-semibold text-[#7C3AED] hover:text-[#6D28D9] cursor-pointer"
                 >
                   Forgot password?
