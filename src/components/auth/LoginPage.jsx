@@ -50,12 +50,6 @@ export const LoginPage = () => {
     }
   };
 
-  const handleQuickLogin = (u, p) => {
-    setUsername(u);
-    setPassword(p);
-    setError('');
-  };
-
   return (
     <div className="min-h-screen w-full flex flex-col lg:flex-row bg-[#F8F9FC] font-sans text-[#101828] selection:bg-[#7C3AED]/20">
       {/* Left Column: Brand Hero & Value Proposition */}
@@ -254,62 +248,6 @@ export const LoginPage = () => {
               )}
             </button>
           </form>
-
-          {/* Quick Demo Credentials Box */}
-          <div className="p-4 rounded-2xl bg-[#F4F0FD] border border-[#E9D8FD] space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-[#7C3AED] uppercase font-mono tracking-wide">
-                Quick Access Credentials
-              </span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-white text-[#7C3AED] font-bold border border-[#E9D8FD]">
-                1-Click Fill
-              </span>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 text-left">
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('kiki', 'kiki123')}
-                className="p-2.5 rounded-xl bg-white border-2 border-[#7C3AED]/40 hover:border-[#7C3AED] hover:shadow-xs transition-all cursor-pointer group text-left relative overflow-hidden"
-              >
-                <div className="text-xs font-bold text-[#7C3AED] flex items-center justify-between">
-                  <span>Kiki (Client)</span>
-                  <span className="text-[9px] bg-[#7C3AED] text-white px-1 py-0.2 rounded font-mono font-bold">BYOK</span>
-                </div>
-                <div className="text-[10px] text-[#667085] font-mono mt-0.5 truncate">
-                  kiki / kiki123
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('admin', 'password123')}
-                className="p-2.5 rounded-xl bg-white border border-[#E9D8FD] hover:border-[#7C3AED] hover:shadow-xs transition-all cursor-pointer group text-left"
-              >
-                <div className="text-xs font-bold text-[#101828] group-hover:text-[#7C3AED] flex items-center justify-between">
-                  <span>Admin</span>
-                  <span className="text-[10px] text-[#7C3AED]">Use ↵</span>
-                </div>
-                <div className="text-[10px] text-[#667085] font-mono mt-0.5 truncate">
-                  admin / password123
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('sri', 'dhigrowth2026')}
-                className="p-2.5 rounded-xl bg-white border border-[#E9D8FD] hover:border-[#7C3AED] hover:shadow-xs transition-all cursor-pointer group text-left"
-              >
-                <div className="text-xs font-bold text-[#101828] group-hover:text-[#7C3AED] flex items-center justify-between">
-                  <span>Sri</span>
-                  <span className="text-[10px] text-[#7C3AED]">Use ↵</span>
-                </div>
-                <div className="text-[10px] text-[#667085] font-mono mt-0.5 truncate">
-                  sri / dhigrowth2026
-                </div>
-              </button>
-            </div>
-          </div>
 
           {/* Footer Note */}
           <div className="text-center text-[11px] text-[#98A2B3] pt-2">
