@@ -25,10 +25,13 @@ import {
   Trash2,
   Loader2,
   Edit2,
-  Edit3
+  Edit3,
+  Upload,
+  FileText,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { ContactAvatar } from '../common/ContactAvatar';
+import { BulkLeadImportModal } from './BulkLeadImportModal';
 
 export const LeadsCrm = () => {
   const {
@@ -40,8 +43,11 @@ export const LeadsCrm = () => {
     setActiveTab,
     setIsUpgradeModalOpen,
     showToast,
+    currentWorkspaceId,
   } = useApp();
 
+  const [isBulkImportModalOpen, setIsBulkImportModalOpen] = useState(false);
+  const [isMoreActionsOpen, setIsMoreActionsOpen] = useState(false);
   const [activeSubTab, setActiveSubTab] = useState('all-leads'); // 'all-leads' | 'segments' | 'tags'
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'kanban'
   const [searchTerm, setSearchTerm] = useState('');
@@ -169,6 +175,37 @@ export const LeadsCrm = () => {
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const handleExportCSV = () => {
+    if (!contacts || contacts.length === 0) {
+      showToast('No contacts available to export', 'info');
+      return;
+    }
+
+    const headers = ['Name', 'Phone', 'Email', 'Stage', 'City', 'Deal Value', 'AI Handled', 'Last Seen'];
+    const rows = contacts.map((c) => [
+      `"${(c.contactName || '').replace(/"/g, '""')}"`,
+      `"${(c.phone || '').replace(/"/g, '""')}"`,
+      `"${(c.email || '').replace(/"/g, '""')}"`,
+      `"${(c.tag || 'Interested').replace(/"/g, '""')}"`,
+      `"${(c.city || 'Mumbai, IN').replace(/"/g, '""')}"`,
+      `"${(c.dealValue || '₹2,499').replace(/"/g, '""')}"`,
+      c.aiHandled ? 'Yes' : 'No',
+      `"${(c.lastSeen || '').replace(/"/g, '""')}"`,
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `leads_export_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast(`📤 Exported ${contacts.length} leads to CSV!`, 'success');
   };
 
   const tagColorMap = {
@@ -383,8 +420,20 @@ export const LeadsCrm = () => {
             </button>
           </div>
 
+          {/* Quick Import CSV Button */}
+          <button
+            type="button"
+            onClick={() => setIsBulkImportModalOpen(true)}
+            className="bg-[#F4F0FD] hover:bg-[#EDE5FA] text-[#7C3AED] border border-[#E9D8FD] text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer shrink-0"
+            title="Import leads from CSV or Excel file"
+          >
+            <Upload className="w-3.5 h-3.5 text-[#7C3AED]" />
+            <span className="hidden sm:inline">Import CSV</span>
+          </button>
+
           {/* + Add Contact Button */}
           <button
+            type="button"
             onClick={() => setIsAddContactModalOpen(true)}
             className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-bold px-4 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xs transition-all cursor-pointer shrink-0"
           >
@@ -393,12 +442,49 @@ export const LeadsCrm = () => {
           </button>
 
           {/* More Actions Menu */}
-          <button
-            onClick={() => showToast('Opening bulk lead import and CSV tools', 'info')}
-            className="p-1.5 rounded-xl border border-[#EAECF0] text-[#667085] hover:text-[#101828] hover:bg-[#F9FAFB] transition-colors cursor-pointer"
-          >
-            <MoreVertical className="w-4 h-4" />
-          </button>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsMoreActionsOpen((prev) => !prev)}
+              className="p-1.5 rounded-xl border border-[#EAECF0] text-[#667085] hover:text-[#101828] hover:bg-[#F9FAFB] transition-colors cursor-pointer"
+              title="Bulk Lead Import & CSV Tools"
+            >
+              <MoreVertical className="w-4 h-4" />
+            </button>
+
+            {isMoreActionsOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-20 cursor-default"
+                  onClick={() => setIsMoreActionsOpen(false)}
+                />
+                <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-[#EAECF0] rounded-2xl shadow-xl z-30 py-1.5 text-xs animate-in fade-in">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMoreActionsOpen(false);
+                      setIsBulkImportModalOpen(true);
+                    }}
+                    className="w-full text-left px-3.5 py-2 hover:bg-[#F4F0FD] hover:text-[#7C3AED] text-[#101828] flex items-center gap-2.5 font-bold cursor-pointer transition-colors"
+                  >
+                    <Upload className="w-4 h-4 text-[#7C3AED]" />
+                    <span>Bulk Lead Import (CSV)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMoreActionsOpen(false);
+                      handleExportCSV();
+                    }}
+                    className="w-full text-left px-3.5 py-2 hover:bg-[#F9FAFB] text-[#344054] flex items-center gap-2.5 font-medium cursor-pointer transition-colors"
+                  >
+                    <Download className="w-4 h-4 text-[#667085]" />
+                    <span>Export Leads to CSV</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -896,6 +982,15 @@ export const LeadsCrm = () => {
           </div>
         </div>
       )}
+
+      {/* 7. Bulk Lead Import Modal */}
+      <BulkLeadImportModal
+        isOpen={isBulkImportModalOpen}
+        onClose={() => setIsBulkImportModalOpen(false)}
+        createLead={createLead}
+        showToast={showToast}
+        currentWorkspaceId={currentWorkspaceId}
+      />
     </div>
   );
 };
