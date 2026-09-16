@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   X,
   Zap,
@@ -7,11 +7,75 @@ import {
   ShieldCheck,
   Sparkles,
   Loader2,
+  FileText,
+  Eye,
+  EyeOff,
+  RotateCcw,
+  MessageSquare,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useApp } from '../../context/AppContext';
 import { ContactAvatar } from '../common/ContactAvatar';
 import { BACKEND_URL } from '../../services/apiConfig';
+
+const TEMPLATE_PRESETS = [
+  {
+    id: 'formal',
+    name: 'Formal Billing',
+    badge: 'Default',
+    text: `🧾 *INVOICE DUE: {{invoiceId}}*
+
+Dear {{name}},
+Your invoice for *{{description}}* has been issued.
+
+💳 *Amount Due:* {{amount}}
+🔗 *Secure Payment Link:* {{paymentLink}}
+
+Click the link above to pay via UPI, Cards, or NetBanking. Once completed, your official Paid Receipt PDF will be automatically sent here.
+
+_DhiGrowth IT Services_`,
+  },
+  {
+    id: 'friendly',
+    name: 'Friendly Reminder',
+    badge: 'Casual',
+    text: `Hi {{name}}! 👋 Hope you're having a great day.
+
+Quick friendly reminder regarding your invoice *#{{invoiceId}}* for *{{description}}*.
+
+💳 *Amount Due:* {{amount}}
+🔗 *1-Click Pay Link:* {{paymentLink}}
+
+Thank you! ✨`,
+  },
+  {
+    id: 'urgent',
+    name: 'Urgent Notice',
+    badge: 'Priority',
+    text: `⚠️ *URGENT PAYMENT NOTICE: {{invoiceId}}*
+
+Dear {{name}},
+Payment of *{{amount}}* for *{{description}}* is currently pending.
+
+Please settle immediately via the secure link: {{paymentLink}}
+
+Official Receipt PDF will be automatically sent upon payment.`,
+  },
+  {
+    id: 'custom',
+    name: 'Custom',
+    badge: 'Freeform',
+    text: '',
+  },
+];
+
+const DYNAMIC_TAGS = [
+  { tag: '{{name}}', label: 'Client Name', desc: 'e.g. Alex Morgan' },
+  { tag: '{{amount}}', label: 'Amount', desc: 'e.g. INR 2,499' },
+  { tag: '{{invoiceId}}', label: 'Invoice #', desc: 'e.g. INV-785016' },
+  { tag: '{{description}}', label: 'Service', desc: 'e.g. WhatsApp CRM' },
+  { tag: '{{paymentLink}}', label: 'Pay Link', desc: '1-click secure URL' },
+];
 
 export const BroadcastDueModal = ({ onClose }) => {
   const {
@@ -24,8 +88,13 @@ export const BroadcastDueModal = ({ onClose }) => {
 
   const [broadcastDesc, setBroadcastDesc] = useState('DhiGrowth WhatsApp CRM & AI Business Concierge');
   const [broadcastAmount, setBroadcastAmount] = useState(2499);
+  const [selectedPreset, setSelectedPreset] = useState('formal');
+  const [customTemplate, setCustomTemplate] = useState(TEMPLATE_PRESETS[0].text);
+  const [showPreview, setShowPreview] = useState(true);
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [broadcastSummary, setBroadcastSummary] = useState(null);
+
+  const textareaRef = useRef(null);
 
   if (!isBroadcastDueModalOpen) return null;
 
@@ -37,12 +106,42 @@ export const BroadcastDueModal = ({ onClose }) => {
     { id: 'c-4', contactName: 'David Chen', phone: '+91 97914 71277', email: 'david@globaltrade.co', city: 'Delhi' },
   ];
 
-  const effectiveChats = (chats && chats.length > 0) ? chats : fallbackContacts;
+  const effectiveChats = chats && chats.length > 0 ? chats : fallbackContacts;
 
   const handleClose = () => {
     setIsBroadcastDueModalOpen(false);
     setBroadcastSummary(null);
     if (onClose) onClose();
+  };
+
+  const handleSelectPreset = (presetId) => {
+    setSelectedPreset(presetId);
+    const target = TEMPLATE_PRESETS.find((p) => p.id === presetId);
+    if (target && presetId !== 'custom') {
+      setCustomTemplate(target.text);
+    }
+  };
+
+  const handleInsertTag = (tag) => {
+    if (!textareaRef.current) {
+      setCustomTemplate((prev) => prev + ' ' + tag);
+      return;
+    }
+
+    const textarea = textareaRef.current;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const prevText = customTemplate;
+
+    const nextText = prevText.substring(0, start) + tag + prevText.substring(end);
+    setCustomTemplate(nextText);
+    setSelectedPreset('custom');
+
+    // Restore focus and position cursor after tag
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + tag.length, start + tag.length);
+    }, 10);
   };
 
   const handleBroadcastDueInvoices = async (e) => {
@@ -63,6 +162,7 @@ export const BroadcastDueModal = ({ onClose }) => {
         contacts: targetContacts,
         description: broadcastDesc,
         amount: broadcastAmount,
+        messageTemplate: customTemplate,
         senderName: currentUser?.name || 'CRM Administrator',
       };
 
@@ -118,9 +218,35 @@ export const BroadcastDueModal = ({ onClose }) => {
     }
   };
 
+  // Compute live preview text
+  const sampleRecipient = effectiveChats[0]?.contactName || effectiveChats[0]?.customerName || 'Alex Morgan';
+  const previewText = (customTemplate || '')
+    .replace(/\{\{\s*name\s*\}\}/gi, sampleRecipient)
+    .replace(/\{\{\s*customerName\s*\}\}/gi, sampleRecipient)
+    .replace(/\{\{\s*amount\s*\}\}/gi, `INR ${(Number(broadcastAmount) || 2499).toLocaleString('en-IN')}`)
+    .replace(/\{\{\s*invoiceId\s*\}\}/gi, 'INV-785016')
+    .replace(/\{\{\s*id\s*\}\}/gi, 'INV-785016')
+    .replace(/\{\{\s*description\s*\}\}/gi, broadcastDesc || 'WhatsApp CRM & Automation')
+    .replace(/\{\{\s*paymentLink\s*\}\}/gi, 'https://dhigrowth-backend-8tlq.onrender.com/invoices/INV-785016/pay');
+
+  // Format WhatsApp basic markup for preview
+  const formatWhatsAppText = (text) => {
+    return text.split('\n').map((line, idx) => {
+      // Bold *text*
+      let parsed = line.replace(/\*(.*?)\*/g, '<strong>$1</strong>');
+      // Italic _text_
+      parsed = parsed.replace(/_(.*?)_/g, '<em>$1</em>');
+      return (
+        <span key={idx} className="block leading-relaxed">
+          <span dangerouslySetInnerHTML={{ __html: parsed || '&nbsp;' }} />
+        </span>
+      );
+    });
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in font-sans">
-      <div className="bg-white border border-[#EAECF0] rounded-3xl max-w-xl w-full p-6 shadow-2xl relative space-y-4 max-h-[92vh] overflow-y-auto">
+      <div className="bg-white border border-[#EAECF0] rounded-3xl max-w-2xl w-full p-6 shadow-2xl relative space-y-4 max-h-[92vh] overflow-y-auto">
         <button
           type="button"
           onClick={handleClose}
@@ -140,7 +266,7 @@ export const BroadcastDueModal = ({ onClose }) => {
                 Auto-Receipt
               </span>
             </div>
-            <p className="text-xs text-[#667085]">Dispatches official Due PDF + 1-Click Pay Link to each contact on WhatsApp</p>
+            <p className="text-xs text-[#667085]">Customize message template & dispatch Due PDF + 1-Click Pay Link to each contact on WhatsApp</p>
           </div>
         </div>
 
@@ -295,7 +421,8 @@ export const BroadcastDueModal = ({ onClose }) => {
               </div>
             </div>
 
-            <div className="space-y-3">
+            {/* Invoice Service & Amount */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-semibold text-[#475467]">Invoice Description / Service Name</label>
                 <input
@@ -325,17 +452,168 @@ export const BroadcastDueModal = ({ onClose }) => {
               </div>
             </div>
 
+            {/* Custom Template Editor */}
+            <div className="border border-[#E9D8FD] bg-[#FDFBFF] rounded-2xl p-4 space-y-3 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <MessageSquare className="w-4 h-4 text-[#7C3AED]" />
+                  <span className="text-xs font-bold text-[#101828]">WhatsApp Message Template</span>
+                  <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-[#EDE9FE] text-[#6D28D9]">
+                    Customizable
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const formal = TEMPLATE_PRESETS[0];
+                      setSelectedPreset('formal');
+                      setCustomTemplate(formal.text);
+                    }}
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#667085] hover:text-[#7C3AED] cursor-pointer"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>Reset</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowPreview(!showPreview)}
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-[#7C3AED] hover:text-[#6D28D9] cursor-pointer"
+                  >
+                    {showPreview ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    <span>{showPreview ? 'Hide Preview' : 'Live Preview'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Template Presets Selector */}
+              <div className="flex flex-wrap gap-1.5">
+                {TEMPLATE_PRESETS.map((p) => {
+                  const isActive = selectedPreset === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handleSelectPreset(p.id)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        isActive
+                          ? 'bg-[#7C3AED] text-white shadow-xs'
+                          : 'bg-white border border-[#EAECF0] text-[#475467] hover:bg-[#F9FAFB]'
+                      }`}
+                    >
+                      <span>{p.name}</span>
+                      <span
+                        className={`text-[9px] px-1.5 py-0.2 rounded-full ${
+                          isActive
+                            ? 'bg-white/20 text-white'
+                            : 'bg-[#F2F4F7] text-[#667085]'
+                        }`}
+                      >
+                        {p.badge}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Dynamic Variables Tags Toolbar */}
+              <div className="space-y-1.5">
+                <div className="text-[11px] font-medium text-[#475467] flex items-center justify-between">
+                  <span>Click to insert dynamic variables into your message:</span>
+                  <span className="text-[10px] text-[#98A2B3] font-mono">Auto-replaced per client</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {DYNAMIC_TAGS.map((t) => (
+                    <button
+                      key={t.tag}
+                      type="button"
+                      onClick={() => handleInsertTag(t.tag)}
+                      title={`Click to insert ${t.tag} (${t.desc})`}
+                      className="px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold bg-white border border-[#D8B4FE] text-[#7C3AED] hover:bg-[#F4F0FD] hover:border-[#9333EA] transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+                    >
+                      <span>{t.tag}</span>
+                      <span className="text-[9px] font-sans font-medium text-[#9333EA] opacity-80">({t.label})</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Template Textarea */}
+              <div>
+                <textarea
+                  ref={textareaRef}
+                  required
+                  rows={6}
+                  value={customTemplate}
+                  onChange={(e) => {
+                    setCustomTemplate(e.target.value);
+                    if (selectedPreset !== 'custom') {
+                      setSelectedPreset('custom');
+                    }
+                  }}
+                  placeholder="Enter your custom message template here. Use {{name}}, {{amount}}, {{invoiceId}}, {{description}}, {{paymentLink}}..."
+                  className="w-full bg-white border border-[#D0D5DD] p-3 rounded-xl text-xs font-mono text-[#101828] focus:outline-none focus:border-[#7C3AED] leading-relaxed shadow-inner"
+                />
+                <div className="flex justify-between items-center text-[10px] text-[#667085] mt-1 px-1">
+                  <span>Supports WhatsApp Markdown: *bold*, _italic_</span>
+                  <span>{customTemplate.length} characters</span>
+                </div>
+              </div>
+
+              {/* Live WhatsApp Bubble Preview */}
+              {showPreview && (
+                <div className="pt-2 border-t border-[#E9D8FD]/60 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-[#475467]">
+                    <span className="flex items-center gap-1 text-[#15803D]">
+                      <span className="w-2 h-2 rounded-full bg-[#16A34A] animate-ping" />
+                      Live WhatsApp Preview (Recipient: {sampleRecipient})
+                    </span>
+                    <span className="text-[10px] font-mono text-[#98A2B3]">Sample Output</span>
+                  </div>
+
+                  {/* Realistic WhatsApp Chat Bubble */}
+                  <div className="bg-[#EFEAE2] p-3 rounded-2xl border border-[#D1D5DB] flex justify-end">
+                    <div className="bg-[#DCF8C6] border border-[#B2D8A4] rounded-2xl rounded-tr-xs p-3 max-w-sm text-left shadow-xs text-xs text-[#111827] space-y-2 font-sans">
+                      {/* Attached Document Card */}
+                      <div className="bg-white/80 border border-[#CBD5E1] rounded-xl p-2.5 flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-[#FEE2E2] border border-[#FECACA] flex items-center justify-center text-[#DC2626] shrink-0 font-bold text-[10px]">
+                          PDF
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[11px] font-bold text-[#0F172A] truncate">
+                            Invoice_INV-785016.pdf
+                          </div>
+                          <div className="text-[10px] text-[#64748B]">1 page • 142 kB</div>
+                        </div>
+                        <FileText className="w-4 h-4 text-[#64748B]" />
+                      </div>
+
+                      {/* Message Content */}
+                      <div className="text-xs whitespace-pre-wrap leading-relaxed text-[#1F2937]">
+                        {formatWhatsAppText(previewText)}
+                      </div>
+
+                      {/* Time & Double Checkmark */}
+                      <div className="flex justify-end items-center gap-1 text-[10px] text-[#4B5563] pt-1">
+                        <span>10:45 AM</span>
+                        <span className="text-[#2563EB] font-bold">✓✓</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Workflow Explanation Banner */}
             <div className="p-3.5 bg-[#F4F0FD] border border-[#E9D8FD] rounded-2xl text-[11px] text-[#6D28D9] space-y-1.5">
               <div className="font-bold flex items-center gap-1.5 text-[#7C3AED]">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>How the Automated Flow Works:</span>
+                <span>Auto-Receipt Guarantee:</span>
               </div>
-              <ul className="list-disc pl-4 space-y-1 text-[11px] text-[#5B21B6]">
-                <li><strong>Step 1:</strong> Generates unique Payment Due PDF invoices and dispatches them via Meta Cloud API directly into each customer's WhatsApp chat.</li>
-                <li><strong>Step 2:</strong> Includes a 1-click secure payment link supporting UPI, GPay, PhonePe, Cards, and NetBanking.</li>
-                <li><strong>Step 3 (Auto-Receipt):</strong> As soon as any contact pays, our system immediately generates and sends their official <strong>Green Paid Receipt PDF</strong> to their WhatsApp automatically!</li>
-              </ul>
+              <p className="text-[11px] text-[#5B21B6] leading-relaxed">
+                When a recipient clicks their customized payment link and completes payment, our cloud backend immediately generates and sends their official <strong>Green Paid Receipt PDF</strong> with verified Transaction ID back to their WhatsApp automatically!
+              </p>
             </div>
 
             <div className="flex gap-2.5 pt-1">
@@ -360,7 +638,7 @@ export const BroadcastDueModal = ({ onClose }) => {
                 ) : (
                   <>
                     <Zap className="w-4 h-4" />
-                    <span>Dispatch Payment Due Invoices</span>
+                    <span>Dispatch Custom Due Invoices</span>
                   </>
                 )}
               </button>

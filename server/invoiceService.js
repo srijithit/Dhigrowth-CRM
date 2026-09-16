@@ -229,6 +229,7 @@ export async function createAndSendInvoice({
   description = 'DhiGrowth WhatsApp CRM & AI Concierge',
   amount = 2499,
   conversationId = 'c1000000-0000-0000-0000-000000000001',
+  messageTemplate = '',
   baseUrl = 'http://localhost:4000',
 }) {
   const invoiceNum = 'INV-' + Math.floor(100000 + Math.random() * 900000);
@@ -261,7 +262,21 @@ export async function createAndSendInvoice({
   let metaResult = null;
   const filename = `Invoice_${invoice.id}.pdf`;
   const formattedAmount = `INR ${invoice.amount.toLocaleString('en-IN')}`;
-  const caption = `🧾 *INVOICE DUE: ${invoice.id}*\n\nDear ${invoice.customerName},\nYour invoice for *${invoice.description}* has been issued.\n\n💳 *Amount Due:* ${formattedAmount}\n🔗 *Secure Payment Link:* ${paymentLink}\n\nClick the link above to pay via UPI, Cards, or NetBanking. Once completed, your official Paid Receipt PDF will be automatically sent here.\n\n_DhiGrowth IT Services_`;
+
+  // Custom User Message Template (with dynamic variable tags) or default formal caption
+  let caption;
+  if (messageTemplate && messageTemplate.trim()) {
+    caption = messageTemplate
+      .replace(/\{\{\s*name\s*\}\}/gi, invoice.customerName)
+      .replace(/\{\{\s*customerName\s*\}\}/gi, invoice.customerName)
+      .replace(/\{\{\s*amount\s*\}\}/gi, formattedAmount)
+      .replace(/\{\{\s*invoiceId\s*\}\}/gi, invoice.id)
+      .replace(/\{\{\s*id\s*\}\}/gi, invoice.id)
+      .replace(/\{\{\s*description\s*\}\}/gi, invoice.description)
+      .replace(/\{\{\s*paymentLink\s*\}\}/gi, paymentLink);
+  } else {
+    caption = `🧾 *INVOICE DUE: ${invoice.id}*\n\nDear ${invoice.customerName},\nYour invoice for *${invoice.description}* has been issued.\n\n💳 *Amount Due:* ${formattedAmount}\n🔗 *Secure Payment Link:* ${paymentLink}\n\nClick the link above to pay via UPI, Cards, or NetBanking. Once completed, your official Paid Receipt PDF will be automatically sent here.\n\n_DhiGrowth IT Services_`;
+  }
 
   try {
     const mediaId = await uploadPdfToMeta(pdfBuffer, filename);
@@ -736,6 +751,7 @@ export async function broadcastDueInvoicesToAll({
   contacts = [],
   description = 'DhiGrowth WhatsApp CRM & AI Business Concierge',
   amount = 2499,
+  messageTemplate = '',
   baseUrl = 'https://dhigrowth-backend-8tlq.onrender.com',
 } = {}) {
   let targetContacts = [...(contacts || [])];
@@ -791,6 +807,7 @@ export async function broadcastDueInvoicesToAll({
         description,
         amount: Number(amount) || 2499,
         conversationId: contact.conversationId || null,
+        messageTemplate,
         baseUrl,
       });
 

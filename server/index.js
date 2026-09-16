@@ -315,15 +315,16 @@ app.post('/api/invoices/create-and-send', async (req, res) => {
 // 7.1.1 Broadcast Payment Due Invoice PDFs to All Contacts
 app.post('/api/invoices/broadcast-due-to-all', async (req, res) => {
   try {
-    const { contacts, description, amount } = req.body || {};
+    const { contacts, description, amount, messageTemplate } = req.body || {};
     const baseUrl = (process.env.RENDER_EXTERNAL_URL || process.env.VITE_BACKEND_URL || `${req.protocol}://${req.get('host')}`).replace(/\/+$/, '');
 
-    console.log(`📡 [Broadcast API Request] Base URL: ${baseUrl} | Amount: ${amount || 2499}`);
+    console.log(`📡 [Broadcast API Request] Base URL: ${baseUrl} | Amount: ${amount || 2499} | HasCustomTemplate: ${Boolean(messageTemplate)}`);
 
     const summary = await broadcastDueInvoicesToAll({
       contacts,
       description,
       amount,
+      messageTemplate,
       baseUrl,
     });
 
