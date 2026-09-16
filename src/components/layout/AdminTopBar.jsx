@@ -6,31 +6,27 @@ export const AdminTopBar = () => {
   const { logout, setActiveTab } = useApp();
 
   return (
-    <div className="bg-[#0F172A] text-white px-4 lg:px-8 py-2 border-b border-[#1E293B] flex items-center justify-end gap-3 sticky top-0 z-50 shadow-md">
+    <div className="bg-white text-[#101828] px-4 lg:px-8 py-2 border-b border-[#EAECF0] flex items-center justify-end gap-3 sticky top-0 z-50 shadow-2xs font-sans">
+      <button
+        type="button"
+        onClick={() => setActiveTab('super-admin')}
+        className="px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer bg-[#F4F0FD] hover:bg-[#EDE5FA] text-[#7C3AED] border border-[#E9D8FD] shadow-2xs"
+        title="Open Tenant Directory & Localhost Manager"
+      >
+        <Users className="w-4 h-4" />
+        <span>Tenant Directory</span>
+      </button>
 
-      {/* Right: Only Tenant Directory & Sign Out */}
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={() => setActiveTab('super-admin')}
-          className="px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm border border-emerald-400/30"
-          title="Open Tenant Directory & Localhost Manager"
-        >
-          <Users className="w-4 h-4" />
-          <span>Tenant Directory</span>
-        </button>
+      <div className="h-4 w-px bg-[#EAECF0]" />
 
-        <div className="h-4 w-px bg-[#334155]" />
-
-        <button
-          type="button"
-          onClick={logout}
-          className="p-1.5 rounded-lg text-[#94A3B8] hover:text-[#F87171] hover:bg-[#1E293B] transition-colors cursor-pointer"
-          title="Sign Out of Admin Session"
-        >
-          <LogOut className="w-4 h-4" />
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={logout}
+        className="p-1.5 rounded-lg text-[#98A2B3] hover:text-[#DC2626] hover:bg-[#FEF2F2] transition-colors cursor-pointer"
+        title="Sign Out of Admin Session"
+      >
+        <LogOut className="w-4 h-4" />
+      </button>
     </div>
   );
 };
