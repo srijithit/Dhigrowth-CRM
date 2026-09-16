@@ -7,9 +7,7 @@ import {
   Copy,
   Check,
   Shield,
-  ShieldCheck,
   Key,
-  Globe,
   Radio,
   Trash2,
   LogIn,
@@ -20,7 +18,6 @@ import {
   AlertCircle,
   Eye,
   EyeOff,
-  Server,
   Search,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -124,63 +121,25 @@ export const SuperAdminTenantsPage = () => {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16 font-sans">
-      {/* Light-Themed Header Banner */}
-      <div className="bg-gradient-to-r from-purple-50/80 via-indigo-50/50 to-white border border-[#E9D8FD] rounded-2xl p-6 sm:p-8 text-[#101828] relative overflow-hidden shadow-xs">
-        <div className="absolute right-0 top-0 w-96 h-96 bg-[#7C3AED]/5 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <div className="flex flex-wrap items-center gap-2 mb-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#ECFDF5] text-[#047857] border border-[#A7F3D0]">
-                <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse"></span>
-                Multi-Tenant Architecture Active
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#F4F0FD] text-[#7C3AED] border border-[#E9D8FD]">
-                <ShieldCheck className="w-3.5 h-3.5" /> Super Admin Console
-              </span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#101828]">
-              Tenant Organizations & Localhost Isolation
-            </h1>
-            <p className="text-[#475467] text-sm sm:text-base mt-2 max-w-2xl leading-relaxed">
-              Create and manage isolated customer accounts. Each tenant receives a separate database partition (<code className="text-[#7C3AED] bg-[#F4F0FD] px-1.5 py-0.5 rounded text-xs font-mono font-bold">workspace_id</code>), custom feature permissions, and a dedicated localhost launch URL with independent browser session storage.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#10B981] hover:bg-[#059669] text-white font-bold text-sm shadow-sm transition-all transform hover:-translate-y-0.5 cursor-pointer"
-            >
-              <Plus className="w-4 h-4 stroke-[2.5]" />
-              Add New Tenant / User
-            </button>
-          </div>
+      {/* Clean Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[#101828]">
+            Tenant Organizations & Users
+          </h1>
+          <p className="text-[#475467] text-xs sm:text-sm mt-0.5">
+            Manage isolated customer accounts, workspaces, and user permissions.
+          </p>
         </div>
 
-        {/* Quick Multi-Port Localhost Explainer Bar */}
-        <div className="mt-6 pt-5 border-t border-[#E9D8FD]/60 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-          <div className="bg-white p-4 rounded-xl border border-[#EAECF0] shadow-2xs flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-cyan-50 text-cyan-700 flex items-center justify-center shrink-0">
-              <Globe className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="font-bold text-[#101828] text-xs">Option 1: Isolated Localhost URL (Instant)</span>
-              <p className="text-[#667085] mt-1 leading-relaxed">
-                Click <b className="text-[#101828]">Launch Localhost</b> on any tenant below. It opens <code className="text-[#0284C7] bg-[#F0F9FF] px-1.5 py-0.5 rounded text-[11px] font-mono">localhost:5173/?tenant=slug</code> with separate session storage keys and partition filters.
-              </p>
-            </div>
-          </div>
-          <div className="bg-white p-4 rounded-xl border border-[#EAECF0] shadow-2xs flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center shrink-0">
-              <Server className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="font-bold text-[#101828] text-xs">Option 2: Multi-Port Localhost (Port 5174)</span>
-              <p className="text-[#667085] mt-1 leading-relaxed">
-                Run <code className="text-[#7C3AED] bg-[#F4F0FD] px-1.5 py-0.5 rounded text-[11px] font-mono">npm run dev:tenant2</code> in a new terminal window to serve another completely independent Vite instance on <b className="text-[#101828]">localhost:5174</b>.
-              </p>
-            </div>
-          </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-bold text-xs shadow-xs transition-all cursor-pointer shrink-0"
+          >
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            Add New Tenant / User
+          </button>
         </div>
       </div>
 
@@ -389,23 +348,23 @@ export const SuperAdminTenantsPage = () => {
 
                   {/* Launch & Action Buttons */}
                   <div className="flex flex-wrap items-center gap-2 lg:self-center">
-                    {/* Launch Localhost Isolated Window */}
+                    {/* Launch Workspace Window */}
                     <a
                       href={`${window.location.origin}/?tenant=${tenant.slug || tenant.username}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#F4F0FD] hover:bg-[#EDE5FA] text-[#7C3AED] border border-[#E9D8FD] text-xs font-bold transition-all shadow-2xs"
-                      title="Open dedicated isolated localhost session in a new tab"
+                      title="Open dedicated workspace in a new tab"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
-                      Launch Localhost
+                      Launch Workspace
                     </a>
 
-                    {/* Copy Localhost URL */}
+                    {/* Copy Workspace URL */}
                     <button
                       onClick={() => handleCopyLink(tenant.slug || tenant.username)}
                       className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-[#F9FAFB] hover:bg-[#F2F4F7] text-[#344054] border border-[#EAECF0] text-xs font-medium transition-colors cursor-pointer"
-                      title="Copy URL with tenant query param"
+                      title="Copy URL with tenant link"
                     >
                       {copiedSlug === (tenant.slug || tenant.username) ? (
                         <>
