@@ -153,9 +153,17 @@ We offer transparent milestones and dedicated technical support. Share your proj
 ];
 
 export const TemplatesPage = () => {
-  const { showToast } = useApp();
+  const { currentWorkspaceId, currentUser, showToast } = useApp();
 
-  const [templates, setTemplates] = useState(DEFAULT_TEMPLATES);
+  const isDefaultWorkspace = currentWorkspaceId === DEFAULT_WORKSPACE_ID;
+
+  const [templates, setTemplates] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`dhigrowth_templates_${currentWorkspaceId}`);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return isDefaultWorkspace ? DEFAULT_TEMPLATES : [];
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all'); // all | greetings | services | pricing
   const [isLoading, setIsLoading] = useState(false);
@@ -181,23 +189,48 @@ export const TemplatesPage = () => {
   const [simulatedImage, setSimulatedImage] = useState(null);
   const [isSimulating, setIsSimulating] = useState(false);
 
-  // Load from Supabase on mount
+  // Load from Supabase on mount and whenever workspace changes
   useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`dhigrowth_templates_${currentWorkspaceId}`);
+      if (saved) {
+        setTemplates(JSON.parse(saved));
+      } else {
+        setTemplates(currentWorkspaceId === DEFAULT_WORKSPACE_ID ? DEFAULT_TEMPLATES : []);
+      }
+    } catch {
+      setTemplates(currentWorkspaceId === DEFAULT_WORKSPACE_ID ? DEFAULT_TEMPLATES : []);
+    }
     loadTemplates();
-  }, []);
+  }, [currentWorkspaceId]);
 
   const loadTemplates = async () => {
     setIsLoading(true);
     try {
-      const data = await getTemplates(DEFAULT_WORKSPACE_ID);
+      const data = await getTemplates(currentWorkspaceId);
       if (data && data.length > 0) {
         setTemplates(data);
-      } else {
+        try {
+          localStorage.setItem(`dhigrowth_templates_${currentWorkspaceId}`, JSON.stringify(data));
+        } catch {}
+      } else if (currentWorkspaceId === DEFAULT_WORKSPACE_ID) {
         setTemplates(DEFAULT_TEMPLATES);
+        try {
+          localStorage.setItem(`dhigrowth_templates_${currentWorkspaceId}`, JSON.stringify(DEFAULT_TEMPLATES));
+        } catch {}
+      } else {
+        setTemplates([]);
+        try {
+          localStorage.setItem(`dhigrowth_templates_${currentWorkspaceId}`, JSON.stringify([]));
+        } catch {}
       }
     } catch (err) {
       console.warn('Load templates note:', err);
-      setTemplates(DEFAULT_TEMPLATES);
+      if (currentWorkspaceId === DEFAULT_WORKSPACE_ID) {
+        setTemplates(DEFAULT_TEMPLATES);
+      } else {
+        setTemplates([]);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -238,6 +271,7 @@ export const TemplatesPage = () => {
 
     try {
       const created = await createTemplate({
+        workspaceId: currentWorkspaceId,
         name: formName.trim(),
         body_text: formBody.trim(),
         footer_text: formTriggers.trim(),
@@ -249,6 +283,7 @@ export const TemplatesPage = () => {
 
       const newTmpl = created || {
         id: `tmpl-${Date.now()}`,
+        workspace_id: currentWorkspaceId,
         name: formName.trim(),
         body_text: formBody.trim(),
         footer_text: formTriggers.trim(),
@@ -258,7 +293,13 @@ export const TemplatesPage = () => {
         header_content: headerContent,
       };
 
-      setTemplates((prev) => [newTmpl, ...prev]);
+      setTemplates((prev) => {
+        const updated = [newTmpl, ...prev];
+        try {
+          localStorage.setItem(`dhigrowth_templates_${currentWorkspaceId}`, JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
       setIsCreateModalOpen(false);
       showToast(`Auto-Reply Template "${formName}" created & active!`, 'success');
     } catch (err) {
@@ -266,6 +307,7 @@ export const TemplatesPage = () => {
       // Fallback local state
       const localTmpl = {
         id: `tmpl-${Date.now()}`,
+        workspace_id: currentWorkspaceId,
         name: formName.trim(),
         body_text: formBody.trim(),
         footer_text: formTriggers.trim(),
@@ -274,7 +316,13 @@ export const TemplatesPage = () => {
         header_type: headerType,
         header_content: headerContent,
       };
-      setTemplates((prev) => [localTmpl, ...prev]);
+      setTemplates((prev) => {
+        const updated = [localTmpl, ...prev];
+        try {
+          localStorage.setItem(`dhigrowth_templates_${currentWorkspaceId}`, JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
       setIsCreateModalOpen(false);
       showToast(`Template saved locally and active!`, 'success');
     } finally {
@@ -301,8 +349,8 @@ export const TemplatesPage = () => {
         header_content: headerContent,
       });
 
-      setTemplates((prev) =>
-        prev.map((t) =>
+      setTemplates((prev) => {
+        const updated = prev.map((t) =>
           t.id === editingTemplate.id
             ? {
                 ...t,
@@ -314,15 +362,19 @@ export const TemplatesPage = () => {
                 header_content: headerContent,
               }
             : t
-        )
-      );
+        );
+        try {
+          localStorage.setItem(`dhigrowth_templates_${currentWorkspaceId}`, JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
 
       setEditingTemplate(null);
       showToast(`Template "${formName}" updated successfully!`, 'success');
     } catch (err) {
       console.error('Error updating template:', err);
-      setTemplates((prev) =>
-        prev.map((t) =>
+      setTemplates((prev) => {
+        const updated = prev.map((t) =>
           t.id === editingTemplate.id
             ? {
                 ...t,
@@ -332,8 +384,12 @@ export const TemplatesPage = () => {
                 category: formCategory,
               }
             : t
-        )
-      );
+        );
+        try {
+          localStorage.setItem(`dhigrowth_templates_${currentWorkspaceId}`, JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
       setEditingTemplate(null);
       showToast(`Template updated!`, 'success');
     } finally {
@@ -345,12 +401,24 @@ export const TemplatesPage = () => {
     if (!deletingTemplate) return;
     try {
       await deleteTemplate(deletingTemplate.id);
-      setTemplates((prev) => prev.filter((t) => t.id !== deletingTemplate.id));
+      setTemplates((prev) => {
+        const updated = prev.filter((t) => t.id !== deletingTemplate.id);
+        try {
+          localStorage.setItem(`dhigrowth_templates_${currentWorkspaceId}`, JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
       setDeletingTemplate(null);
       showToast(`Template deleted successfully`, 'info');
     } catch (err) {
       console.error('Error deleting template:', err);
-      setTemplates((prev) => prev.filter((t) => t.id !== deletingTemplate.id));
+      setTemplates((prev) => {
+        const updated = prev.filter((t) => t.id !== deletingTemplate.id);
+        try {
+          localStorage.setItem(`dhigrowth_templates_${currentWorkspaceId}`, JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
       setDeletingTemplate(null);
       showToast(`Template deleted`, 'info');
     }
@@ -396,8 +464,9 @@ export const TemplatesPage = () => {
         setSimulatedImage(matched.header_content || null);
       } else {
         setSimulatedImage(null);
+        const company = currentUser?.organization || (currentUser?.name ? `${currentUser.name} Workspace` : 'AI Business Concierge');
         setSimulatedReply(
-          `Hello! 👋 DhiGrowth AI Concierge is ready to help you with "${query}". Tell us what your business needs, and let's build something powerful together! 🚀`
+          `Hello! 👋 ${company} is ready to help you with "${query}". Tell us what your business needs, and let's build something powerful together! 🚀`
         );
       }
       setIsSimulating(false);
@@ -429,11 +498,13 @@ export const TemplatesPage = () => {
     return true;
   });
 
-  const welcomeTemplate = templates.find(
-    (t) =>
-      (t.footer_text || '').toLowerCase().includes('hi') &&
-      (t.footer_text || '').toLowerCase().includes('hello')
-  ) || templates[0];
+  const welcomeTemplate = templates.length > 0 ? (
+    templates.find(
+      (t) =>
+        (t.footer_text || '').toLowerCase().includes('hi') &&
+        (t.footer_text || '').toLowerCase().includes('hello')
+    ) || templates[0]
+  ) : null;
 
   return (
     <div className="p-4 lg:p-8 space-y-6 max-w-[1300px] mx-auto font-sans">
@@ -808,6 +879,26 @@ export const TemplatesPage = () => {
             </div>
           );
         })}
+
+        {filteredTemplates.length === 0 && (
+          <div className="col-span-full py-16 text-center bg-white border border-[#EAECF0] rounded-3xl p-8 space-y-3 shadow-xs">
+            <div className="w-12 h-12 rounded-2xl bg-[#F4F0FD] text-[#7C3AED] flex items-center justify-center mx-auto">
+              <FileText className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-bold text-[#101828]">No Templates Configured Yet</h3>
+            <p className="text-xs text-[#667085] max-w-sm mx-auto">
+              You don't have any auto-reply templates in this workspace yet. Create your first template to automatically reply to customer messages!
+            </p>
+            <button
+              type="button"
+              onClick={handleOpenCreate}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Create First Template</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 6. Add / Edit Template Modal */}
