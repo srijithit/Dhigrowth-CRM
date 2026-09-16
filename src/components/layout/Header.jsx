@@ -15,6 +15,8 @@ export const Header = () => {
     logout,
     adminViewProfile,
     switchAdminProfile,
+    clientViewMode,
+    toggleClientViewMode,
   } = useApp();
 
   const getTitle = () => {
@@ -28,25 +30,37 @@ export const Header = () => {
       case 'tools': return 'Tools';
       case 'lead-studio': return 'Lead Studio';
       case 'segmentation': return 'Segmentation';
-      case 'campaigns': return 'Campaigns';
+      case 'campaigns': return 'Campaign Manager';
       case 'drip-campaigns': return 'Drip Campaigns';
       case 'automations': return 'Automations';
       case 'templates': return 'Templates';
-      case 'channels':
-      case 'channel-whatsapp':
-      case 'channel-instagram':
-      case 'channel-messenger':
-      case 'channel-line':
-        return 'Channels';
-      case 'shopify': return 'Shopify Integration';
-      case 'zoho': return 'Zoho Integration';
-      case 'api': return 'Sendiee REST API';
       case 'meta-api':
       case 'meta_api':
-        return 'Meta WhatsApp Cloud API';
-      case 'apps': return 'App Marketplace';
-      case 'manage': return 'Workspace Settings';
-      case 'wallet': return 'AI Credit Wallet';
+      case 'meta-settings':
+        return 'Meta WhatsApp API Settings';
+      case 'channel-whatsapp':
+      case 'whatsapp':
+        return 'WhatsApp Official Cloud API';
+      case 'channel-instagram':
+      case 'instagram':
+        return 'Instagram Direct Messaging';
+      case 'channel-messenger':
+      case 'messenger':
+        return 'Facebook Messenger Channel';
+      case 'channel-line':
+      case 'line':
+        return 'LINE Official Channel';
+      case 'channels': return 'Connected Communication Channels';
+      case 'shopify': return 'Shopify CAPI Webhooks';
+      case 'zoho': return 'Zoho CRM Sync';
+      case 'api': return 'REST Webhooks & Developers';
+      case 'apps':
+      case 'integrations':
+        return 'Integrations Hub';
+      case 'wallet': return 'Credits & Billing Wallet';
+      case 'settings':
+      case 'manage':
+        return 'Organization Settings';
       case 'plans': return 'Subscription Plans';
       case 'usage':
       case 'limits':
@@ -62,7 +76,7 @@ export const Header = () => {
     <header className="h-16 bg-white border-b border-[#EAECF0] px-6 lg:px-8 flex items-center justify-between sticky top-0 z-30 font-sans">
       {/* Left: Page Title */}
       <h1 className="text-xl font-bold text-[#101828] font-sans">
-        {isKiki ? 'Meta WhatsApp Cloud API' : getTitle()}
+        {getTitle()}
       </h1>
 
       {/* Right Controls */}
@@ -94,7 +108,7 @@ export const Header = () => {
                   ? 'bg-[#7C3AED] text-white shadow-2xs'
                   : 'text-[#475467] hover:bg-white'
               }`}
-              title="View Kiki's Separate Client Suite"
+              title="View Kiki's Workspace"
             >
               <span>⚡ Kiki (Client)</span>
               {adminViewProfile === 'kiki' && <span className="w-1.5 h-1.5 rounded-full bg-[#4ADE80]" />}
@@ -102,42 +116,43 @@ export const Header = () => {
           </div>
         )}
 
-        {!isKiki && (
-          <>
-            {/* Search Bar with Ctrl+K trigger */}
-            <button
-              onClick={() => setIsSearchOpen(true)}
-              className="flex items-center bg-[#F9FAFB] hover:bg-[#F2F4F7] border border-[#EAECF0] rounded-xl px-3.5 py-1.5 w-60 lg:w-72 text-left cursor-pointer transition-colors"
-            >
-              <Search className="w-4 h-4 text-[#98A2B3] mr-2 shrink-0" />
-              <span className="w-full text-xs text-[#98A2B3]">Search...</span>
-              <span className="text-[11px] font-mono text-[#98A2B3] bg-white border border-[#EAECF0] px-1.5 py-0.5 rounded shadow-2xs shrink-0">
-                ctrl K
-              </span>
-            </button>
-
-            {/* Credits Badge */}
-            <button
-              onClick={() => setIsUpgradeModalOpen(true)}
-              className="flex items-center gap-1.5 bg-[#F9F5FF] hover:bg-[#F4F0FD] border border-[#E9D8FD] px-3 py-1.5 rounded-xl text-xs font-bold text-[#6941C6] cursor-pointer transition-colors"
-              title="Click to manage credits and wallet"
-            >
-              <div className="w-4 h-4 rounded-full bg-[#7C3AED] text-white flex items-center justify-center text-[10px]">
-                %
-              </div>
-              <span className="font-mono tracking-tight font-bold">
-                ${credits.toFixed(2)} CREDITS
-              </span>
-            </button>
-          </>
+        {/* BYOK Client Suite Switcher Pill (For Kiki or Admin viewing Kiki) */}
+        {(isKiki || (isAdmin && adminViewProfile === 'kiki')) && (
+          <button
+            type="button"
+            onClick={() => toggleClientViewMode('portal')}
+            className="px-2.5 py-1 rounded-xl bg-[#F4F0FD] hover:bg-[#EDE5FA] border border-[#E9D8FD] text-[#7C3AED] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+            title="Switch to BYOK Client Suite (Own Meta API Keys & Rules)"
+          >
+            <span>⚡ BYOK Suite</span>
+          </button>
         )}
 
-        {isKiki && (
-          <div className="px-3 py-1 rounded-xl bg-[#F4F0FD] border border-[#E9D8FD] text-[#7C3AED] text-xs font-bold flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-[#16A34A] animate-pulse" />
-            <span>Channel Admin Access</span>
+        {/* Search Bar with Ctrl+K trigger */}
+        <button
+          onClick={() => setIsSearchOpen(true)}
+          className="flex items-center bg-[#F9FAFB] hover:bg-[#F2F4F7] border border-[#EAECF0] rounded-xl px-3.5 py-1.5 w-48 sm:w-60 lg:w-72 text-left cursor-pointer transition-colors"
+        >
+          <Search className="w-4 h-4 text-[#98A2B3] mr-2 shrink-0" />
+          <span className="w-full text-xs text-[#98A2B3] truncate">Search...</span>
+          <span className="text-[11px] font-mono text-[#98A2B3] bg-white border border-[#EAECF0] px-1.5 py-0.5 rounded shadow-2xs shrink-0 hidden sm:inline">
+            ctrl K
+          </span>
+        </button>
+
+        {/* Credits Badge */}
+        <button
+          onClick={() => setIsUpgradeModalOpen(true)}
+          className="flex items-center gap-1.5 bg-[#F9F5FF] hover:bg-[#F4F0FD] border border-[#E9D8FD] px-3 py-1.5 rounded-xl text-xs font-bold text-[#6941C6] cursor-pointer transition-colors"
+          title="Click to manage credits and wallet"
+        >
+          <div className="w-4 h-4 rounded-full bg-[#7C3AED] text-white flex items-center justify-center text-[10px]">
+            %
           </div>
-        )}
+          <span className="font-mono tracking-tight font-bold">
+            ${credits.toFixed(2)} CREDITS
+          </span>
+        </button>
 
         {/* User Workspace Pill */}
         <div className="relative">

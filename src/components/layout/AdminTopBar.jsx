@@ -3,7 +3,7 @@ import { User, LogOut, CheckCircle2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const AdminTopBar = ({ activeProfile = 'sri', onSwitchProfile }) => {
-  const { logout } = useApp();
+  const { logout, clientViewMode, toggleClientViewMode } = useApp();
 
   return (
     <div className="bg-[#0F172A] text-white px-4 lg:px-8 py-2.5 border-b border-[#1E293B] flex flex-wrap items-center justify-between gap-3 sticky top-0 z-50 shadow-md">
@@ -25,7 +25,7 @@ export const AdminTopBar = ({ activeProfile = 'sri', onSwitchProfile }) => {
             <span>Currently Viewing:</span>
             <span className="font-bold text-white flex items-center gap-1">
               <CheckCircle2 className="w-3 h-3 text-[#4ADE80]" />
-              {activeProfile === 'sri' ? "Sri's Profile (Dhigrowth CRM User)" : "Kiki's Profile (Separate BYOK Client)"}
+              {activeProfile === 'sri' ? "Sri's Profile (Dhigrowth CRM User)" : "Kiki's Profile (Client Workspace)"}
             </span>
           </p>
         </div>
@@ -34,7 +34,7 @@ export const AdminTopBar = ({ activeProfile = 'sri', onSwitchProfile }) => {
       {/* Center/Right: Profile Switcher Buttons */}
       <div className="flex items-center gap-2">
         <span className="text-[11px] text-[#94A3B8] font-bold mr-1 hidden sm:inline">
-          Switch Profile:
+          Switch User:
         </span>
 
         {/* Sri Button */}
@@ -64,14 +64,44 @@ export const AdminTopBar = ({ activeProfile = 'sri', onSwitchProfile }) => {
               ? 'bg-[#7C3AED] text-white ring-2 ring-[#A855F7] shadow-sm'
               : 'bg-[#1E293B] text-[#CBD5E1] hover:bg-[#334155] hover:text-white border border-[#334155]'
           }`}
-          title="Switch to Kiki's separate Client Portal"
+          title="Switch to Kiki's Client Workspace"
         >
           <span className="text-xs">⚡</span>
-          <span>Kiki (Separate Client)</span>
+          <span>Kiki (Client Workspace)</span>
           {activeProfile === 'kiki' && (
             <span className="w-1.5 h-1.5 rounded-full bg-[#4ADE80]" />
           )}
         </button>
+
+        {/* View Mode Toggle when viewing Kiki */}
+        {activeProfile === 'kiki' && (
+          <div className="flex items-center gap-1 bg-[#1E293B] border border-[#334155] p-0.5 rounded-xl ml-1">
+            <button
+              type="button"
+              onClick={() => toggleClientViewMode('crm')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                clientViewMode === 'crm'
+                  ? 'bg-[#7C3AED] text-white shadow-2xs'
+                  : 'text-[#94A3B8] hover:text-white'
+              }`}
+              title="View Kiki in Full CRM Layout"
+            >
+              Full CRM UI
+            </button>
+            <button
+              type="button"
+              onClick={() => toggleClientViewMode('portal')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                clientViewMode === 'portal'
+                  ? 'bg-[#7C3AED] text-white shadow-2xs'
+                  : 'text-[#94A3B8] hover:text-white'
+              }`}
+              title="View Kiki in BYOK Client Suite"
+            >
+              Client Suite
+            </button>
+          </div>
+        )}
 
         <div className="h-4 w-px bg-[#334155] mx-1" />
 

@@ -365,6 +365,40 @@ export const DashboardOverview = () => {
                     </button>
                   </div>
 
+                  {/* Team Inbox & Lead Intelligence Toggle */}
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-[#1E293B] border border-[#334155]/60">
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="w-3.5 h-3.5 text-[#38BDF8] shrink-0" />
+                      <div>
+                        <div className="font-bold text-white text-[11px] flex items-center gap-1">
+                          <span>Team Inbox & Lead Intelligence</span>
+                          <span className="text-[8px] font-bold px-1.5 py-0.2 bg-[#3B82F6]/20 text-[#60A5FA] rounded-full">
+                            Full UI
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-[#94A3B8]">3-Column Chat & Lead Stage Workspace</div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateUserPermission(
+                          'kiki',
+                          'teamInbox',
+                          !userPermissions?.kiki?.teamInbox
+                        )
+                      }
+                      className={`w-9 h-5 rounded-full p-0.5 transition-colors cursor-pointer flex items-center ${
+                        userPermissions?.kiki?.teamInbox
+                          ? 'bg-[#10B981] justify-end'
+                          : 'bg-[#475467] justify-start'
+                      }`}
+                      title="Toggle Team Inbox access for Kiki"
+                    >
+                      <div className="w-4 h-4 rounded-full bg-white shadow-xs" />
+                    </button>
+                  </div>
+
                   {/* Meta API Keys Toggle */}
                   <div className="flex items-center justify-between p-2 rounded-lg bg-[#1E293B] border border-[#334155]/60">
                     <div className="flex items-center gap-2">

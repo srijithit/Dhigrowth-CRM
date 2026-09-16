@@ -348,6 +348,24 @@ export const AppProvider = ({ children }) => {
   // Admin Profile Switching State: Admin can switch between 'sri' (CRM User) and 'kiki' (Separate Client)
   const [adminViewProfile, setAdminViewProfile] = useState('sri'); // 'sri' | 'kiki'
 
+  // Client Workspace View Mode: 'crm' (Full CRM UI with Sidebar & TeamInbox) | 'portal' (BYOK Client Suite)
+  const [clientViewMode, setClientViewMode] = useState(() => {
+    try {
+      return localStorage.getItem('dhigrowth_client_view_mode') || 'crm';
+    } catch {
+      return 'crm';
+    }
+  });
+
+  const toggleClientViewMode = (mode) => {
+    const nextMode = mode || (clientViewMode === 'crm' ? 'portal' : 'crm');
+    setClientViewMode(nextMode);
+    try {
+      localStorage.setItem('dhigrowth_client_view_mode', nextMode);
+    } catch {}
+    showToast(`Switched view to ${nextMode === 'crm' ? 'Full CRM Workspace' : 'BYOK Client Suite'}`, 'info');
+  };
+
   const switchAdminProfile = (profileName) => {
     if (profileName !== 'sri' && profileName !== 'kiki') return;
     setAdminViewProfile(profileName);
@@ -370,6 +388,7 @@ export const AppProvider = ({ children }) => {
   const DEFAULT_USER_PERMISSIONS = {
     kiki: {
       sendDueToAll: true, // Enabled for Kiki
+      teamInbox: true,    // Enabled Team Inbox for Kiki
       metaKeys: true,
       isolatedInbox: true,
       autoReply: true,
@@ -1184,6 +1203,9 @@ export const AppProvider = ({ children }) => {
         adminViewProfile,
         setAdminViewProfile,
         switchAdminProfile,
+        clientViewMode,
+        setClientViewMode,
+        toggleClientViewMode,
         userPermissions,
         updateUserPermission,
         hasPermission,

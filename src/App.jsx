@@ -47,6 +47,7 @@ const AppContent = () => {
     currentUser,
     adminViewProfile,
     switchAdminProfile,
+    clientViewMode,
   } = useApp();
 
   if (!isAuthenticated) {
@@ -61,15 +62,15 @@ const AppContent = () => {
   const isAdmin = currentUser?.isAdmin || currentUser?.username?.toLowerCase() === 'admin';
   const isDirectKiki = currentUser?.isExternalClient || currentUser?.username?.toLowerCase() === 'kiki';
 
-  // If Kiki logs in directly OR if Admin selected Kiki's separate profile:
-  const shouldShowClientPortal = isDirectKiki || (isAdmin && adminViewProfile === 'kiki');
+  // If user explicitly selected the isolated BYOK Client Portal view:
+  const shouldShowClientPortal = (isDirectKiki || (isAdmin && adminViewProfile === 'kiki')) && clientViewMode === 'portal';
 
   if (shouldShowClientPortal) {
     return (
       <div className="flex flex-col min-h-screen">
         {isAdmin && (
           <AdminTopBar
-            activeProfile="kiki"
+            activeProfile={adminViewProfile}
             onSwitchProfile={switchAdminProfile}
           />
         )}
@@ -157,7 +158,7 @@ const AppContent = () => {
     <div className="flex flex-col h-screen overflow-hidden bg-[#F8F9FC] text-[#101828] font-sans antialiased">
       {isAdmin && (
         <AdminTopBar
-          activeProfile="sri"
+          activeProfile={adminViewProfile}
           onSwitchProfile={switchAdminProfile}
         />
       )}
