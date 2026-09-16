@@ -47,13 +47,13 @@ export const MetaApiSettings = () => {
   const [testResult, setTestResult] = useState(null);
   const [hasSaved, setHasSaved] = useState(false);
 
-  // Sync with context if metaConfig updates
+  // Sync with context if metaConfig updates for this specific user
   useEffect(() => {
     if (metaConfig) {
-      if (metaConfig.phoneNumberId) setPhoneNumberId(metaConfig.phoneNumberId);
-      if (metaConfig.accessToken) setAccessToken(metaConfig.accessToken);
-      if (metaConfig.wabaId) setWabaId(metaConfig.wabaId);
-      if (metaConfig.verifyToken) setVerifyToken(metaConfig.verifyToken);
+      setPhoneNumberId(metaConfig.phoneNumberId || '');
+      setAccessToken(metaConfig.accessToken || '');
+      setWabaId(metaConfig.wabaId || '');
+      setVerifyToken(metaConfig.verifyToken || 'dhigrowth_webhook_secret_2026');
     }
   }, [metaConfig]);
 
@@ -164,27 +164,25 @@ export const MetaApiSettings = () => {
         </div>
       </div>
 
-      {/* Special Banner for Kiki */}
-      {isKiki && (
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-[#7C3AED]/10 via-[#9333EA]/10 to-[#F4F0FD] border border-[#E9D8FD] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#7C3AED] text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0">
-              K
+      {/* Multi-Tenant Isolation Status Banner */}
+      <div className="p-4 rounded-2xl bg-gradient-to-r from-[#F4F0FD] via-[#FAF5FF] to-[#EFF8FF] border border-[#E9D8FD] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#7C3AED] text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0 uppercase">
+            {(currentUser?.name || currentUser?.username || 'U')[0]}
+          </div>
+          <div>
+            <div className="text-xs font-bold text-[#101828] flex items-center gap-2">
+              <span>Account: <strong className="text-[#7C3AED]">{currentUser?.name || currentUser?.username || 'CRM User'}</strong></span>
+              <span className="text-[10px] bg-[#DCFCE7] text-[#15803D] font-mono px-2 py-0.5 rounded-full font-bold border border-[#BBF7D0]">
+                Private & Isolated Workspace
+              </span>
             </div>
-            <div>
-              <div className="text-xs font-bold text-[#101828] flex items-center gap-2">
-                <span>Welcome Kiki!</span>
-                <span className="text-[10px] bg-[#DCFCE7] text-[#15803D] font-mono px-2 py-0.2 rounded-full font-bold">
-                  Active Session
-                </span>
-              </div>
-              <p className="text-[11px] text-[#475467] mt-0.5">
-                You have full Channel Admin rights to add new Meta tokens and update the WhatsApp Phone Number ID. All changes sync directly to the live server.
-              </p>
-            </div>
+            <p className="text-[11px] text-[#475467] mt-0.5">
+              These WhatsApp Cloud API credentials belong strictly to <strong className="text-[#101828]">{currentUser?.organization || `${currentUser?.name || 'Your'}'s Workspace`}</strong>. Each user configures their own independent Phone Number ID and Meta Access Token.
+            </p>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Test Result Live Banner (if tested) */}
       {testResult && (

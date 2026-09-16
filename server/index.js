@@ -20,6 +20,11 @@ import {
   generateAIResponse,
   DEFAULT_SYSTEM_PROMPT,
 } from './aiService.js';
+import {
+  getTenantMetaConfig,
+  saveTenantMetaConfig,
+  getTenantByPhoneNumberId,
+} from './tenantMetaManager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -157,47 +162,69 @@ app.post('/api/send-manual-message', async (req, res) => {
       conversationId = 'c1000000-0000-0000-0000-000000000001',
       channelId = 'd0000000-0000-0000-0000-000000000001',
       channelType = 'whatsapp',
+      phoneNumberId,
+      accessToken,
+      workspaceId,
+      userId,
+      username,
     } = req.body;
 
     if (!recipientPhone || !text) {
       return res.status(400).json({ error: 'recipientPhone and text are required' });
     }
 
-    console.log(`\n📤 [Manual Agent Send] Recipient: ${recipientPhone} | Channel: ${channelType}`);
+    console.log(`\n📤 [Manual Agent Send] Recipient: ${recipientPhone} | Channel: ${channelType} | Workspace: ${workspaceId || 'default'}`);
     console.log(`💬 Content: "${text}"`);
 
-    // 1. Dispatch via Meta Graph API
+    // 1. Dispatch via Meta Graph API using tenant-specific credentials
     let metaResult = null;
     const cleanPhone = recipientPhone.replace(/[^0-9]/g, '');
 
     if (channelType === 'whatsapp') {
-      const response = await fetch(
-        `https://graph.facebook.com/v20.0/${process.env.META_WHATSAPP_PHONE_NUMBER_ID}/messages`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.META_WHATSAPP_ACCESS_TOKEN}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            messaging_product: 'whatsapp',
-            recipient_type: 'individual',
-            to: cleanPhone,
-            type: 'text',
-            text: { preview_url: false, body: text },
-          }),
-        }
-      );
+      let sendPhoneId = phoneNumberId;
+      let sendToken = accessToken;
 
-      metaResult = await response.json();
-      if (!response.ok) {
-        console.error('[Manual Send] Meta API error:', metaResult);
+      if (!sendPhoneId || !sendToken) {
+        const tenantConfig = getTenantMetaConfig({ workspaceId, userId, username });
+        sendPhoneId = sendPhoneId || tenantConfig.phoneNumberId;
+        sendToken = sendToken || tenantConfig.accessToken;
+      }
+
+      sendPhoneId = sendPhoneId || process.env.META_WHATSAPP_PHONE_NUMBER_ID;
+      sendToken = sendToken || process.env.META_WHATSAPP_ACCESS_TOKEN;
+
+      if (sendPhoneId && sendToken) {
+        const response = await fetch(
+          `https://graph.facebook.com/v20.0/${sendPhoneId}/messages`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${sendToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              messaging_product: 'whatsapp',
+              recipient_type: 'individual',
+              to: cleanPhone,
+              type: 'text',
+              text: { preview_url: false, body: text },
+            }),
+          }
+        );
+
+        metaResult = await response.json();
+        if (!response.ok) {
+          console.error('[Manual Send] Meta API error:', metaResult);
+        } else {
+          console.log('✅ Dispatched successfully to WhatsApp phone via Phone ID:', sendPhoneId, 'Meta ID:', metaResult.messages?.[0]?.id);
+        }
       } else {
-        console.log('✅ Dispatched successfully to WhatsApp phone! Meta ID:', metaResult.messages?.[0]?.id);
+        console.warn(`[Manual Send] Meta WhatsApp not configured for user/workspace (${workspaceId || userId}). Running in simulated support mode.`);
       }
     }
 
-    // 2. Log in Supabase
+    // 2. Log in Supabase under this tenant's workspace
+    const effectiveWorkspaceId = workspaceId || process.env.VITE_DEFAULT_WORKSPACE_ID || 'b0000000-0000-0000-0000-000000000001';
     const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
     const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
     if (supabaseUrl && supabaseAnonKey) {
@@ -206,7 +233,7 @@ app.post('/api/send-manual-message', async (req, res) => {
 
       await supabase.from('messages').insert([
         {
-          workspace_id: process.env.VITE_DEFAULT_WORKSPACE_ID || 'b0000000-0000-0000-0000-000000000001',
+          workspace_id: effectiveWorkspaceId,
           conversation_id: conversationId,
           channel_id: channelId,
           direction: 'outbound',
@@ -487,52 +514,52 @@ app.get('/api/invoices/:id', (req, res) => {
     return res.status(404).json({ error: 'Invoice not found' });
   }
   res.json({ invoice });
-});// 8. Meta Configuration APIs for Kiki & Admins
+});// 8. Meta Configuration APIs - Multi-Tenant & Per-User Isolated
 app.get('/api/meta-config', (req, res) => {
-  res.json({
-    phoneNumberId: process.env.META_WHATSAPP_PHONE_NUMBER_ID || '',
-    wabaId: process.env.META_WHATSAPP_WABA_ID || '',
-    accessToken: process.env.META_WHATSAPP_ACCESS_TOKEN || '',
-    verifyToken: process.env.META_WHATSAPP_VERIFY_TOKEN || 'dhigrowth_webhook_secret_2026',
-    updatedAt: new Date().toISOString(),
-  });
+  const { workspaceId, userId, username, slug } = req.query || {};
+  const config = getTenantMetaConfig({ workspaceId, userId, username, slug });
+  res.json(config);
 });
 
-app.post('/api/meta-config', (req, res) => {
+app.post('/api/meta-config', async (req, res) => {
   try {
-    const { phoneNumberId, accessToken, wabaId, verifyToken, updatedBy = 'kiki' } = req.body || {};
+    const {
+      phoneNumberId,
+      accessToken,
+      wabaId,
+      verifyToken,
+      workspaceId,
+      userId,
+      username,
+      slug,
+      updatedBy = 'User',
+    } = req.body || {};
 
-    if (phoneNumberId !== undefined) process.env.META_WHATSAPP_PHONE_NUMBER_ID = String(phoneNumberId).trim();
-    if (accessToken !== undefined) {
-      process.env.META_WHATSAPP_ACCESS_TOKEN = String(accessToken).trim();
-      process.env.META_INSTAGRAM_ACCESS_TOKEN = String(accessToken).trim();
+    let supabaseClient = null;
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+    if (supabaseUrl && supabaseAnonKey) {
+      const { createClient } = await import('@supabase/supabase-js');
+      supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
     }
-    if (wabaId !== undefined) process.env.META_WHATSAPP_WABA_ID = String(wabaId).trim();
-    if (verifyToken !== undefined) process.env.META_WHATSAPP_VERIFY_TOKEN = String(verifyToken).trim();
 
-    const toSave = {
-      phoneNumberId: process.env.META_WHATSAPP_PHONE_NUMBER_ID,
-      accessToken: process.env.META_WHATSAPP_ACCESS_TOKEN,
-      wabaId: process.env.META_WHATSAPP_WABA_ID,
-      verifyToken: process.env.META_WHATSAPP_VERIFY_TOKEN,
+    const saved = await saveTenantMetaConfig({
+      workspaceId,
+      userId: userId || username || slug || updatedBy,
+      username: username || updatedBy,
+      slug,
+      phoneNumberId,
+      accessToken,
+      wabaId,
+      verifyToken,
       updatedBy,
-      updatedAt: new Date().toISOString(),
-    };
-
-    fs.writeFileSync(META_CONFIG_FILE, JSON.stringify(toSave, null, 2), 'utf-8');
-    console.log(`✅ [MetaConfig] Updated credentials by ${updatedBy}: PhoneID=${toSave.phoneNumberId}`);
+      supabaseClient,
+    });
 
     res.json({
       success: true,
-      message: 'Meta WhatsApp credentials updated and applied successfully!',
-      config: {
-        phoneNumberId: toSave.phoneNumberId,
-        wabaId: toSave.wabaId,
-        accessToken: toSave.accessToken ? `${toSave.accessToken.slice(0, 10)}...${toSave.accessToken.slice(-6)}` : '',
-        verifyToken: toSave.verifyToken,
-        updatedBy: toSave.updatedBy,
-        updatedAt: toSave.updatedAt,
-      },
+      message: `Meta WhatsApp credentials updated for "${updatedBy}"!`,
+      config: saved,
     });
   } catch (err) {
     console.error('[MetaConfig Save Error]:', err);
@@ -542,10 +569,23 @@ app.post('/api/meta-config', (req, res) => {
 
 app.post('/api/meta-config/test', async (req, res) => {
   try {
-    const {
-      phoneNumberId = process.env.META_WHATSAPP_PHONE_NUMBER_ID,
-      accessToken = process.env.META_WHATSAPP_ACCESS_TOKEN,
+    let {
+      phoneNumberId,
+      accessToken,
+      workspaceId,
+      userId,
+      username,
+      slug,
     } = req.body || {};
+
+    if (!phoneNumberId || !accessToken) {
+      const userConfig = getTenantMetaConfig({ workspaceId, userId, username, slug });
+      phoneNumberId = phoneNumberId || userConfig.phoneNumberId;
+      accessToken = accessToken || userConfig.accessToken;
+    }
+
+    phoneNumberId = phoneNumberId || process.env.META_WHATSAPP_PHONE_NUMBER_ID;
+    accessToken = accessToken || process.env.META_WHATSAPP_ACCESS_TOKEN;
 
     if (!phoneNumberId || !accessToken) {
       return res.status(400).json({
@@ -569,7 +609,7 @@ app.post('/api/meta-config/test', async (req, res) => {
     res.json({
       success: true,
       data: metaData,
-      message: `Connected successfully to Meta WhatsApp! Verified Phone: ${metaData.display_phone_number || metaData.id}`,
+      message: `Connected successfully to Meta WhatsApp! Verified Name/Number: ${metaData.verified_name || metaData.display_phone_number || metaData.id}`,
     });
   } catch (err) {
     console.error('[MetaConfig Test Error]:', err);

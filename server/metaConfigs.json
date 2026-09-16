@@ -1,0 +1,52 @@
+{
+  "tenants": {
+    "maddy": {
+      "phoneNumberId": "1228199333717113",
+      "accessToken": "EAAUEG8pFPrIBSazSn2Dsr3vHWT25YtF01ZCEMnD7LY38d3cQTgCb4bb6byHZComLuMkx3VDmGwpyQ8p8ARfVQyk6o0i9IR3sNzZAyg4qrQc17iACk5rkmh83UBczdbfs4YNNjAAUUIkBxbiivou2GQc5PKZBqFYldocHEQ5ufIGikbkIL6cxjZC3dzW5aHgZDZD",
+      "wabaId": "2288734648550898",
+      "verifyToken": "titanstay_meta_webhook_secret",
+      "workspaceId": "b1a0a9dd26af-9d29-b53e-7fd6-c592f69f2bc5",
+      "updatedBy": "maddy",
+      "updatedAt": "2026-09-16T11:00:53.637Z"
+    },
+    "b1a0a9dd26af-9d29-b53e-7fd6-c592f69f2bc5": {
+      "phoneNumberId": "1228199333717113",
+      "accessToken": "EAAUEG8pFPrIBSazSn2Dsr3vHWT25YtF01ZCEMnD7LY38d3cQTgCb4bb6byHZComLuMkx3VDmGwpyQ8p8ARfVQyk6o0i9IR3sNzZAyg4qrQc17iACk5rkmh83UBczdbfs4YNNjAAUUIkBxbiivou2GQc5PKZBqFYldocHEQ5ufIGikbkIL6cxjZC3dzW5aHgZDZD",
+      "wabaId": "2288734648550898",
+      "verifyToken": "titanstay_meta_webhook_secret",
+      "workspaceId": "b1a0a9dd26af-9d29-b53e-7fd6-c592f69f2bc5",
+      "updatedBy": "maddy",
+      "updatedAt": "2026-09-16T11:00:53.637Z"
+    },
+    "sri": {
+      "phoneNumberId": "1349867994870208",
+      "accessToken": "",
+      "wabaId": "2288734648550898",
+      "verifyToken": "dhigrowth_webhook_secret_2026",
+      "workspaceId": "b0000000-0000-0000-0000-000000000001",
+      "updatedBy": "sri",
+      "updatedAt": "2026-09-16T10:00:00.000Z"
+    },
+    "b0000000-0000-0000-0000-000000000001": {
+      "phoneNumberId": "1349867994870208",
+      "accessToken": "",
+      "wabaId": "2288734648550898",
+      "verifyToken": "dhigrowth_webhook_secret_2026",
+      "workspaceId": "b0000000-0000-0000-0000-000000000001",
+      "updatedBy": "sri",
+      "updatedAt": "2026-09-16T10:00:00.000Z"
+    }
+  },
+  "phoneToTenant": {
+    "1228199333717113": {
+      "workspaceId": "b1a0a9dd26af-9d29-b53e-7fd6-c592f69f2bc5",
+      "username": "maddy",
+      "accessToken": "EAAUEG8pFPrIBSazSn2Dsr3vHWT25YtF01ZCEMnD7LY38d3cQTgCb4bb6byHZComLuMkx3VDmGwpyQ8p8ARfVQyk6o0i9IR3sNzZAyg4qrQc17iACk5rkmh83UBczdbfs4YNNjAAUUIkBxbiivou2GQc5PKZBqFYldocHEQ5ufIGikbkIL6cxjZC3dzW5aHgZDZD"
+    },
+    "1349867994870208": {
+      "workspaceId": "b0000000-0000-0000-0000-000000000001",
+      "username": "sri",
+      "accessToken": ""
+    }
+  }
+}

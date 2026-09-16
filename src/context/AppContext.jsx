@@ -121,24 +121,46 @@ export const AppProvider = ({ children }) => {
 
   const isAuthenticated = Boolean(currentUser);
 
-  // Meta Cloud API Configuration State
-  const [metaConfig, setMetaConfig] = useState({
-    phoneNumberId: '1349867994870208',
-    wabaId: '2288734648550898',
-    accessToken: '',
-    verifyToken: 'dhigrowth_webhook_secret_2026',
+  // Meta Cloud API Configuration State (Per-User / Per-Tenant Isolated)
+  const [metaConfig, setMetaConfig] = useState(() => {
+    try {
+      const tenantKey = currentUser?.slug || currentUser?.username || 'default';
+      const saved = localStorage.getItem(`dhigrowth_meta_config_${tenantKey}`);
+      return saved ? JSON.parse(saved) : {
+        phoneNumberId: '',
+        wabaId: '',
+        accessToken: '',
+        verifyToken: 'dhigrowth_webhook_secret_2026',
+        isConfigured: false,
+      };
+    } catch {
+      return {
+        phoneNumberId: '',
+        wabaId: '',
+        accessToken: '',
+        verifyToken: 'dhigrowth_webhook_secret_2026',
+        isConfigured: false,
+      };
+    }
   });
   const [isMetaLoading, setIsMetaLoading] = useState(false);
 
-  const fetchMetaConfig = async () => {
+  const fetchMetaConfig = async (wsId, userIdentifier) => {
     try {
+      const activeWs = wsId || currentUser?.workspaceId || DEFAULT_WORKSPACE_ID;
+      const activeUser = userIdentifier || currentUser?.username || currentUser?.slug || 'default';
+      const queryParams = new URLSearchParams();
+      if (activeWs) queryParams.set('workspaceId', activeWs);
+      if (activeUser) queryParams.set('userId', activeUser);
+      const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+
       let res;
       try {
-        res = await fetch(`${BACKEND_URL}/api/meta-config`);
+        res = await fetch(`${BACKEND_URL}/api/meta-config${queryString}`);
       } catch {}
       if (!res || !res.ok) {
         try {
-          res = await fetch('http://localhost:4000/api/meta-config');
+          res = await fetch(`http://localhost:4000/api/meta-config${queryString}`);
         } catch {}
       }
       if (res && res.ok) {
@@ -146,6 +168,10 @@ export const AppProvider = ({ children }) => {
         if (raw && !raw.trim().startsWith('<')) {
           const data = JSON.parse(raw);
           setMetaConfig(data);
+          try {
+            const tenantKey = activeUser || activeWs || 'default';
+            localStorage.setItem(`dhigrowth_meta_config_${tenantKey}`, JSON.stringify(data));
+          } catch {}
         }
       }
     } catch (err) {
@@ -156,15 +182,23 @@ export const AppProvider = ({ children }) => {
   const saveMetaConfig = async (newConfig) => {
     setIsMetaLoading(true);
     try {
+      const activeWs = currentWorkspaceId;
+      const activeUser = currentUser?.username || currentUser?.slug || 'User';
+      const payload = {
+        ...newConfig,
+        workspaceId: activeWs,
+        userId: activeUser,
+        username: currentUser?.username || activeUser,
+        slug: currentUser?.slug,
+        updatedBy: currentUser?.name || currentUser?.username || 'User',
+      };
+
       let res;
       try {
         res = await fetch(`${BACKEND_URL}/api/meta-config`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...newConfig,
-            updatedBy: currentUser?.username || 'kiki',
-          }),
+          body: JSON.stringify(payload),
         });
       } catch {}
 
@@ -173,10 +207,7 @@ export const AppProvider = ({ children }) => {
           res = await fetch('http://localhost:4000/api/meta-config', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              ...newConfig,
-              updatedBy: currentUser?.username || 'kiki',
-            }),
+            body: JSON.stringify(payload),
           });
         } catch {}
       }
@@ -197,7 +228,16 @@ export const AppProvider = ({ children }) => {
         ...prev,
         ...newConfig,
       }));
-      showToast('🎉 Meta WhatsApp credentials saved & active!', 'success');
+
+      try {
+        const tenantKey = currentUser?.slug || currentUser?.username || activeWs || 'default';
+        localStorage.setItem(`dhigrowth_meta_config_${tenantKey}`, JSON.stringify({
+          ...metaConfig,
+          ...newConfig,
+        }));
+      } catch {}
+
+      showToast(`🎉 Meta WhatsApp credentials saved for ${currentUser?.name || activeUser}!`, 'success');
       return data;
     } catch (err) {
       showToast(err.message, 'error');
@@ -209,12 +249,18 @@ export const AppProvider = ({ children }) => {
 
   const testMetaConfig = async (configToTest) => {
     try {
+      const payload = {
+        ...(configToTest || {}),
+        workspaceId: currentWorkspaceId,
+        userId: currentUser?.username || currentUser?.slug,
+      };
+
       let res;
       try {
         res = await fetch(`${BACKEND_URL}/api/meta-config/test`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(configToTest || {}),
+          body: JSON.stringify(payload),
         });
       } catch {}
 
@@ -223,7 +269,7 @@ export const AppProvider = ({ children }) => {
           res = await fetch('http://localhost:4000/api/meta-config/test', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(configToTest || {}),
+            body: JSON.stringify(payload),
           });
         } catch {}
       }
@@ -636,6 +682,28 @@ export const AppProvider = ({ children }) => {
   const currentWorkspaceId = currentUser?.workspaceId || (
     adminViewProfile === 'kiki' ? 'b0000000-0000-0000-0000-000000000002' : DEFAULT_WORKSPACE_ID
   );
+
+  // Synchronize tenant Meta credentials whenever active user or workspace changes
+  useEffect(() => {
+    if (!currentUser) return;
+    const tenantKey = currentUser.slug || currentUser.username || currentWorkspaceId;
+    try {
+      const saved = localStorage.getItem(`dhigrowth_meta_config_${tenantKey}`);
+      if (saved) {
+        setMetaConfig(JSON.parse(saved));
+      } else {
+        setMetaConfig({
+          phoneNumberId: '',
+          wabaId: '',
+          accessToken: '',
+          verifyToken: 'dhigrowth_webhook_secret_2026',
+          isConfigured: false,
+        });
+      }
+    } catch {}
+
+    fetchMetaConfig(currentWorkspaceId, currentUser.username || currentUser.slug);
+  }, [currentUser?.username, currentUser?.workspaceId, currentWorkspaceId, adminViewProfile]);
 
   // Client Workspace View Mode: 'crm' (Full CRM UI with Sidebar & TeamInbox) | 'portal' (BYOK Client Suite)
   const [clientViewMode, setClientViewMode] = useState(() => {

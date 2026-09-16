@@ -61,6 +61,9 @@ export const TeamInbox = () => {
     showToast,
     isBroadcastDueModalOpen,
     setIsBroadcastDueModalOpen,
+    metaConfig,
+    currentWorkspaceId,
+    currentUser,
   } = useApp();
 
   useEffect(() => {
@@ -448,17 +451,38 @@ export const TeamInbox = () => {
     // 2. Dispatch to live Meta WhatsApp Cloud API via server endpoint
     try {
       const recipient = activeChat.phone || '919791471277';
-      const res = await fetch('http://localhost:4000/api/send-manual-message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          recipientPhone: recipient,
-          text: text,
-          conversationId: activeChat.conversationId || activeChat.id,
-          channelType: activeChat.channel || 'whatsapp',
-        }),
-      });
-      const data = await res.json();
+      const payload = {
+        recipientPhone: recipient,
+        text: text,
+        conversationId: activeChat.conversationId || activeChat.id,
+        channelType: activeChat.channel || 'whatsapp',
+        phoneNumberId: metaConfig?.phoneNumberId,
+        accessToken: metaConfig?.accessToken,
+        workspaceId: currentWorkspaceId,
+        userId: currentUser?.username || currentUser?.slug,
+        username: currentUser?.username,
+      };
+
+      let res;
+      try {
+        res = await fetch(`${BACKEND_URL}/api/send-manual-message`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } catch {}
+
+      if (!res || !res.ok) {
+        try {
+          res = await fetch('http://localhost:4000/api/send-manual-message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+        } catch {}
+      }
+
+      const data = res ? await res.json() : {};
       if (data.deliveredToWhatsApp) {
         showToast(`🚀 Delivered to ${recipient} on WhatsApp!`, 'success');
       } else if (data.errorDetails) {
@@ -615,17 +639,38 @@ export const TeamInbox = () => {
 
       // 2. Dispatch to live Meta WhatsApp Cloud API via server endpoint
       const recipient = activeChat?.phone || '919791471277';
-      const res = await fetch('http://localhost:4000/api/send-manual-message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          recipientPhone: recipient,
-          text: translated,
-          conversationId: activeChat?.conversationId || activeChat?.id,
-          channelType: activeChat?.channel || 'whatsapp',
-        }),
-      });
-      const data = await res.json();
+      const payload = {
+        recipientPhone: recipient,
+        text: translated,
+        conversationId: activeChat?.conversationId || activeChat?.id,
+        channelType: activeChat?.channel || 'whatsapp',
+        phoneNumberId: metaConfig?.phoneNumberId,
+        accessToken: metaConfig?.accessToken,
+        workspaceId: currentWorkspaceId,
+        userId: currentUser?.username || currentUser?.slug,
+        username: currentUser?.username,
+      };
+
+      let res;
+      try {
+        res = await fetch(`${BACKEND_URL}/api/send-manual-message`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } catch {}
+
+      if (!res || !res.ok) {
+        try {
+          res = await fetch('http://localhost:4000/api/send-manual-message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+        } catch {}
+      }
+
+      const data = res ? await res.json() : {};
       if (data.deliveredToWhatsApp) {
         showToast(`🚀 Translated to ${target.name} & delivered to WhatsApp!`, 'success');
       } else if (data.errorDetails) {

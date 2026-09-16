@@ -618,10 +618,10 @@ export const ClientPortal = () => {
   // Sync with metaConfig from context
   useEffect(() => {
     if (metaConfig) {
-      if (metaConfig.phoneNumberId) setPhoneNumberId(metaConfig.phoneNumberId);
-      if (metaConfig.accessToken) setAccessToken(metaConfig.accessToken);
-      if (metaConfig.wabaId) setWabaId(metaConfig.wabaId);
-      if (metaConfig.verifyToken) setVerifyToken(metaConfig.verifyToken);
+      setPhoneNumberId(metaConfig.phoneNumberId || '');
+      setAccessToken(metaConfig.accessToken || '');
+      setWabaId(metaConfig.wabaId || '');
+      setVerifyToken(metaConfig.verifyToken || 'client_webhook_secret_2026');
     }
   }, [metaConfig]);
 

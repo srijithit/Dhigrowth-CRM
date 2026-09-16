@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { sendWhatsAppMessage, sendInstagramMessage, sendMessengerMessage } from './metaService.js';
 import { generateAIResponse } from './aiService.js';
+import { getTenantByPhoneNumberId } from './tenantMetaManager.js';
 
 import dotenv from 'dotenv';
 import path from 'path';
@@ -71,8 +72,11 @@ export const handleInboundWebhook = async (req, res) => {
       const customerName = contactInfo?.profile?.name || `Customer (+${senderPhone})`;
       const messageText = message.text?.body || (message.type !== 'text' ? `[${message.type} attachment]` : '');
       const phoneNumberId = change.metadata?.phone_number_id || process.env.META_WHATSAPP_PHONE_NUMBER_ID || '1349867994870208';
+      const matchedTenant = getTenantByPhoneNumberId(phoneNumberId);
+      const tenantWorkspaceId = matchedTenant?.workspaceId || DEFAULT_WORKSPACE_ID;
+      const tenantAccessToken = matchedTenant?.accessToken || process.env.META_WHATSAPP_ACCESS_TOKEN;
 
-      console.log(`\n📥 [Inbound WhatsApp] From: ${customerName} (+${senderPhone})`);
+      console.log(`\n📥 [Inbound WhatsApp] From: ${customerName} (+${senderPhone}) | Phone ID: ${phoneNumberId} | Workspace: ${tenantWorkspaceId}`);
       console.log(`💬 Message: "${messageText}"`);
 
       // Process message in Supabase & reply
@@ -83,9 +87,11 @@ export const handleInboundWebhook = async (req, res) => {
         messageText,
         externalMessageId: message.id,
         channelId: 'd0000000-0000-0000-0000-000000000001',
+        workspaceId: tenantWorkspaceId,
         sendReply: async (replyText, imageUrl) => {
           return sendWhatsAppMessage({
             phoneNumberId,
+            accessToken: tenantAccessToken,
             recipientPhone: senderPhone,
             text: replyText,
             imageUrl,
@@ -166,8 +172,10 @@ async function processIncomingChatMessage({
   messageText,
   externalMessageId,
   channelId,
+  workspaceId = DEFAULT_WORKSPACE_ID,
   sendReply,
 }) {
+  const effectiveWorkspaceId = workspaceId || DEFAULT_WORKSPACE_ID;
   const supabase = getSupabase();
   if (!supabase) {
     console.warn('[WebhookHandler] Supabase not connected. Skipping database write.');
@@ -181,7 +189,7 @@ async function processIncomingChatMessage({
     const { data: existingContact } = await supabase
       .from('contacts')
       .select('id, full_name, phone_number')
-      .eq('workspace_id', DEFAULT_WORKSPACE_ID)
+      .eq('workspace_id', effectiveWorkspaceId)
       .ilike('phone_number', `%${cleanDigits}%`)
       .maybeSingle();
 
@@ -192,7 +200,7 @@ async function processIncomingChatMessage({
         .from('contacts')
         .insert([
           {
-            workspace_id: DEFAULT_WORKSPACE_ID,
+            workspace_id: effectiveWorkspaceId,
             phone_number: senderIdentifier,
             full_name: customerName,
             lead_stage: 'Discovery',
@@ -208,7 +216,7 @@ async function processIncomingChatMessage({
         return;
       }
       contactId = newContact.id;
-      console.log(`👤 Created new lead: ${customerName} (${contactId})`);
+      console.log(`👤 Created new lead: ${customerName} (${contactId}) in workspace ${effectiveWorkspaceId}`);
     }
 
     // 2. Find or create Conversation
@@ -216,7 +224,7 @@ async function processIncomingChatMessage({
     const { data: existingConv } = await supabase
       .from('conversations')
       .select('id, status')
-      .eq('workspace_id', DEFAULT_WORKSPACE_ID)
+      .eq('workspace_id', effectiveWorkspaceId)
       .eq('contact_id', contactId)
       .eq('channel_type', channelType)
       .maybeSingle();
@@ -228,7 +236,7 @@ async function processIncomingChatMessage({
         .from('conversations')
         .insert([
           {
-            workspace_id: DEFAULT_WORKSPACE_ID,
+            workspace_id: effectiveWorkspaceId,
             contact_id: contactId,
             channel_id: channelId,
             channel_type: channelType,
@@ -251,7 +259,7 @@ async function processIncomingChatMessage({
     // 3. Record Inbound Message in Supabase
     const { error: msgErr } = await supabase.from('messages').insert([
       {
-        workspace_id: DEFAULT_WORKSPACE_ID,
+        workspace_id: effectiveWorkspaceId,
         conversation_id: conversationId,
         channel_id: channelId,
         direction: 'inbound',
@@ -318,7 +326,7 @@ async function processIncomingChatMessage({
     // 6. Record AI Outbound Message in Supabase
     await supabase.from('messages').insert([
       {
-        workspace_id: DEFAULT_WORKSPACE_ID,
+        workspace_id: effectiveWorkspaceId,
         conversation_id: conversationId,
         channel_id: channelId,
         direction: 'outbound',
