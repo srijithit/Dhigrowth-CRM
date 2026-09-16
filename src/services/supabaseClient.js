@@ -338,26 +338,105 @@ export const getWalletData = async (workspaceId = DEFAULT_WORKSPACE_ID) => {
   };
 };
 
-// 7. Subscribe to real-time inbound messages (WhatsApp / Instagram / LINE)
-export const subscribeToNewMessages = (workspaceId, onNewMessage) => {
-  if (!supabase) return null;
+// 7. Subscribe to real-time inbound events via persistent WebSocket
+export const subscribeToWorkspaceRealtime = (workspaceId, handlers = {}) => {
+  if (!supabase || !workspaceId) return null;
 
-  return supabase
-    .channel('realtime_messages')
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
-        filter: `workspace_id=eq.${workspaceId}`,
-      },
-      (payload) => {
-        if (onNewMessage) onNewMessage(payload.new);
+  // Support both functional callback: subscribeToWorkspaceRealtime(wsId, cb)
+  // and handlers object: subscribeToWorkspaceRealtime(wsId, { onNewMessage, onContactChange, ... })
+  const onNewMessage = typeof handlers === 'function' ? handlers : handlers.onNewMessage;
+  const onContactChange = handlers.onContactChange;
+  const onConversationChange = handlers.onConversationChange;
+  const onWalletChange = handlers.onWalletChange;
+  const onChannelChange = handlers.onChannelChange;
+
+  const channelId = `realtime_ws_${workspaceId.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+  const channel = supabase.channel(channelId);
+
+  // 1. Inbound & Outbound Messages WebSocket Stream
+  channel.on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'messages',
+      filter: `workspace_id=eq.${workspaceId}`,
+    },
+    (payload) => {
+      if (onNewMessage) {
+        onNewMessage(payload.new || payload.old);
       }
-    )
-    .subscribe();
+    }
+  );
+
+  // 2. Contacts Changes WebSocket Stream (Add / Update / Delete)
+  channel.on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'contacts',
+      filter: `workspace_id=eq.${workspaceId}`,
+    },
+    (payload) => {
+      if (onContactChange) onContactChange(payload);
+    }
+  );
+
+  // 3. Conversation Thread Status & Activity
+  channel.on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'conversations',
+      filter: `workspace_id=eq.${workspaceId}`,
+    },
+    (payload) => {
+      if (onConversationChange) onConversationChange(payload);
+    }
+  );
+
+  // 4. Wallet Balance & Transaction Live Stream
+  channel.on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'wallet_accounts',
+      filter: `workspace_id=eq.${workspaceId}`,
+    },
+    (payload) => {
+      if (onWalletChange) onWalletChange(payload.new);
+    }
+  );
+
+  // 5. Channel Connections Live Stream
+  channel.on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'channels',
+      filter: `workspace_id=eq.${workspaceId}`,
+    },
+    (payload) => {
+      if (onChannelChange) onChannelChange(payload.new);
+    }
+  );
+
+  channel.subscribe((status) => {
+    if (status === 'SUBSCRIBED') {
+      console.log(`⚡ [WebSocket] Connected to Supabase Realtime channel for workspace "${workspaceId}"`);
+    }
+  });
+
+  return channel;
 };
+
+// Backward-compatible alias
+export const subscribeToNewMessages = subscribeToWorkspaceRealtime;
 
 // 8. Templates & Auto-Replies
 export const getTemplates = async (workspaceId = DEFAULT_WORKSPACE_ID) => {

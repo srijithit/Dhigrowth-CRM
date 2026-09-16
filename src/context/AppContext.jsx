@@ -14,6 +14,7 @@ import {
   deleteContact as deleteDbContact,
   sendChatMessage,
   subscribeToNewMessages,
+  subscribeToWorkspaceRealtime,
   DEFAULT_WORKSPACE_ID,
   ensureWorkspaceExists,
 } from '../services/supabaseClient';
@@ -1344,50 +1345,74 @@ export const AppProvider = ({ children }) => {
 
     syncCloudData();
 
-    // 4. Automatic fast-polling every 2 seconds for guaranteed live sync
-    const pollInterval = setInterval(() => {
-      if (!isMounted) return;
-      syncCloudData();
-    }, 2000);
+    // 4. Initial cloud sync once on workspace load / switch
+    syncCloudData();
+
+    // 5. Connect Realtime WebSocket Stream (Completely replaces 2-second HTTP polling!)
+    const subscription = subscribeToWorkspaceRealtime(currentWorkspaceId, {
+      onNewMessage: (newMsg) => {
+        if (!isMounted || !newMsg) return;
+        const formatted = {
+          id: newMsg.id,
+          sender: newMsg.ai_generated ? 'ai' : newMsg.direction === 'inbound' ? 'user' : 'agent',
+          text: newMsg.content,
+          time: new Date(newMsg.sent_at || newMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+
+        setChats((prev) =>
+          prev.map((c) => {
+            if (
+              c.conversationId === newMsg.conversation_id ||
+              c.id === newMsg.conversation_id ||
+              (!c.conversationId && prev.length === 1)
+            ) {
+              if (c.messages.some((m) => m.id === newMsg.id)) return c;
+              return {
+                ...c,
+                conversationId: c.conversationId || newMsg.conversation_id,
+                messages: [...c.messages, formatted],
+                lastSeen: 'Just now',
+              };
+            }
+            return c;
+          })
+        );
+      },
+      onContactChange: (payload) => {
+        if (!isMounted) return;
+        console.log('⚡ [WebSocket] Contact change event received:', payload?.eventType);
+        syncCloudData();
+      },
+      onConversationChange: (payload) => {
+        if (!isMounted) return;
+        console.log('⚡ [WebSocket] Conversation event received:', payload?.eventType);
+        syncCloudData();
+      },
+      onWalletChange: (newWallet) => {
+        if (!isMounted || !newWallet) return;
+        const balance = parseFloat(newWallet.balance_usd) || 0;
+        setCredits(balance);
+        if (balance >= 5.0) setHasClaimedBonus(true);
+      },
+      onChannelChange: (newChannel) => {
+        if (!isMounted || !newChannel) return;
+        setChannels((prev) => ({
+          ...prev,
+          [newChannel.type]: {
+            connected: newChannel.is_connected,
+            detail: newChannel.display_name || newChannel.identifier,
+          },
+        }));
+      },
+    });
 
     const handleFocus = () => {
       if (isMounted) syncCloudData();
     };
     window.addEventListener('focus', handleFocus);
 
-    // 5. Subscribe to Real-Time Inbound Messages
-    const subscription = subscribeToNewMessages(currentWorkspaceId, (newMsg) => {
-      if (!isMounted) return;
-      const formatted = {
-        id: newMsg.id,
-        sender: newMsg.ai_generated ? 'ai' : newMsg.direction === 'inbound' ? 'user' : 'agent',
-        text: newMsg.content,
-        time: new Date(newMsg.sent_at || newMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-
-      setChats((prev) =>
-        prev.map((c) => {
-          if (
-            c.conversationId === newMsg.conversation_id ||
-            c.id === newMsg.conversation_id ||
-            (!c.conversationId && prev.length === 1)
-          ) {
-            if (c.messages.some((m) => m.id === newMsg.id)) return c;
-            return {
-              ...c,
-              conversationId: c.conversationId || newMsg.conversation_id,
-              messages: [...c.messages, formatted],
-              lastSeen: 'Just now',
-            };
-          }
-          return c;
-        })
-      );
-    });
-
     return () => {
       isMounted = false;
-      clearInterval(pollInterval);
       window.removeEventListener('focus', handleFocus);
       if (subscription && typeof subscription.unsubscribe === 'function') {
         subscription.unsubscribe();
