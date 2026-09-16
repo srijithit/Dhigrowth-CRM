@@ -18,6 +18,57 @@ import {
 } from '../services/supabaseClient';
 import { BACKEND_URL } from '../services/apiConfig';
 
+export const SEED_TENANTS = [
+  {
+    id: 'b0000000-0000-0000-0000-000000000001',
+    workspaceId: 'b0000000-0000-0000-0000-000000000001',
+    name: 'Sri',
+    username: 'sri',
+    email: 'sri@dhigrowth.com',
+    companyName: 'Dhigrowth CRM',
+    slug: 'sri',
+    role: 'Dhigrowth CRM User',
+    plan: 'Business',
+    isAdmin: false,
+    isExternalClient: false,
+    passwordHash: '$2a$10$954hF52aM/UfxY8c3Y7fse9fL4k9nU2r8/xRSm2sT.k2k9e9nL8zK', // sri123
+    permissions: {
+      sendDueToAll: true,
+      teamInbox: true,
+      metaKeys: true,
+      aiStudio: true,
+      fileManager: true,
+      invoicing: true,
+    },
+    status: 'active',
+    createdAt: '2026-09-11T00:00:00.000Z',
+  },
+  {
+    id: 'b0000000-0000-0000-0000-000000000002',
+    workspaceId: 'b0000000-0000-0000-0000-000000000002',
+    name: 'Kiki',
+    username: 'kiki',
+    email: 'kiki@client-org.com',
+    companyName: "Kiki's Client Workspace",
+    slug: 'kiki',
+    role: 'External Client (BYOK)',
+    plan: 'Pro',
+    isAdmin: false,
+    isExternalClient: true,
+    passwordHash: '$2a$10$fV3Mh4n185/pY5e9rT7uAOK0x6.e6k2vR7p0w9u3b0o4i5u7y9k0e', // kiki123
+    permissions: {
+      sendDueToAll: true,
+      teamInbox: true,
+      metaKeys: false,
+      aiStudio: false,
+      fileManager: false,
+      invoicing: true,
+    },
+    status: 'active',
+    createdAt: '2026-09-11T00:00:00.000Z',
+  },
+];
+
 const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
@@ -34,6 +85,37 @@ export const AppProvider = ({ children }) => {
   const [isBroadcastDueModalOpen, setIsBroadcastDueModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
 
+  // Multi-Tenant Directory State
+  const [tenants, setTenants] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dhigrowth_tenants');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const merged = [...SEED_TENANTS];
+          parsed.forEach((pt) => {
+            if (!merged.some((m) => m.username === pt.username || m.id === pt.id)) {
+              merged.push(pt);
+            }
+          });
+          return merged;
+        }
+      }
+    } catch {}
+    return SEED_TENANTS;
+  });
+
+  // URL Tenant Resolver (e.g. ?tenant=kiki or ?t=kiki or ?workspace=xyz)
+  const [urlTenantSlug] = useState(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('tenant') || params.get('t') || params.get('workspace') || null;
+      }
+    } catch {}
+    return null;
+  });
+
   // User & Wallet State
   const [credits, setCredits] = useState(0.00);
   const [phoneNumber, setPhoneNumber] = useState('9791471277');
@@ -42,10 +124,13 @@ export const AppProvider = ({ children }) => {
   const [currentPlan, setCurrentPlan] = useState('Business');
   const [daysRemaining, setDaysRemaining] = useState(6);
 
-  // Authentication & Session State
+  // Authentication & Session State (Tenant-Isolated Session Support)
   const [currentUser, setCurrentUser] = useState(() => {
     try {
-      const saved = localStorage.getItem('dhigrowth_auth_session') || sessionStorage.getItem('dhigrowth_auth_session');
+      const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const urlTenant = urlParams?.get('tenant') || urlParams?.get('t');
+      const storageKey = urlTenant ? `dhigrowth_auth_session_${urlTenant}` : 'dhigrowth_auth_session';
+      const saved = localStorage.getItem(storageKey) || sessionStorage.getItem(storageKey) || (!urlTenant ? localStorage.getItem('dhigrowth_auth_session') : null);
       return saved ? JSON.parse(saved) : null;
     } catch {
       return null;
@@ -375,26 +460,45 @@ export const AppProvider = ({ children }) => {
         }
       })();
 
-    const isValidCustom = 
-      savedCreds &&
-      (cleanUser === savedCreds.username?.toLowerCase() || cleanUser === savedCreds.email?.toLowerCase()) &&
-      Boolean(cleanPass) &&
-      (savedCreds.passwordHash
-        ? (() => {
-            try {
-              return bcrypt.compareSync(cleanPass, savedCreds.passwordHash);
-            } catch {
-              return false;
-            }
-          })()
-        : cleanPass === savedCreds.password);
+    // Check dynamic registered tenants
+    const matchedTenant = tenants.find(
+      (t) => cleanUser === t.username?.toLowerCase() || cleanUser === t.email?.toLowerCase()
+    );
 
-    if (!isValidAdmin && !isValidSri && !isValidCustom && !isValidKiki) {
+    let isValidTenant = false;
+    if (matchedTenant && Boolean(cleanPass)) {
+      if (matchedTenant.passwordHash) {
+        try {
+          isValidTenant = bcrypt.compareSync(cleanPass, matchedTenant.passwordHash);
+        } catch {
+          isValidTenant = false;
+        }
+      }
+      if (!isValidTenant && matchedTenant.password) {
+        isValidTenant = cleanPass === matchedTenant.password;
+      }
+    }
+
+    if (!isValidAdmin && !isValidSri && !isValidCustom && !isValidKiki && !isValidTenant) {
       throw new Error('Invalid username or password. Please try again.');
     }
 
     let session;
-    if (isValidKiki) {
+    if (isValidTenant && matchedTenant) {
+      session = {
+        username: matchedTenant.username,
+        name: matchedTenant.name,
+        email: matchedTenant.email,
+        role: matchedTenant.role || 'CRM User',
+        isExternalClient: matchedTenant.isExternalClient || false,
+        isAdmin: matchedTenant.isAdmin || false,
+        organization: matchedTenant.companyName || `${matchedTenant.name}'s Workspace`,
+        workspaceId: matchedTenant.workspaceId,
+        slug: matchedTenant.slug || matchedTenant.username,
+        token: `tenant_${matchedTenant.username}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+        loginAt: new Date().toISOString(),
+      };
+    } else if (isValidKiki) {
       session = {
         username: 'kiki',
         name: 'Kiki',
@@ -403,6 +507,8 @@ export const AppProvider = ({ children }) => {
         isExternalClient: true,
         isAdmin: false,
         organization: "Kiki's Client Workspace",
+        workspaceId: 'b0000000-0000-0000-0000-000000000002',
+        slug: 'kiki',
         token: `client_kiki_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
         loginAt: new Date().toISOString(),
       };
@@ -415,6 +521,8 @@ export const AppProvider = ({ children }) => {
         isExternalClient: false,
         isAdmin: false,
         organization: 'Dhigrowth CRM',
+        workspaceId: DEFAULT_WORKSPACE_ID,
+        slug: 'sri',
         token: `dhi_sri_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
         loginAt: new Date().toISOString(),
       };
@@ -427,15 +535,20 @@ export const AppProvider = ({ children }) => {
         isExternalClient: false,
         isAdmin: true,
         organization: 'Dhigrowth CRM & Master Operations',
+        workspaceId: DEFAULT_WORKSPACE_ID,
+        slug: 'admin',
         token: `dhi_admin_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
         loginAt: new Date().toISOString(),
       };
     }
 
     setCurrentUser(session);
+    const storageKey = session.slug ? `dhigrowth_auth_session_${session.slug}` : 'dhigrowth_auth_session';
     if (remember) {
+      localStorage.setItem(storageKey, JSON.stringify(session));
       localStorage.setItem('dhigrowth_auth_session', JSON.stringify(session));
     } else {
+      sessionStorage.setItem(storageKey, JSON.stringify(session));
       sessionStorage.setItem('dhigrowth_auth_session', JSON.stringify(session));
     }
 
@@ -445,6 +558,11 @@ export const AppProvider = ({ children }) => {
 
   // Admin Profile Switching State: Admin can switch between 'sri' (CRM User) and 'kiki' (Separate Client)
   const [adminViewProfile, setAdminViewProfile] = useState('sri'); // 'sri' | 'kiki'
+
+  // Current active workspace ID (Strict Partitioning)
+  const currentWorkspaceId = currentUser?.workspaceId || (
+    adminViewProfile === 'kiki' ? 'b0000000-0000-0000-0000-000000000002' : DEFAULT_WORKSPACE_ID
+  );
 
   // Client Workspace View Mode: 'crm' (Full CRM UI with Sidebar & TeamInbox) | 'portal' (BYOK Client Suite)
   const [clientViewMode, setClientViewMode] = useState(() => {
@@ -474,12 +592,188 @@ export const AppProvider = ({ children }) => {
   };
 
   const logout = () => {
+    const slug = currentUser?.slug || urlTenantSlug;
     setCurrentUser(null);
     try {
       localStorage.removeItem('dhigrowth_auth_session');
       sessionStorage.removeItem('dhigrowth_auth_session');
+      if (slug) {
+        localStorage.removeItem(`dhigrowth_auth_session_${slug}`);
+        sessionStorage.removeItem(`dhigrowth_auth_session_${slug}`);
+      }
     } catch {}
     showToast('Signed out of workspace', 'info');
+  };
+
+  // Create New Tenant User
+  const createTenantUser = ({
+    name,
+    username,
+    email,
+    password,
+    companyName,
+    role = 'CRM User',
+    plan = 'Business',
+    permissions = {},
+  }) => {
+    const cleanUser = String(username || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    const cleanEmail = String(email || '').trim().toLowerCase();
+
+    if (!cleanUser) throw new Error('Username is required and must contain alphanumeric characters.');
+    if (!cleanEmail) throw new Error('Valid email address is required.');
+    if (!password) throw new Error('Password is required.');
+
+    const exists = tenants.some(
+      (t) => t.username?.toLowerCase() === cleanUser || t.email?.toLowerCase() === cleanEmail
+    );
+    if (exists || cleanUser === 'admin') {
+      throw new Error(`A user or tenant with username "${cleanUser}" or email "${cleanEmail}" already exists.`);
+    }
+
+    const newWorkspaceId = `b${Date.now().toString(16).padStart(7, '0')}-${Math.random().toString(16).substring(2, 6)}-${Math.random().toString(16).substring(2, 6)}-${Math.random().toString(16).substring(2, 6)}-${Math.random().toString(16).substring(2, 14)}`;
+
+    let passwordHash = '';
+    try {
+      passwordHash = bcrypt.hashSync(password, 10);
+    } catch {
+      passwordHash = password;
+    }
+
+    const defaultPerms = {
+      sendDueToAll: true,
+      teamInbox: true,
+      metaKeys: role !== 'External Client (BYOK)',
+      aiStudio: true,
+      fileManager: true,
+      invoicing: true,
+      ...permissions,
+    };
+
+    const newTenant = {
+      id: newWorkspaceId,
+      workspaceId: newWorkspaceId,
+      name: name.trim(),
+      username: cleanUser,
+      email: cleanEmail,
+      companyName: companyName?.trim() || `${name.trim()}'s Workspace`,
+      slug: cleanUser,
+      role,
+      plan,
+      isAdmin: false,
+      isExternalClient: role === 'External Client (BYOK)',
+      passwordHash,
+      password, // Saved for quick Super Admin retrieval
+      permissions: defaultPerms,
+      status: 'active',
+      createdAt: new Date().toISOString(),
+    };
+
+    const updated = [...tenants, newTenant];
+    setTenants(updated);
+    try {
+      localStorage.setItem('dhigrowth_tenants', JSON.stringify(updated));
+    } catch {}
+
+    setUserPermissions((prev) => {
+      const next = { ...prev, [cleanUser]: defaultPerms };
+      try {
+        localStorage.setItem('dhigrowth_user_permissions', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    confetti({
+      particleCount: 80,
+      spread: 60,
+      origin: { y: 0.6 },
+    });
+
+    showToast(`🎉 Tenant "${newTenant.name}" (${newTenant.companyName}) created successfully!`, 'success');
+    return newTenant;
+  };
+
+  // Delete Tenant User
+  const deleteTenantUser = (tenantId) => {
+    const target = tenants.find((t) => t.id === tenantId || t.workspaceId === tenantId);
+    if (!target) return;
+    if (target.username === 'sri' || target.username === 'admin') {
+      showToast('Core system accounts cannot be deleted.', 'error');
+      return;
+    }
+    const filtered = tenants.filter((t) => t.id !== tenantId && t.workspaceId !== tenantId);
+    setTenants(filtered);
+    try {
+      localStorage.setItem('dhigrowth_tenants', JSON.stringify(filtered));
+    } catch {}
+    showToast(`Tenant "${target.name}" removed from directory.`, 'info');
+  };
+
+  // Update Tenant User
+  const updateTenantUser = (tenantId, updates) => {
+    setTenants((prev) => {
+      const updated = prev.map((t) => {
+        if (t.id === tenantId || t.workspaceId === tenantId) {
+          const merged = { ...t, ...updates };
+          if (updates.password) {
+            try {
+              merged.passwordHash = bcrypt.hashSync(updates.password, 10);
+            } catch {}
+          }
+          return merged;
+        }
+        return t;
+      });
+      try {
+        localStorage.setItem('dhigrowth_tenants', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+    showToast('Tenant updated successfully!', 'success');
+  };
+
+  // Toggle Tenant Permission
+  const toggleTenantPermission = (identifier, permissionKey, value) => {
+    const cleanId = String(identifier || '').toLowerCase();
+    const targetTenant = tenants.find(
+      (t) => t.id === identifier || t.workspaceId === identifier || t.username?.toLowerCase() === cleanId
+    );
+    const tenantUser = targetTenant?.username?.toLowerCase() || cleanId;
+
+    setUserPermissions((prev) => {
+      const userPerms = prev[tenantUser] || { sendDueToAll: true, teamInbox: true, metaKeys: true };
+      const nextVal = value !== undefined ? value : !userPerms[permissionKey];
+      const updated = {
+        ...prev,
+        [tenantUser]: {
+          ...userPerms,
+          [permissionKey]: nextVal,
+        },
+      };
+      try {
+        localStorage.setItem('dhigrowth_user_permissions', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    setTenants((prev) => {
+      const updated = prev.map((t) => {
+        if (t.id === identifier || t.workspaceId === identifier || t.username?.toLowerCase() === cleanId) {
+          const currentP = t.permissions || {};
+          const nextVal = value !== undefined ? value : !currentP[permissionKey];
+          return {
+            ...t,
+            permissions: { ...currentP, [permissionKey]: nextVal },
+          };
+        }
+        return t;
+      });
+      try {
+        localStorage.setItem('dhigrowth_tenants', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    showToast(`Updated "${permissionKey}" for ${targetTenant?.name || tenantUser}`, 'success');
   };
 
   // Multi-Tenant User Permissions State (Admin can manage permissions for other users)
@@ -742,7 +1036,7 @@ export const AppProvider = ({ children }) => {
     const syncCloudData = async () => {
       try {
         // 1. Fetch live wallet balance
-        const walletResult = await getWalletData(DEFAULT_WORKSPACE_ID);
+        const walletResult = await getWalletData(currentWorkspaceId);
         if (walletResult?.wallet && isMounted) {
           const balance = parseFloat(walletResult.wallet.balance_usd) || 0;
           setCredits(balance);
@@ -750,7 +1044,7 @@ export const AppProvider = ({ children }) => {
         }
 
         // 2. Fetch live channels status
-        const channelsResult = await getChannels(DEFAULT_WORKSPACE_ID);
+        const channelsResult = await getChannels(currentWorkspaceId);
         if (channelsResult && channelsResult.length > 0 && isMounted) {
           const updated = { ...channels };
           channelsResult.forEach((ch) => {
@@ -766,9 +1060,9 @@ export const AppProvider = ({ children }) => {
 
         // 3. Fetch live contacts, conversations, and messages
         const [contactsResult, convsResult, msgsResult] = await Promise.all([
-          getContacts(DEFAULT_WORKSPACE_ID),
-          getConversations(DEFAULT_WORKSPACE_ID),
-          getWorkspaceMessages(DEFAULT_WORKSPACE_ID),
+          getContacts(currentWorkspaceId),
+          getConversations(currentWorkspaceId),
+          getWorkspaceMessages(currentWorkspaceId),
         ]);
 
         if (contactsResult && isMounted) {
@@ -887,7 +1181,7 @@ export const AppProvider = ({ children }) => {
     window.addEventListener('focus', handleFocus);
 
     // 5. Subscribe to Real-Time Inbound Messages
-    const subscription = subscribeToNewMessages(DEFAULT_WORKSPACE_ID, (newMsg) => {
+    const subscription = subscribeToNewMessages(currentWorkspaceId, (newMsg) => {
       if (!isMounted) return;
       const formatted = {
         id: newMsg.id,
@@ -924,7 +1218,7 @@ export const AppProvider = ({ children }) => {
         subscription.unsubscribe();
       }
     };
-  }, []);
+  }, [currentWorkspaceId]);
 
   // Toast Helper
   const showToast = (message, type = 'success') => {
@@ -1168,7 +1462,7 @@ export const AppProvider = ({ children }) => {
               ...(updatedData.attributes || {}),
             },
           },
-          DEFAULT_WORKSPACE_ID,
+          currentWorkspaceId,
           targetChat?.phone
         );
       } catch (err) {
@@ -1210,7 +1504,7 @@ export const AppProvider = ({ children }) => {
     // 1. Delete from Supabase if configured
     if (isSupabaseConfigured) {
       try {
-        await deleteDbContact(contactId, DEFAULT_WORKSPACE_ID, targetChat?.phone);
+        await deleteDbContact(contactId, currentWorkspaceId, targetChat?.phone);
       } catch (err) {
         console.warn('Supabase delete contact notice:', err);
       }
@@ -1347,12 +1641,18 @@ export const AppProvider = ({ children }) => {
         userPermissions,
         updateUserPermission,
         hasPermission,
-        aiConfig,
-        setAiConfig,
         saveAiConfig,
         testAiConfig,
         fetchAiConfig,
         isAiConfigLoading,
+        // Multi-Tenant Super Admin state & handlers
+        tenants,
+        createTenantUser,
+        deleteTenantUser,
+        updateTenantUser,
+        toggleTenantPermission,
+        currentWorkspaceId,
+        urlTenantSlug,
       }}
     >
       {children}

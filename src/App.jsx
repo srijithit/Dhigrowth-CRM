@@ -39,6 +39,7 @@ import { MetaApiSettings } from './components/settings/MetaApiSettings';
 import { ClientPortal } from './components/portal/ClientPortal';
 import { AdminTopBar } from './components/layout/AdminTopBar';
 import { BroadcastDueModal } from './components/inbox/BroadcastDueModal';
+import { SuperAdminTenantsPage } from './components/admin/SuperAdminTenantsPage';
 
 const AppContent = () => {
   const {
@@ -149,6 +150,10 @@ const AppContent = () => {
         return <LeadsCrm />;
       case 'capi':
         return <MetaCapiEvents />;
+      case 'super-admin':
+      case 'tenants':
+      case 'tenant-management':
+        return <SuperAdminTenantsPage />;
       default:
         return <DashboardOverview />;
     }

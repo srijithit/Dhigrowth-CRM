@@ -25,6 +25,8 @@ import {
   Crown,
   LogOut,
   Key,
+  Users,
+  ShieldCheck,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -126,6 +128,16 @@ export const Sidebar = () => {
         { id: 'apps', label: 'Apps', icon: Grid, hasArrow: false, hasDot: false },
       ],
     },
+    ...(currentUser?.isAdmin
+      ? [
+          {
+            title: 'SUPER ADMIN',
+            items: [
+              { id: 'super-admin', label: 'Tenants & Users', icon: Users, hasArrow: false, hasDot: true },
+            ],
+          },
+        ]
+      : []),
     {
       title: 'ACCOUNT',
       items: [

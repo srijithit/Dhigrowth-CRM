@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "vite",
+    "dev:tenant2": "vite --port 5174",
     "server": "node server/index.js",
     "build": "vite build",
     "lint": "oxlint",
