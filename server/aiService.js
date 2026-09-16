@@ -343,8 +343,15 @@ export const generateAIResponse = async ({
           });
 
           if (isMatch) {
-            console.log(`🎯 Matched Custom Template: "${tmpl.name}" for trigger in query: "${query}"`);
-            return tmpl.body_text;
+            const imageUrl = (tmpl.header_type === 'IMAGE' || tmpl.header_content) ? tmpl.header_content : null;
+            console.log(`🎯 Matched Custom Template: "${tmpl.name}" for trigger in query: "${query}" (Media: ${imageUrl || 'None'})`);
+            return {
+              reply: tmpl.body_text,
+              imageUrl,
+              templateId: tmpl.id,
+              templateName: tmpl.name,
+              toString: () => tmpl.body_text,
+            };
           }
         }
       }

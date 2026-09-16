@@ -83,11 +83,12 @@ export const handleInboundWebhook = async (req, res) => {
         messageText,
         externalMessageId: message.id,
         channelId: 'd0000000-0000-0000-0000-000000000001',
-        sendReply: async (replyText) => {
+        sendReply: async (replyText, imageUrl) => {
           return sendWhatsAppMessage({
             phoneNumberId,
             recipientPhone: senderPhone,
             text: replyText,
+            imageUrl,
           });
         },
       });
@@ -270,18 +271,21 @@ async function processIncomingChatMessage({
 
     // 4. Generate AI Concierge Response
     console.log('🤖 Dhigrowth AI Concierge is generating response...');
-    const aiResponseText = await generateAIResponse({
+    const aiResult = await generateAIResponse({
       customerName,
       customerMessage: messageText,
       channelType,
     });
 
-    console.log(`💬 AI Reply: "${aiResponseText}"`);
+    const aiResponseText = typeof aiResult === 'object' && aiResult.reply ? aiResult.reply : String(aiResult);
+    const aiImageUrl = typeof aiResult === 'object' && aiResult.imageUrl ? aiResult.imageUrl : null;
+
+    console.log(`💬 AI Reply: "${aiResponseText.slice(0, 80)}..." ${aiImageUrl ? `(Image: ${aiImageUrl})` : ''}`);
 
     // 5. Dispatch reply via Meta Graph API
     if (sendReply) {
       try {
-        await sendReply(aiResponseText);
+        await sendReply(aiResponseText, aiImageUrl);
         console.log(`📤 Outbound reply dispatched via Meta ${channelType.toUpperCase()} API.`);
       } catch (err) {
         console.warn(`[WebhookHandler] Could not dispatch live outbound reply:`, err.message);
@@ -296,8 +300,9 @@ async function processIncomingChatMessage({
         channel_id: channelId,
         direction: 'outbound',
         ai_generated: true,
-        type: 'text',
+        type: aiImageUrl ? 'image' : 'text',
         content: aiResponseText,
+        media_url: aiImageUrl || null,
         status: 'delivered',
       },
     ]);

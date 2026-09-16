@@ -633,12 +633,14 @@ const handleAiGenerate = async (req, res) => {
     if (!customerMessage) {
       return res.status(400).json({ success: false, error: 'customerMessage is required' });
     }
-    const reply = await generateAIResponse({
+    const result = await generateAIResponse({
       customerName,
       customerMessage,
       channelType,
     });
-    res.json({ success: true, reply });
+    const replyText = typeof result === 'object' && result.reply ? result.reply : String(result);
+    const imageUrl = typeof result === 'object' && result.imageUrl ? result.imageUrl : null;
+    res.json({ success: true, reply: replyText, imageUrl });
   } catch (err) {
     console.error('[AI Generate Route Error]:', err);
     res.status(500).json({ success: false, error: err.message });

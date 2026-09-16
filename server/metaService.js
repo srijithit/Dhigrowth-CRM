@@ -13,6 +13,7 @@ export const sendWhatsAppMessage = async ({
   accessToken,
   recipientPhone,
   text,
+  imageUrl,
 }) => {
   const token = accessToken || process.env.META_WHATSAPP_ACCESS_TOKEN;
   const phoneId = phoneNumberId || process.env.META_WHATSAPP_PHONE_NUMBER_ID;
@@ -23,6 +24,7 @@ export const sendWhatsAppMessage = async ({
       simulated: true,
       recipient: recipientPhone,
       text,
+      imageUrl,
       timestamp: new Date().toISOString(),
     };
   }
@@ -30,22 +32,35 @@ export const sendWhatsAppMessage = async ({
   // Sanitize phone number (strip + and spaces)
   const cleanPhone = recipientPhone.replace(/[^0-9]/g, '');
 
+  const payload = imageUrl
+    ? {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: cleanPhone,
+        type: 'image',
+        image: {
+          link: imageUrl,
+          caption: text || '',
+        },
+      }
+    : {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: cleanPhone,
+        type: 'text',
+        text: {
+          preview_url: false,
+          body: text,
+        },
+      };
+
   const response = await fetch(`${GRAPH_BASE_URL}/${phoneId}/messages`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      messaging_product: 'whatsapp',
-      recipient_type: 'individual',
-      to: cleanPhone,
-      type: 'text',
-      text: {
-        preview_url: false,
-        body: text,
-      },
-    }),
+    body: JSON.stringify(payload),
   });
 
   const data = await response.json();

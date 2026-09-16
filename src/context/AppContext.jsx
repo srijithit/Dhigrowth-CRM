@@ -983,6 +983,7 @@ export const AppProvider = ({ children }) => {
       const activeChatObj = chats.find((c) => c.id === activeChatId);
       (async () => {
         let reply = '';
+        let imageUrl = null;
         try {
           let res;
           try {
@@ -1015,6 +1016,7 @@ export const AppProvider = ({ children }) => {
             const data = await res.json();
             if (data.success && data.reply) {
               reply = data.reply;
+              imageUrl = data.imageUrl || null;
             }
           }
         } catch (e) {
@@ -1029,6 +1031,7 @@ export const AppProvider = ({ children }) => {
           id: `ai-${Date.now()}`,
           sender: 'ai',
           text: reply,
+          media_url: imageUrl || null,
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
 

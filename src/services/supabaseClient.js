@@ -335,6 +335,8 @@ export const createTemplate = async ({
   footer_text = '',
   category = 'utility',
   status = 'approved',
+  header_type = null,
+  header_content = null,
   workspaceId = DEFAULT_WORKSPACE_ID,
 }) => {
   if (!supabase) return null;
@@ -347,6 +349,8 @@ export const createTemplate = async ({
         category,
         language: 'en_US',
         status,
+        header_type,
+        header_content,
         body_text,
         footer_text,
       },

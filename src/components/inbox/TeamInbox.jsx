@@ -1103,6 +1103,19 @@ export const TeamInbox = () => {
                       </div>
                     )}
 
+                    {/* Image Attachment (WhatsApp Media Header) */}
+                    {Boolean(msg.media_url || msg.mediaUrl || msg.imageUrl) && (
+                      <div className="mb-2 rounded-xl overflow-hidden border border-black/5 max-w-sm">
+                        <img
+                          src={msg.media_url || msg.mediaUrl || msg.imageUrl}
+                          alt="Media Attachment"
+                          className="w-full h-auto max-h-52 object-cover cursor-pointer hover:opacity-95 transition-opacity"
+                          onClick={() => window.open(msg.media_url || msg.mediaUrl || msg.imageUrl, '_blank')}
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      </div>
+                    )}
+
                     <p className="whitespace-pre-line">{text}</p>
                   </div>
                 )}

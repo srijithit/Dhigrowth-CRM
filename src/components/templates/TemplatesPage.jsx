@@ -22,7 +22,9 @@ import {
   CheckCheck,
   Bot,
   Tag,
-  Loader2
+  Loader2,
+  Image as ImageIcon,
+  Eye,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import {
@@ -33,12 +35,22 @@ import {
   DEFAULT_WORKSPACE_ID
 } from '../../services/supabaseClient';
 
+export const PRESET_HEADER_IMAGES = [
+  { label: '📱 App Tech', url: 'https://images.unsplash.com/photo-1551650975-87deedd944c3?w=800&auto=format&fit=crop&q=80' },
+  { label: '🤖 AI & Automation', url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80' },
+  { label: '💬 WhatsApp CRM', url: 'https://images.unsplash.com/photo-1577563908411-5077b6dc7624?w=800&auto=format&fit=crop&q=80' },
+  { label: '🚀 Business Growth', url: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&auto=format&fit=crop&q=80' },
+  { label: '🎟️ Offers & Promo', url: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=800&auto=format&fit=crop&q=80' },
+];
+
 const DEFAULT_TEMPLATES = [
   {
     id: 't-welcome',
     name: 'Welcome Greeting (Hi / Hello)',
     category: 'utility',
     status: 'approved',
+    header_type: 'IMAGE',
+    header_content: 'https://images.unsplash.com/photo-1577563908411-5077b6dc7624?w=800&auto=format&fit=crop&q=80',
     footer_text: 'hi, hello, hey, start, menu, help',
     body_text: `Hello! 👋 Welcome to **DhiGrowth IT Services**.
 
@@ -57,6 +69,8 @@ Tell us what your business needs, and let’s build something powerful together!
     name: 'App Development Inquiry',
     category: 'utility',
     status: 'approved',
+    header_type: 'IMAGE',
+    header_content: 'https://images.unsplash.com/photo-1551650975-87deedd944c3?w=800&auto=format&fit=crop&q=80',
     footer_text: 'app, mobile, android, ios, flutter, react native',
     body_text: `📱 **DhiGrowth App Development**
 
@@ -73,6 +87,8 @@ Would you like to discuss your project requirements or see a quick demo? 🚀`,
     name: 'AI Business Solutions & Automation',
     category: 'utility',
     status: 'approved',
+    header_type: 'IMAGE',
+    header_content: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80',
     footer_text: 'ai, bot, automation, agent, workflow',
     body_text: `🤖 **AI Business Solutions & Development**
 
@@ -89,6 +105,8 @@ Would you like a demo of how AI can automate your business tasks? ✨`,
     name: 'WhatsApp CRM & Marketing',
     category: 'utility',
     status: 'approved',
+    header_type: null,
+    header_content: null,
     footer_text: 'whatsapp, crm, broadcast, marketing, lead',
     body_text: `💬 **WhatsApp CRM & Automation**
 
@@ -105,6 +123,8 @@ Ready to convert leads faster on WhatsApp? Let’s connect! 📈`,
     name: 'Custom IT & Software Solutions',
     category: 'utility',
     status: 'approved',
+    header_type: null,
+    header_content: null,
     footer_text: 'website, web, software, it solution, portal',
     body_text: `💻 **Custom IT & Software Solutions**
 
@@ -121,6 +141,8 @@ Share your project requirements, and we'll prepare a custom roadmap for you! �
     name: 'Pricing & Consultation Quote',
     category: 'utility',
     status: 'approved',
+    header_type: null,
+    header_content: null,
     footer_text: 'price, cost, quote, rate, pricing, package',
     body_text: `💼 **Project Pricing & Consultation**
 
@@ -149,11 +171,14 @@ export const TemplatesPage = () => {
   const [formName, setFormName] = useState('');
   const [formTriggers, setFormTriggers] = useState('');
   const [formCategory, setFormCategory] = useState('utility');
+  const [formHeaderType, setFormHeaderType] = useState('NONE'); // 'NONE' | 'IMAGE'
+  const [formImageUrl, setFormImageUrl] = useState('');
   const [formBody, setFormBody] = useState('');
 
   // Interactive Live Simulator State
   const [testInput, setTestInput] = useState('hi');
   const [simulatedReply, setSimulatedReply] = useState('');
+  const [simulatedImage, setSimulatedImage] = useState(null);
   const [isSimulating, setIsSimulating] = useState(false);
 
   // Load from Supabase on mount
@@ -182,6 +207,8 @@ export const TemplatesPage = () => {
     setFormName('');
     setFormTriggers('');
     setFormCategory('utility');
+    setFormHeaderType('NONE');
+    setFormImageUrl('');
     setFormBody('');
     setIsCreateModalOpen(true);
   };
@@ -191,6 +218,9 @@ export const TemplatesPage = () => {
     setFormName(template.name);
     setFormTriggers(template.footer_text || '');
     setFormCategory(template.category || 'utility');
+    const hasImg = template.header_type === 'IMAGE' || Boolean(template.header_content);
+    setFormHeaderType(hasImg ? 'IMAGE' : 'NONE');
+    setFormImageUrl(template.header_content || '');
     setFormBody(template.body_text || '');
   };
 
@@ -202,6 +232,10 @@ export const TemplatesPage = () => {
     }
 
     setIsSaving(true);
+    const hasImage = formHeaderType === 'IMAGE' && Boolean(formImageUrl.trim());
+    const headerType = hasImage ? 'IMAGE' : null;
+    const headerContent = hasImage ? formImageUrl.trim() : null;
+
     try {
       const created = await createTemplate({
         name: formName.trim(),
@@ -209,6 +243,8 @@ export const TemplatesPage = () => {
         footer_text: formTriggers.trim(),
         category: formCategory,
         status: 'approved',
+        header_type: headerType,
+        header_content: headerContent,
       });
 
       const newTmpl = created || {
@@ -218,6 +254,8 @@ export const TemplatesPage = () => {
         footer_text: formTriggers.trim(),
         category: formCategory,
         status: 'approved',
+        header_type: headerType,
+        header_content: headerContent,
       };
 
       setTemplates((prev) => [newTmpl, ...prev]);
@@ -233,6 +271,8 @@ export const TemplatesPage = () => {
         footer_text: formTriggers.trim(),
         category: formCategory,
         status: 'approved',
+        header_type: headerType,
+        header_content: headerContent,
       };
       setTemplates((prev) => [localTmpl, ...prev]);
       setIsCreateModalOpen(false);
@@ -247,12 +287,18 @@ export const TemplatesPage = () => {
     if (!editingTemplate || !formName.trim() || !formBody.trim()) return;
 
     setIsSaving(true);
+    const hasImage = formHeaderType === 'IMAGE' && Boolean(formImageUrl.trim());
+    const headerType = hasImage ? 'IMAGE' : null;
+    const headerContent = hasImage ? formImageUrl.trim() : null;
+
     try {
       await updateTemplate(editingTemplate.id, {
         name: formName.trim(),
         body_text: formBody.trim(),
         footer_text: formTriggers.trim(),
         category: formCategory,
+        header_type: headerType,
+        header_content: headerContent,
       });
 
       setTemplates((prev) =>
@@ -264,6 +310,8 @@ export const TemplatesPage = () => {
                 body_text: formBody.trim(),
                 footer_text: formTriggers.trim(),
                 category: formCategory,
+                header_type: headerType,
+                header_content: headerContent,
               }
             : t
         )
@@ -345,9 +393,11 @@ export const TemplatesPage = () => {
 
       if (matched) {
         setSimulatedReply(matched.body_text);
+        setSimulatedImage(matched.header_content || null);
       } else {
+        setSimulatedImage(null);
         setSimulatedReply(
-          `Thank you for reaching out! 🙏 Our DhiGrowth IT Services team has received your message: "${query}". How can our AI Business Concierge assist you today? 🤖`
+          `Hello! 👋 DhiGrowth AI Concierge is ready to help you with "${query}". Tell us what your business needs, and let's build something powerful together! 🚀`
         );
       }
       setIsSimulating(false);
@@ -520,7 +570,17 @@ export const TemplatesPage = () => {
 
               {/* Bot Response Bubble */}
               <div className="flex flex-col items-start mr-auto max-w-[92%]">
-                <div className="bg-white text-[#111B21] p-3 rounded-2xl rounded-tl-xs text-xs shadow-xs leading-relaxed space-y-1">
+                <div className="bg-white text-[#111B21] p-3 rounded-2xl rounded-tl-xs text-xs shadow-xs leading-relaxed space-y-2">
+                  {Boolean(welcomeTemplate.header_content) && (
+                    <div className="rounded-xl overflow-hidden -mx-1 -mt-1 border border-black/5">
+                      <img
+                        src={welcomeTemplate.header_content}
+                        alt="Header Banner"
+                        className="w-full h-32 object-cover"
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      />
+                    </div>
+                  )}
                   <p className="whitespace-pre-line text-xs">{welcomeTemplate.body_text}</p>
                   <div className="flex justify-end items-center text-[9px] text-gray-400 font-mono pt-1">
                     <span>1:45 PM</span>
@@ -584,12 +644,22 @@ export const TemplatesPage = () => {
         </div>
 
         {simulatedReply && (
-          <div className="p-3.5 rounded-2xl bg-[#F4F0FD] border border-[#E9D8FD] text-xs text-[#101828] leading-relaxed whitespace-pre-line animate-in fade-in">
-            <div className="flex items-center gap-1.5 text-[10px] font-mono text-[#7C3AED] font-bold mb-1.5">
+          <div className="p-3.5 rounded-2xl bg-[#F4F0FD] border border-[#E9D8FD] text-xs text-[#101828] leading-relaxed space-y-2 animate-in fade-in">
+            <div className="flex items-center gap-1.5 text-[10px] font-mono text-[#7C3AED] font-bold">
               <Bot className="w-3 h-3 text-[#7C3AED]" />
               <span>Simulated Auto-Pilot Output for "{testInput}":</span>
             </div>
-            {simulatedReply}
+            {simulatedImage && (
+              <div className="max-w-xs rounded-xl overflow-hidden border border-[#E9D8FD]">
+                <img
+                  src={simulatedImage}
+                  alt="Template Media Header"
+                  className="w-full h-32 object-cover"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
+              </div>
+            )}
+            <p className="whitespace-pre-line">{simulatedReply}</p>
           </div>
         )}
       </div>
@@ -642,14 +712,38 @@ export const TemplatesPage = () => {
           return (
             <div
               key={template.id}
-              className="bg-white border border-[#EAECF0] hover:border-[#7C3AED]/40 rounded-3xl p-5 shadow-xs flex flex-col justify-between transition-all hover:shadow-md space-y-4 group"
+              className="bg-white border border-[#EAECF0] hover:border-[#7C3AED]/40 rounded-3xl p-5 shadow-xs flex flex-col justify-between transition-all hover:shadow-md space-y-4 group overflow-hidden"
             >
               <div className="space-y-3">
+                {/* Header Image Banner if attached */}
+                {Boolean(template.header_content) && (
+                  <div className="relative -mx-5 -mt-5 mb-3 h-28 overflow-hidden rounded-t-3xl border-b border-[#EAECF0] bg-gray-100">
+                    <img
+                      src={template.header_content}
+                      alt={template.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                    <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold font-mono flex items-center gap-1 shadow-xs">
+                      <ImageIcon className="w-3 h-3 text-emerald-400" />
+                      <span>IMAGE HEADER</span>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-start justify-between gap-2">
                   <div className="space-y-1 min-w-0">
-                    <span className="px-2 py-0.5 rounded-full bg-[#F4F0FD] text-[#7C3AED] text-[10px] font-bold font-mono uppercase">
-                      {template.category || 'Utility'}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="px-2 py-0.5 rounded-full bg-[#F4F0FD] text-[#7C3AED] text-[10px] font-bold font-mono uppercase">
+                        {template.category || 'Utility'}
+                      </span>
+                      {Boolean(template.header_content) && (
+                        <span className="px-2 py-0.5 rounded-full bg-[#ECFDF5] text-[#059669] text-[10px] font-bold font-mono uppercase flex items-center gap-1">
+                          <ImageIcon className="w-2.5 h-2.5" />
+                          <span>Image</span>
+                        </span>
+                      )}
+                    </div>
                     <h4 className="text-sm font-bold text-[#101828] truncate group-hover:text-[#7C3AED] transition-colors">
                       {template.name}
                     </h4>
@@ -795,6 +889,105 @@ export const TemplatesPage = () => {
                 </div>
               </div>
 
+              {/* Header Media (Text vs Image) */}
+              <div className="p-3.5 bg-[#F9FAFB] border border-[#EAECF0] rounded-2xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <ImageIcon className="w-4 h-4 text-[#7C3AED]" />
+                    <label className="text-xs font-bold text-[#344054]">
+                      Header Media (Optional Image Attachment)
+                    </label>
+                  </div>
+                  <span className="text-[10px] font-mono text-[#16A34A] bg-[#DCFCE7] px-2 py-0.5 rounded-full font-bold">
+                    Official WhatsApp Supported
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormHeaderType('NONE');
+                      setFormImageUrl('');
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      formHeaderType === 'NONE'
+                        ? 'bg-white border border-[#EAECF0] text-[#101828] shadow-xs ring-1 ring-[#EAECF0]'
+                        : 'text-[#667085] hover:text-[#101828]'
+                    }`}
+                  >
+                    Text Only
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormHeaderType('IMAGE')}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      formHeaderType === 'IMAGE'
+                        ? 'bg-[#7C3AED] text-white shadow-xs'
+                        : 'text-[#667085] hover:text-[#101828] bg-white border border-[#EAECF0]'
+                    }`}
+                  >
+                    <ImageIcon className="w-3.5 h-3.5" />
+                    <span>Attach Image</span>
+                  </button>
+                </div>
+
+                {formHeaderType === 'IMAGE' && (
+                  <div className="space-y-2 pt-2 border-t border-[#EAECF0] animate-in fade-in">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-semibold text-[#475467]">
+                        Image Public URL (JPG, PNG, WebP)
+                      </label>
+                      {formImageUrl && (
+                        <span className="text-[10px] text-[#16A34A] font-bold">✓ Attached</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="url"
+                        placeholder="https://example.com/banner.png"
+                        value={formImageUrl}
+                        onChange={(e) => setFormImageUrl(e.target.value)}
+                        className="flex-1 bg-white border border-[#EAECF0] px-3.5 py-2 rounded-xl text-xs text-[#101828] focus:outline-none focus:border-[#7C3AED]"
+                      />
+                      {formImageUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setFormImageUrl('')}
+                          className="p-2 text-[#98A2B3] hover:text-[#DC2626] rounded-xl hover:bg-white cursor-pointer"
+                          title="Clear Image"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Quick Image Presets */}
+                    <div className="space-y-1 pt-1">
+                      <span className="text-[10px] text-[#98A2B3] font-mono font-bold uppercase">
+                        Quick Preset Banners:
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {PRESET_HEADER_IMAGES.map((preset) => (
+                          <button
+                            key={preset.label}
+                            type="button"
+                            onClick={() => setFormImageUrl(preset.url)}
+                            className={`px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-all cursor-pointer ${
+                              formImageUrl === preset.url
+                                ? 'bg-[#F4F0FD] border-[#7C3AED] text-[#7C3AED] font-bold'
+                                : 'bg-white border-[#EAECF0] hover:border-[#7C3AED] text-[#344054]'
+                            }`}
+                          >
+                            {preset.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-xs font-semibold text-[#344054]">
@@ -805,7 +998,7 @@ export const TemplatesPage = () => {
                   </span>
                 </div>
                 <textarea
-                  rows={8}
+                  rows={6}
                   placeholder="Write the exact message WhatsApp should send back..."
                   value={formBody}
                   onChange={(e) => setFormBody(e.target.value)}
@@ -815,14 +1008,27 @@ export const TemplatesPage = () => {
               </div>
 
               {/* Live Preview */}
-              {formBody && (
+              {(formBody || (formHeaderType === 'IMAGE' && formImageUrl)) && (
                 <div className="p-3.5 rounded-2xl bg-[#EFEAE2] border border-[#D1D5DB] space-y-1.5">
                   <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-[#16A34A]">
                     <Smartphone className="w-3 h-3" />
                     <span>WhatsApp Live Customer Bubble Preview:</span>
                   </div>
-                  <div className="bg-white p-3 rounded-2xl text-xs text-[#111B21] shadow-xs whitespace-pre-line leading-relaxed">
-                    {formBody}
+                  <div className="bg-white p-3 rounded-2xl text-xs text-[#111B21] shadow-xs leading-relaxed space-y-2 max-w-sm">
+                    {formHeaderType === 'IMAGE' && formImageUrl.trim() && (
+                      <div className="rounded-xl overflow-hidden -mx-1 -mt-1 border border-black/5 max-h-48">
+                        <img
+                          src={formImageUrl.trim()}
+                          alt="Template Header Media"
+                          className="w-full h-full object-cover"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      </div>
+                    )}
+                    <p className="whitespace-pre-line text-xs">{formBody || 'Type your message above...'}</p>
+                    <div className="flex justify-end items-center text-[9px] text-gray-400 font-mono pt-1">
+                      <span>1:45 PM</span>
+                    </div>
                   </div>
                 </div>
               )}
