@@ -681,23 +681,6 @@ function loadTenants() {
       status: 'active',
       createdAt: '2026-09-10T00:00:00.000Z',
     },
-    {
-      id: 'b0000000-0000-0000-0000-000000000002',
-      workspaceId: 'b0000000-0000-0000-0000-000000000002',
-      name: 'Kiki',
-      username: 'kiki',
-      email: 'kiki@client-org.com',
-      companyName: "Kiki's Client Workspace",
-      slug: 'kiki',
-      role: 'External Client (BYOK)',
-      plan: 'Pro Plan',
-      isAdmin: false,
-      isExternalClient: true,
-      password: 'kiki123',
-      permissions: { sendDueToAll: true, teamInbox: true, metaKeys: false, aiStudio: false, fileManager: false, invoicing: true },
-      status: 'active',
-      createdAt: '2026-09-11T00:00:00.000Z',
-    },
   ];
 }
 

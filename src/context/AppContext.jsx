@@ -43,30 +43,6 @@ export const SEED_TENANTS = [
     status: 'active',
     createdAt: '2026-09-11T00:00:00.000Z',
   },
-  {
-    id: 'b0000000-0000-0000-0000-000000000002',
-    workspaceId: 'b0000000-0000-0000-0000-000000000002',
-    name: 'Kiki',
-    username: 'kiki',
-    email: 'kiki@client-org.com',
-    companyName: "Kiki's Client Workspace",
-    slug: 'kiki',
-    role: 'External Client (BYOK)',
-    plan: 'Pro',
-    isAdmin: false,
-    isExternalClient: true,
-    passwordHash: '$2a$10$fV3Mh4n185/pY5e9rT7uAOK0x6.e6k2vR7p0w9u3b0o4i5u7y9k0e', // kiki123
-    permissions: {
-      sendDueToAll: true,
-      teamInbox: true,
-      metaKeys: false,
-      aiStudio: false,
-      fileManager: false,
-      invoicing: true,
-    },
-    status: 'active',
-    createdAt: '2026-09-11T00:00:00.000Z',
-  },
 ];
 
 const AppContext = createContext();
@@ -88,17 +64,16 @@ export const AppProvider = ({ children }) => {
   // Multi-Tenant Directory State
   const [tenants, setTenants] = useState(() => {
     try {
+      const savedDeleted = localStorage.getItem('dhigrowth_deleted_tenants');
+      const deletedIds = savedDeleted ? JSON.parse(savedDeleted) : [];
+
       const saved = localStorage.getItem('dhigrowth_tenants');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const merged = [...SEED_TENANTS];
-          parsed.forEach((pt) => {
-            if (!merged.some((m) => m.username === pt.username || m.id === pt.id)) {
-              merged.push(pt);
-            }
-          });
-          return merged;
+          return parsed.filter(
+            (t) => !deletedIds.includes(t.id) && !deletedIds.includes(t.username?.toLowerCase())
+          );
         }
       }
     } catch {}
@@ -414,9 +389,19 @@ export const AppProvider = ({ children }) => {
       if (res && res.ok) {
         const data = await res.json();
         if (data?.tenants && Array.isArray(data.tenants)) {
+          const savedDeleted = localStorage.getItem('dhigrowth_deleted_tenants');
+          const deletedIds = savedDeleted ? JSON.parse(savedDeleted) : [];
+
           setTenants((prev) => {
             const merged = [...prev];
             data.tenants.forEach((ct) => {
+              if (
+                deletedIds.includes(ct.id) ||
+                deletedIds.includes(ct.workspaceId) ||
+                deletedIds.includes(ct.username?.toLowerCase())
+              ) {
+                return;
+              }
               const idx = merged.findIndex(
                 (m) => m.id === ct.id || m.username?.toLowerCase() === ct.username?.toLowerCase()
               );
@@ -426,10 +411,16 @@ export const AppProvider = ({ children }) => {
                 merged.push(ct);
               }
             });
+            const filtered = merged.filter(
+              (t) =>
+                !deletedIds.includes(t.id) &&
+                !deletedIds.includes(t.workspaceId) &&
+                !deletedIds.includes(t.username?.toLowerCase())
+            );
             try {
-              localStorage.setItem('dhigrowth_tenants', JSON.stringify(merged));
+              localStorage.setItem('dhigrowth_tenants', JSON.stringify(filtered));
             } catch {}
-            return merged;
+            return filtered;
           });
         }
       }
@@ -784,16 +775,41 @@ export const AppProvider = ({ children }) => {
 
   // Delete Tenant User
   const deleteTenantUser = (tenantId) => {
-    const target = tenants.find((t) => t.id === tenantId || t.workspaceId === tenantId);
+    const cleanId = String(tenantId || '').toLowerCase();
+    const target = tenants.find(
+      (t) => t.id === tenantId || t.workspaceId === tenantId || t.username?.toLowerCase() === cleanId
+    );
     if (!target) return;
-    if (target.username === 'sri' || target.username === 'admin') {
+    if (target.username?.toLowerCase() === 'sri' || target.username?.toLowerCase() === 'admin') {
       showToast('Core system accounts cannot be deleted.', 'error');
       return;
     }
-    const filtered = tenants.filter((t) => t.id !== tenantId && t.workspaceId !== tenantId);
+
+    // Permanently record in deleted tenants list so it is never restored
+    try {
+      const savedDeleted = localStorage.getItem('dhigrowth_deleted_tenants');
+      const deletedIds = savedDeleted ? JSON.parse(savedDeleted) : [];
+      if (target.id && !deletedIds.includes(target.id)) deletedIds.push(target.id);
+      if (target.workspaceId && !deletedIds.includes(target.workspaceId)) deletedIds.push(target.workspaceId);
+      if (target.username && !deletedIds.includes(target.username.toLowerCase())) {
+        deletedIds.push(target.username.toLowerCase());
+      }
+      localStorage.setItem('dhigrowth_deleted_tenants', JSON.stringify(deletedIds));
+    } catch {}
+
+    const filtered = tenants.filter(
+      (t) =>
+        t.id !== target.id &&
+        t.workspaceId !== target.workspaceId &&
+        t.username?.toLowerCase() !== target.username?.toLowerCase()
+    );
     setTenants(filtered);
     try {
       localStorage.setItem('dhigrowth_tenants', JSON.stringify(filtered));
+      if (target.username) {
+        localStorage.removeItem(`dhigrowth_auth_session_${target.username.toLowerCase()}`);
+        sessionStorage.removeItem(`dhigrowth_auth_session_${target.username.toLowerCase()}`);
+      }
     } catch {}
 
     // Cloud delete from Render backend
@@ -803,7 +819,7 @@ export const AppProvider = ({ children }) => {
       });
     } catch {}
 
-    showToast(`Tenant "${target.name}" removed from directory.`, 'info');
+    showToast(`Tenant "${target.name}" deleted permanently.`, 'info');
   };
 
   // Update Tenant User
