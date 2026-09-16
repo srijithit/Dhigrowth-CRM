@@ -184,16 +184,6 @@ export const Header = () => {
                   >
                     Subscription & Plans
                   </button>
-
-                  <button
-                    onClick={() => {
-                      showToast('Switched to Production Sandbox', 'info');
-                      setIsWorkspaceDropdownOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2 text-xs text-[#344054] hover:bg-[#F4F0FD] hover:text-[#7C3AED] rounded-xl font-medium cursor-pointer transition-colors"
-                  >
-                    Switch Environment
-                  </button>
                 </>
               )}
 
