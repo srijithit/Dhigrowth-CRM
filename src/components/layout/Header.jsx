@@ -6,8 +6,10 @@ export const Header = () => {
   const {
     credits,
     activeTab,
+    setActiveTab,
     setIsSearchOpen,
     setIsUpgradeModalOpen,
+    setIsUsageModalOpen,
     isWorkspaceDropdownOpen,
     setIsWorkspaceDropdownOpen,
     showToast,
