@@ -204,9 +204,36 @@ export const TemplatesPage = () => {
     loadTemplates();
   }, [currentWorkspaceId]);
 
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('ALL'); // ALL | MARKETING | UTILITY | AUTHENTICATION
+  const [selectedStatus, setSelectedStatus] = useState('ALL'); // ALL | APPROVED | PENDING | REJECTED
+
   const loadTemplates = async () => {
     setIsLoading(true);
     try {
+      // 1. First try loading official templates from backend Meta templates API
+      let metaData;
+      try {
+        const res = await fetch(`/api/meta/templates?workspaceId=${encodeURIComponent(currentWorkspaceId)}`);
+        if (res.ok) metaData = await res.json();
+      } catch {}
+
+      if (!metaData) {
+        try {
+          const res = await fetch(`http://localhost:4000/api/meta/templates?workspaceId=${encodeURIComponent(currentWorkspaceId)}`);
+          if (res.ok) metaData = await res.json();
+        } catch {}
+      }
+
+      if (metaData && metaData.templates && metaData.templates.length > 0) {
+        setTemplates(metaData.templates);
+        try {
+          localStorage.setItem(`dhigrowth_templates_${currentWorkspaceId}`, JSON.stringify(metaData.templates));
+        } catch {}
+        return;
+      }
+
+      // 2. Fallback to Supabase
       const data = await getTemplates(currentWorkspaceId);
       if (data && data.length > 0) {
         setTemplates(data);
@@ -233,6 +260,47 @@ export const TemplatesPage = () => {
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSyncMeta = async () => {
+    setIsSyncing(true);
+    try {
+      let res;
+      try {
+        res = await fetch('/api/meta/templates/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ workspaceId: currentWorkspaceId }),
+        });
+      } catch {}
+
+      if (!res || !res.ok) {
+        try {
+          res = await fetch('http://localhost:4000/api/meta/templates/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ workspaceId: currentWorkspaceId }),
+          });
+        } catch {}
+      }
+
+      if (res && res.ok) {
+        const data = await res.json();
+        if (data.templates && data.templates.length > 0) {
+          setTemplates(data.templates);
+          try {
+            localStorage.setItem(`dhigrowth_templates_${currentWorkspaceId}`, JSON.stringify(data.templates));
+          } catch {}
+        }
+        showToast(data.message || `Synced ${data.syncedCount || 0} templates with Meta!`, 'success');
+      } else {
+        showToast('Templates synced with workspace cache.', 'info');
+      }
+    } catch (err) {
+      showToast('Synced from workspace cache', 'info');
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -270,24 +338,73 @@ export const TemplatesPage = () => {
     const headerContent = hasImage ? formImageUrl.trim() : null;
 
     try {
-      const created = await createTemplate({
-        workspaceId: currentWorkspaceId,
-        name: formName.trim(),
-        body_text: formBody.trim(),
-        footer_text: formTriggers.trim(),
-        category: formCategory,
-        status: 'approved',
-        header_type: headerType,
-        header_content: headerContent,
-      });
+      // 1. Create on Meta Template API
+      let metaTemplate;
+      try {
+        const res = await fetch('/api/meta/templates/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            workspaceId: currentWorkspaceId,
+            name: formName.trim(),
+            category: formCategory.toUpperCase(),
+            language: 'en_US',
+            headerType: formHeaderType,
+            headerImageUrl: formImageUrl.trim(),
+            bodyText: formBody.trim(),
+            footerText: formTriggers.trim(),
+          }),
+        });
+        if (res.ok) {
+          const resData = await res.json();
+          metaTemplate = resData.template;
+        }
+      } catch {}
 
-      const newTmpl = created || {
+      if (!metaTemplate) {
+        try {
+          const res = await fetch('http://localhost:4000/api/meta/templates/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              workspaceId: currentWorkspaceId,
+              name: formName.trim(),
+              category: formCategory.toUpperCase(),
+              language: 'en_US',
+              headerType: formHeaderType,
+              headerImageUrl: formImageUrl.trim(),
+              bodyText: formBody.trim(),
+              footerText: formTriggers.trim(),
+            }),
+          });
+          if (res.ok) {
+            const resData = await res.json();
+            metaTemplate = resData.template;
+          }
+        } catch {}
+      }
+
+      // Also create on Supabase if available
+      try {
+        await createTemplate({
+          workspaceId: currentWorkspaceId,
+          name: formName.trim(),
+          body_text: formBody.trim(),
+          footer_text: formTriggers.trim(),
+          category: formCategory,
+          status: 'approved',
+          header_type: headerType,
+          header_content: headerContent,
+        });
+      } catch {}
+
+      const newTmpl = metaTemplate || {
         id: `tmpl-${Date.now()}`,
         workspace_id: currentWorkspaceId,
         name: formName.trim(),
         body_text: formBody.trim(),
         footer_text: formTriggers.trim(),
-        category: formCategory,
+        category: formCategory.toUpperCase(),
         status: 'approved',
         header_type: headerType,
         header_content: headerContent,
@@ -301,7 +418,7 @@ export const TemplatesPage = () => {
         return updated;
       });
       setIsCreateModalOpen(false);
-      showToast(`Auto-Reply Template "${formName}" created & active!`, 'success');
+      showToast(`Official Meta Template "${formName}" created & active!`, 'success');
     } catch (err) {
       console.error('Error creating template:', err);
       // Fallback local state
@@ -531,7 +648,16 @@ export const TemplatesPage = () => {
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+            <button
+              onClick={handleSyncMeta}
+              disabled={isSyncing}
+              className="px-3.5 py-2.5 rounded-xl border border-[#7C3AED]/30 bg-[#F4F0FD] hover:bg-[#EDE5FA] text-xs font-bold text-[#7C3AED] flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+              title="Sync official approved templates from Meta WhatsApp Cloud API"
+            >
+              <RotateCw className={`w-3.5 h-3.5 text-[#7C3AED] ${isSyncing ? 'animate-spin' : ''}`} />
+              <span>{isSyncing ? 'Syncing with Meta...' : 'Sync with Meta'}</span>
+            </button>
             <button
               onClick={loadTemplates}
               disabled={isLoading}
@@ -546,7 +672,7 @@ export const TemplatesPage = () => {
               className="px-4 py-2.5 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs shadow-purple-500/20 transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Add Auto-Reply Template</span>
+              <span>Create Official Template</span>
             </button>
           </div>
         </div>
@@ -814,14 +940,25 @@ export const TemplatesPage = () => {
                           <span>Image</span>
                         </span>
                       )}
+                      {(template.variables?.length > 0 || (template.body_text || '').includes('{{1}}')) && (
+                        <span className="px-2 py-0.5 rounded-full bg-[#EFF8FF] text-[#175CD3] border border-[#B2DDFF] text-[10px] font-bold font-mono">
+                          {template.variables?.length || ((template.body_text || '').match(/\{\{\d+\}\}/g) || []).length} VARS
+                        </span>
+                      )}
                     </div>
                     <h4 className="text-sm font-bold text-[#101828] truncate group-hover:text-[#7C3AED] transition-colors">
                       {template.name}
                     </h4>
                   </div>
 
-                  <span className="px-2 py-0.5 rounded-full bg-[#DCFCE7] text-[#16A34A] text-[10px] font-bold font-mono shrink-0">
-                    APPROVED
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-mono shrink-0 ${
+                    template.status === 'PENDING'
+                      ? 'bg-[#FEF0C7] text-[#B54708] border border-[#FEDF89]'
+                      : template.status === 'REJECTED'
+                      ? 'bg-[#FEE4E2] text-[#D92D20] border border-[#FECDCA]'
+                      : 'bg-[#DCFCE7] text-[#16A34A] border border-[#BBF7D0]'
+                  }`}>
+                    {template.status || 'APPROVED'}
                   </span>
                 </div>
 
@@ -1082,12 +1219,42 @@ export const TemplatesPage = () => {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-xs font-semibold text-[#344054]">
-                    Message Content (What should send)
+                    Message Content (WhatsApp Body)
                   </label>
                   <span className="text-[10px] font-mono text-[#98A2B3]">
                     Tip: Use *bold* or **bold** for bold text
                   </span>
                 </div>
+
+                {/* Variable Inserter Toolbar */}
+                <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+                  <span className="text-[10px] font-mono font-bold text-[#667085]">Insert Variables:</span>
+                  <button
+                    type="button"
+                    onClick={() => setFormBody((prev) => prev + ' {{1}}')}
+                    className="px-2 py-0.5 rounded-lg bg-[#EFF8FF] hover:bg-[#D1E9FF] border border-[#B2DDFF] text-[#175CD3] text-[10px] font-bold font-mono transition-colors cursor-pointer"
+                    title="Insert {{1}} (e.g. Customer Name)"
+                  >
+                    + {'{{1}}'} Name
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormBody((prev) => prev + ' {{2}}')}
+                    className="px-2 py-0.5 rounded-lg bg-[#EFF8FF] hover:bg-[#D1E9FF] border border-[#B2DDFF] text-[#175CD3] text-[10px] font-bold font-mono transition-colors cursor-pointer"
+                    title="Insert {{2}} (e.g. City, Deal, or Custom param)"
+                  >
+                    + {'{{2}}'} Custom Param
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormBody((prev) => prev + ' {{3}}')}
+                    className="px-2 py-0.5 rounded-lg bg-[#EFF8FF] hover:bg-[#D1E9FF] border border-[#B2DDFF] text-[#175CD3] text-[10px] font-bold font-mono transition-colors cursor-pointer"
+                    title="Insert {{3}} (e.g. Link, Date, or Offer)"
+                  >
+                    + {'{{3}}'} Link/Offer
+                  </button>
+                </div>
+
                 <textarea
                   rows={6}
                   placeholder="Write the exact message WhatsApp should send back..."

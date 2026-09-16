@@ -32,12 +32,30 @@ import {
   activateWorkspaceSubscription,
   cancelSubscription,
 } from './billingService.js';
+import {
+  initTemplateStore,
+  getWorkspaceTemplates,
+  syncMetaTemplates,
+  createMetaTemplate,
+  deleteMetaTemplate,
+} from './templateService.js';
+import {
+  initBroadcastStore,
+  getWorkspaceCampaigns,
+  createBroadcastCampaign,
+  executeBroadcast,
+  sendTestBroadcast,
+  cancelScheduledCampaign,
+} from './broadcastService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Load environment variables from project root .env
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+initTemplateStore();
+initBroadcastStore();
 
 const META_CONFIG_FILE = path.resolve(__dirname, 'metaConfig.json');
 
@@ -865,6 +883,107 @@ app.post('/api/billing/cancel', (req, res) => {
   try {
     const { workspaceId } = req.body || {};
     const result = cancelSubscription(workspaceId);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ==============================================================================
+// Meta Templates & Broadcast Campaigns API (Phase 2)
+// ==============================================================================
+
+// 1. Templates API
+app.get('/api/meta/templates', (req, res) => {
+  try {
+    const workspaceId = req.query.workspaceId || process.env.VITE_DEFAULT_WORKSPACE_ID || 'b0000000-0000-0000-0000-000000000001';
+    const templates = getWorkspaceTemplates(workspaceId);
+    res.json({ success: true, templates });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/meta/templates/sync', async (req, res) => {
+  try {
+    const { workspaceId, wabaId, accessToken } = req.body || {};
+    const targetWs = workspaceId || process.env.VITE_DEFAULT_WORKSPACE_ID || 'b0000000-0000-0000-0000-000000000001';
+    const result = await syncMetaTemplates({ workspaceId: targetWs, wabaId, accessToken });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/meta/templates/create', async (req, res) => {
+  try {
+    const template = await createMetaTemplate(req.body || {});
+    res.json({ success: true, template });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/meta/templates/:id', async (req, res) => {
+  try {
+    const templateId = req.params.id;
+    const { workspaceId, name } = req.body || {};
+    const result = await deleteMetaTemplate({
+      workspaceId: workspaceId || 'b0000000-0000-0000-0000-000000000001',
+      name,
+      templateId,
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 2. Broadcasts & Campaigns API
+app.get('/api/broadcasts', (req, res) => {
+  try {
+    const workspaceId = req.query.workspaceId || process.env.VITE_DEFAULT_WORKSPACE_ID || 'b0000000-0000-0000-0000-000000000001';
+    const campaigns = getWorkspaceCampaigns(workspaceId);
+    res.json({ success: true, campaigns });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/broadcasts/create', async (req, res) => {
+  try {
+    const campaign = await createBroadcastCampaign(req.body || {});
+    res.json({ success: true, campaign });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/broadcasts/:id/send-now', async (req, res) => {
+  try {
+    const campaignId = req.params.id;
+    const workspaceId = req.body?.workspaceId || process.env.VITE_DEFAULT_WORKSPACE_ID || 'b0000000-0000-0000-0000-000000000001';
+    const campaign = await executeBroadcast(workspaceId, campaignId);
+    res.json({ success: true, campaign });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/broadcasts/:id/cancel', (req, res) => {
+  try {
+    const campaignId = req.params.id;
+    const workspaceId = req.body?.workspaceId || process.env.VITE_DEFAULT_WORKSPACE_ID || 'b0000000-0000-0000-0000-000000000001';
+    const result = cancelScheduledCampaign(workspaceId, campaignId);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/broadcasts/test-send', async (req, res) => {
+  try {
+    const result = await sendTestBroadcast(req.body || {});
     res.json(result);
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

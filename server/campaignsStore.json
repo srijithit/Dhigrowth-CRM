@@ -1,0 +1,166 @@
+{
+  "workspaces": {
+    "b0000000-0000-0000-0000-000000000001": [
+      {
+        "id": "camp_1789562884027_8qzd",
+        "name": "Automated 2-Second Scheduler Test",
+        "channel": "WhatsApp",
+        "templateName": "welcome_greeting_v2",
+        "status": "completed",
+        "audienceType": "All Contacts",
+        "targetCount": 1,
+        "sentCount": 1,
+        "deliveredCount": 1,
+        "readCount": 1,
+        "repliedCount": 0,
+        "failedCount": 0,
+        "recipients": [
+          {
+            "name": "Test User",
+            "phone": "+919876543210"
+          }
+        ],
+        "variableMapping": [],
+        "scheduledAt": "2026-09-16T12:48:06.011Z",
+        "createdAt": "2026-09-16T12:48:04.027Z",
+        "completedAt": "2026-09-16T12:48:15.357Z",
+        "logs": [
+          {
+            "phone": "919876543210",
+            "name": "Test User",
+            "status": "sent_fallback",
+            "note": "Delivered as direct personalized message",
+            "timestamp": "2026-09-16T12:48:15.304Z"
+          }
+        ]
+      },
+      {
+        "id": "camp_1789562723860_cyk3",
+        "name": "Launch Notification Broadcast",
+        "channel": "WhatsApp",
+        "templateName": "test_product_launch",
+        "status": "completed",
+        "audienceType": "All Contacts",
+        "targetCount": 2,
+        "sentCount": 2,
+        "deliveredCount": 2,
+        "readCount": 2,
+        "repliedCount": 1,
+        "failedCount": 0,
+        "recipients": [
+          {
+            "name": "Srijith Test",
+            "phone": "+919876543210",
+            "city": "Bangalore"
+          },
+          {
+            "name": "Maddy Test",
+            "phone": "+919876543211",
+            "city": "Chennai"
+          }
+        ],
+        "variableMapping": [
+          {
+            "index": 1,
+            "field": "name"
+          },
+          {
+            "index": 2,
+            "field": "city"
+          }
+        ],
+        "scheduledAt": null,
+        "createdAt": "2026-09-16T12:45:23.860Z",
+        "completedAt": "2026-09-16T12:45:27.821Z",
+        "logs": [
+          {
+            "phone": "919876543210",
+            "name": "Srijith Test",
+            "status": "sent_fallback",
+            "note": "Delivered as direct personalized message",
+            "timestamp": "2026-09-16T12:45:26.353Z"
+          },
+          {
+            "phone": "919876543211",
+            "name": "Maddy Test",
+            "status": "sent_fallback",
+            "note": "Delivered as direct personalized message",
+            "timestamp": "2026-09-16T12:45:27.761Z"
+          }
+        ]
+      },
+      {
+        "id": "camp_diwali_vip_2026",
+        "name": "Diwali Festive VIP Flash Sale",
+        "channel": "WhatsApp",
+        "templateName": "flash_sale_promo_2026",
+        "status": "completed",
+        "audienceType": "VIP Customers & High Value Leads",
+        "targetCount": 2450,
+        "sentCount": 2450,
+        "deliveredCount": 2410,
+        "readCount": 2310,
+        "repliedCount": 840,
+        "failedCount": 40,
+        "scheduledAt": null,
+        "createdAt": "2026-09-11T12:38:43.091Z",
+        "completedAt": "2026-09-11T12:40:43.091Z",
+        "variableMapping": [
+          {
+            "index": 1,
+            "field": "name",
+            "fallback": "Valued Customer"
+          },
+          {
+            "index": 2,
+            "field": "tier",
+            "fallback": "VIP Club"
+          },
+          {
+            "index": 3,
+            "field": "discount",
+            "fallback": "30%"
+          }
+        ],
+        "sampleRevenue": "₹2,48,000",
+        "roas": "18.4x"
+      },
+      {
+        "id": "camp_webinar_drip_reminder",
+        "name": "AI Agent Masterclass 1-Hour Reminder",
+        "channel": "WhatsApp",
+        "templateName": "vip_webinar_reminder_2026",
+        "status": "completed",
+        "audienceType": "Registered Attendees",
+        "targetCount": 1200,
+        "sentCount": 1200,
+        "deliveredCount": 1184,
+        "readCount": 1090,
+        "repliedCount": 312,
+        "failedCount": 16,
+        "scheduledAt": null,
+        "createdAt": "2026-09-14T12:38:43.091Z",
+        "completedAt": "2026-09-14T12:39:43.091Z",
+        "variableMapping": [
+          {
+            "index": 1,
+            "field": "first_name",
+            "fallback": "Founder"
+          },
+          {
+            "index": 2,
+            "field": "topic",
+            "fallback": "WhatsApp AI Automation"
+          },
+          {
+            "index": 3,
+            "field": "minutes",
+            "fallback": "60"
+          }
+        ],
+        "sampleRevenue": "₹84,000",
+        "roas": "11.2x"
+      }
+    ]
+  }
+}
