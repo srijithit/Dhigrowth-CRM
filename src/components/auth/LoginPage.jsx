@@ -16,10 +16,10 @@ import {
 import { useApp } from '../../context/AppContext';
 
 export const LoginPage = () => {
-  const { login } = useApp();
+  const { login, showToast } = useApp();
 
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('DhiGrowth@admin');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -187,7 +187,7 @@ export const LoginPage = () => {
                 </label>
                 <button
                   type="button"
-                  onClick={() => alert('Dhigrowth CRM Login Support:\n• Admin: admin / DhiGrowth@admin\n• Sri: sri / dhigrowth2026\n• Kiki: kiki / kiki123')}
+                  onClick={() => showToast('Please contact your organization administrator or support@dhigrowth.com to reset your password.', 'info')}
                   className="text-[11px] font-semibold text-[#7C3AED] hover:text-[#6D28D9] cursor-pointer"
                 >
                   Forgot password?
