@@ -25,6 +25,13 @@ import {
   saveTenantMetaConfig,
   getTenantByPhoneNumberId,
 } from './tenantMetaManager.js';
+import {
+  SAAS_PLANS,
+  getWorkspaceSubscription,
+  createCheckoutSession,
+  activateWorkspaceSubscription,
+  cancelSubscription,
+} from './billingService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -772,6 +779,93 @@ app.delete('/api/tenants/:id', (req, res) => {
     list = list.filter((t) => t.id !== id && t.workspaceId !== id && t.username !== id);
     saveTenants(list);
     res.json({ success: true, message: 'Tenant removed from cloud directory' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 11. SaaS Subscription & Billing Endpoints (Stripe / Razorpay)
+app.get('/api/billing/plans', (req, res) => {
+  res.json({ success: true, plans: SAAS_PLANS });
+});
+
+app.get('/api/billing/subscription', (req, res) => {
+  try {
+    const { workspaceId } = req.query;
+    const subscription = getWorkspaceSubscription(workspaceId);
+    res.json({ success: true, subscription });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/billing/create-checkout', async (req, res) => {
+  try {
+    const {
+      workspaceId,
+      userId,
+      customerEmail,
+      planId,
+      billingCycle,
+      provider,
+      billingDetails,
+    } = req.body || {};
+
+    const session = await createCheckoutSession({
+      workspaceId,
+      userId,
+      customerEmail,
+      planId,
+      billingCycle,
+      provider,
+      billingDetails,
+    });
+
+    res.json({ success: true, ...session });
+  } catch (err) {
+    console.error('[Billing Checkout Error]:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/billing/verify-payment', (req, res) => {
+  try {
+    const {
+      workspaceId,
+      planId,
+      billingCycle,
+      provider,
+      paymentId,
+      orderId,
+      billingDetails,
+      amount,
+      currency,
+    } = req.body || {};
+
+    const result = activateWorkspaceSubscription({
+      workspaceId,
+      planId,
+      billingCycle,
+      provider,
+      paymentId,
+      orderId,
+      billingDetails,
+      amount,
+      currency,
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error('[Billing Verify Error]:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/billing/cancel', (req, res) => {
+  try {
+    const { workspaceId } = req.body || {};
+    const result = cancelSubscription(workspaceId);
+    res.json(result);
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

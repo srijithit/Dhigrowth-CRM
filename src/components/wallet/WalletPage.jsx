@@ -14,13 +14,16 @@ import {
   X,
   CreditCard,
   Building,
-  ShieldCheck
+  ShieldCheck,
+  Download,
+  ExternalLink
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const WalletPage = () => {
   const {
     credits,
+    setCredits,
     currentPlan,
     daysRemaining,
     claimBonus,
@@ -28,7 +31,10 @@ export const WalletPage = () => {
     showToast,
     setActiveTab,
     setIsUpgradeModalOpen,
-    setIsUsageModalOpen
+    setIsUsageModalOpen,
+    subscription,
+    refreshSubscription,
+    openCheckout,
   } = useApp();
 
   const [activeSubTab, setActiveSubTab] = useState('payment-history'); // 'payment-history' | 'subscription-history'
@@ -52,15 +58,35 @@ export const WalletPage = () => {
     },
   ]);
 
+  // Derived subscription info
+  const activePlanName = subscription?.planName || currentPlan;
+  const isPaidActive = subscription?.status === 'active';
+  const subInterval = subscription?.interval ? (subscription.interval === 'yearly' ? 'Yearly' : 'Monthly') : 'Monthly';
+
+  const calculatedDaysRemaining = React.useMemo(() => {
+    if (subscription?.currentPeriodEnd) {
+      const end = new Date(subscription.currentPeriodEnd).getTime();
+      const now = Date.now();
+      const diff = Math.ceil((end - now) / (1000 * 60 * 60 * 24));
+      return Math.max(0, diff);
+    }
+    return daysRemaining;
+  }, [subscription, daysRemaining]);
+
+  const invoices = subscription?.invoices || [];
+
   const handleAddFundsSubmit = (e) => {
     e.preventDefault();
     const amountNum = parseFloat(fundsAmount) || 10;
+    if (setCredits) {
+      setCredits(prev => prev + amountNum);
+    }
     const newLog = {
       id: `log-${Date.now()}`,
       date: new Date().toISOString().split('T')[0],
       type: 'TOP_UP',
       amount: `+$${amountNum.toFixed(2)}`,
-      description: `Instant wallet funds top-up via UPI / Credit Card`,
+      description: `Instant wallet funds top-up via UPI / Cards`,
     };
     setWalletLogs((prev) => [newLog, ...prev]);
     setIsAddFundsModalOpen(false);
@@ -128,14 +154,21 @@ export const WalletPage = () => {
         </button>
       </div>
 
-      {/* 4. Subscription Card matching screenshot */}
+      {/* 4. Subscription Card */}
       <div className="sendiee-card p-6 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3 flex-wrap">
             <h2 className="text-lg font-bold text-[#101828]">Subscription</h2>
-            <span className="bg-[#F4F0FD] border border-[#E9D8FD] text-[#7C3AED] text-xs font-semibold px-2.5 py-0.5 rounded-full">
-              Free Trial · {daysRemaining} days left
-            </span>
+            {isPaidActive ? (
+              <span className="bg-[#ECFDF3] border border-[#ABEFC6] text-[#027A48] text-xs font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#12B76A]"></span>
+                Active · Renews in {calculatedDaysRemaining} days
+              </span>
+            ) : (
+              <span className="bg-[#F4F0FD] border border-[#E9D8FD] text-[#7C3AED] text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                Free Trial · {calculatedDaysRemaining} days left
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-4 self-start sm:self-auto">
@@ -146,10 +179,10 @@ export const WalletPage = () => {
               View Usage
             </button>
             <button
-              onClick={() => setIsUpgradeModalOpen(true)}
+              onClick={() => openCheckout ? openCheckout(activePlanName, 'monthly', 'razorpay') : setIsUpgradeModalOpen(true)}
               className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-bold px-5 py-2 rounded-xl transition-all shadow-xs cursor-pointer"
             >
-              Upgrade
+              {isPaidActive ? 'Manage Plan' : 'Upgrade'}
             </button>
           </div>
         </div>
@@ -158,7 +191,7 @@ export const WalletPage = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
           {/* Plan */}
           <div
-            onClick={() => setIsUpgradeModalOpen(true)}
+            onClick={() => openCheckout ? openCheckout(activePlanName, 'monthly', 'razorpay') : setIsUpgradeModalOpen(true)}
             className="flex items-center gap-3.5 cursor-pointer hover:opacity-80 transition-opacity"
           >
             <div className="w-11 h-11 rounded-full bg-[#F2F4F7] flex items-center justify-center text-[#475467] shrink-0">
@@ -166,7 +199,7 @@ export const WalletPage = () => {
             </div>
             <div>
               <div className="text-[11px] font-medium text-[#667085]">Plan</div>
-              <div className="text-sm font-bold text-[#16A34A]">{currentPlan}</div>
+              <div className="text-sm font-bold text-[#16A34A]">{activePlanName}</div>
             </div>
           </div>
 
@@ -177,7 +210,7 @@ export const WalletPage = () => {
             </div>
             <div>
               <div className="text-[11px] font-medium text-[#667085]">Billing</div>
-              <div className="text-sm font-bold text-[#101828]">Monthly</div>
+              <div className="text-sm font-bold text-[#101828]">{subInterval}</div>
             </div>
           </div>
 
@@ -188,21 +221,23 @@ export const WalletPage = () => {
             </div>
             <div>
               <div className="text-[11px] font-medium text-[#667085]">Days Remaining</div>
-              <div className="text-sm font-bold text-[#101828]">{daysRemaining}</div>
+              <div className="text-sm font-bold text-[#101828]">{calculatedDaysRemaining}</div>
             </div>
           </div>
 
           {/* Auto-Pay */}
           <div
-            onClick={() => showToast('Auto-pay will be configurable upon card linkage', 'info')}
+            onClick={() => showToast('Card auto-charge active for continuous service', 'info')}
             className="flex items-center gap-3.5 cursor-pointer hover:opacity-80"
           >
             <div className="w-11 h-11 rounded-full bg-[#F2F4F7] flex items-center justify-center text-[#475467] shrink-0">
               <Zap className="w-5 h-5 text-[#475467]" />
             </div>
             <div>
-              <div className="text-[11px] font-medium text-[#667085]">Auto-Pay</div>
-              <div className="text-sm font-medium text-[#667085]">Off</div>
+              <div className="text-[11px] font-medium text-[#667085]">Auto-Renew</div>
+              <div className={`text-sm font-semibold ${isPaidActive ? 'text-[#16A34A]' : 'text-[#667085]'}`}>
+                {isPaidActive ? 'Active' : 'Off'}
+              </div>
             </div>
           </div>
         </div>
@@ -235,75 +270,172 @@ export const WalletPage = () => {
         </button>
       </div>
 
-      {/* 6. Wallet Logs Table Card */}
-      <div className="sendiee-card p-6 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-[#7C3AED]" />
-            <h2 className="text-base font-bold text-[#101828]">Wallet Logs</h2>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Filter Dropdown */}
-            <div className="relative">
-              <select
-                value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
-                className="appearance-none bg-[#F9FAFB] border border-[#EAECF0] px-3.5 py-1.5 pr-8 rounded-xl text-xs text-[#344054] font-medium focus:outline-none focus:border-[#7C3AED] cursor-pointer"
-              >
-                <option value="all">All Types</option>
-                <option value="topup">Top Up</option>
-                <option value="usage">AI Usage Deductions</option>
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-[#98A2B3] absolute right-2.5 top-2.5 pointer-events-none" />
+      {/* 6. Wallet Logs Table Card OR Subscription Invoices Card */}
+      {activeSubTab === 'payment-history' ? (
+        <div className="sendiee-card p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-[#7C3AED]" />
+              <h2 className="text-base font-bold text-[#101828]">Wallet Logs</h2>
             </div>
 
-            {/* Date Range */}
-            <div className="flex items-center gap-2 bg-[#F9FAFB] border border-[#EAECF0] px-3.5 py-1.5 rounded-xl text-xs font-mono text-[#667085]">
-              <span>19-08-2026</span>
-              <span>&rarr;</span>
-              <span>03-09-2026</span>
-              <CalendarIcon className="w-3.5 h-3.5 text-[#98A2B3]" />
+            <div className="flex items-center gap-3">
+              {/* Filter Dropdown */}
+              <div className="relative">
+                <select
+                  value={selectedType}
+                  onChange={(e) => setSelectedType(e.target.value)}
+                  className="appearance-none bg-[#F9FAFB] border border-[#EAECF0] px-3.5 py-1.5 pr-8 rounded-xl text-xs text-[#344054] font-medium focus:outline-none focus:border-[#7C3AED] cursor-pointer"
+                >
+                  <option value="all">All Types</option>
+                  <option value="topup">Top Up</option>
+                  <option value="usage">AI Usage Deductions</option>
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 text-[#98A2B3] absolute right-2.5 top-2.5 pointer-events-none" />
+              </div>
+
+              {/* Date Range */}
+              <div className="flex items-center gap-2 bg-[#F9FAFB] border border-[#EAECF0] px-3.5 py-1.5 rounded-xl text-xs font-mono text-[#667085]">
+                <span>19-08-2026</span>
+                <span>&rarr;</span>
+                <span>03-09-2026</span>
+                <CalendarIcon className="w-3.5 h-3.5 text-[#98A2B3]" />
+              </div>
+
+              <button
+                onClick={() => {
+                  if (refreshSubscription) refreshSubscription();
+                  showToast('Wallet transactions refreshed', 'success');
+                }}
+                className="p-1.5 rounded-xl border border-[#EAECF0] bg-white text-[#667085] hover:text-[#101828] cursor-pointer"
+                title="Refresh logs"
+              >
+                <RotateCw className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Table Header & Rows */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-[#FAF8F5] border-y border-[#EAECF0] text-[#667085] font-mono text-[10px] uppercase">
+                <tr>
+                  <th className="p-3">DATE</th>
+                  <th className="p-3">TYPE</th>
+                  <th className="p-3">AMOUNT</th>
+                  <th className="p-3">DESCRIPTION</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#EAECF0]">
+                {walletLogs.map((log) => (
+                  <tr key={log.id} className="hover:bg-[#F9FAFB] transition-colors">
+                    <td className="p-3 font-mono text-[#667085]">{log.date}</td>
+                    <td className="p-3">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#FAF5FF] text-[#7C3AED] border border-[#E9D8FD]">
+                        {log.type}
+                      </span>
+                    </td>
+                    <td className="p-3 font-mono font-bold text-[#16A34A]">{log.amount}</td>
+                    <td className="p-3 text-[#344054]">{log.description}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        /* Subscription Invoices Tab */
+        <div className="sendiee-card p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-[#7C3AED]" />
+              <h2 className="text-base font-bold text-[#101828]">Subscription Invoices</h2>
             </div>
 
             <button
-              onClick={() => showToast('Wallet transactions refreshed', 'success')}
+              onClick={() => {
+                if (refreshSubscription) refreshSubscription();
+                showToast('Invoices refreshed', 'success');
+              }}
               className="p-1.5 rounded-xl border border-[#EAECF0] bg-white text-[#667085] hover:text-[#101828] cursor-pointer"
-              title="Refresh logs"
+              title="Refresh invoices"
             >
               <RotateCw className="w-3.5 h-3.5" />
             </button>
           </div>
-        </div>
 
-        {/* Table Header & Rows */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-[#FAF8F5] border-y border-[#EAECF0] text-[#667085] font-mono text-[10px] uppercase">
-              <tr>
-                <th className="p-3">DATE</th>
-                <th className="p-3">TYPE</th>
-                <th className="p-3">AMOUNT</th>
-                <th className="p-3">DESCRIPTION</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#EAECF0]">
-              {walletLogs.map((log) => (
-                <tr key={log.id} className="hover:bg-[#F9FAFB] transition-colors">
-                  <td className="p-3 font-mono text-[#667085]">{log.date}</td>
-                  <td className="p-3">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#FAF5FF] text-[#7C3AED] border border-[#E9D8FD]">
-                      {log.type}
-                    </span>
-                  </td>
-                  <td className="p-3 font-mono font-bold text-[#16A34A]">{log.amount}</td>
-                  <td className="p-3 text-[#344054]">{log.description}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {invoices.length === 0 ? (
+            <div className="py-12 text-center space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-[#F4F0FD] border border-[#E9D8FD] flex items-center justify-center text-[#7C3AED] mx-auto">
+                <FileText className="w-6 h-6 text-[#7C3AED]" />
+              </div>
+              <h3 className="text-sm font-bold text-[#101828]">No Subscription Invoices Yet</h3>
+              <p className="text-xs text-[#667085] max-w-sm mx-auto">
+                You are currently on a trial. Upgrading to a paid plan unlocks unlimited Meta API capabilities and generates GST-compliant invoices.
+              </p>
+              <button
+                onClick={() => openCheckout ? openCheckout('Growth', 'monthly', 'razorpay') : setIsUpgradeModalOpen(true)}
+                className="px-4 py-2 bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer inline-flex items-center gap-1.5 mt-2"
+              >
+                <span>Choose a Subscription Plan</span>
+              </button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#FAF8F5] border-y border-[#EAECF0] text-[#667085] font-mono text-[10px] uppercase">
+                  <tr>
+                    <th className="p-3">INVOICE ID</th>
+                    <th className="p-3">DATE</th>
+                    <th className="p-3">PLAN &amp; CYCLE</th>
+                    <th className="p-3">GATEWAY</th>
+                    <th className="p-3">AMOUNT</th>
+                    <th className="p-3">STATUS</th>
+                    <th className="p-3 text-right">ACTION</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#EAECF0]">
+                  {invoices.map((inv) => (
+                    <tr key={inv.id} className="hover:bg-[#F9FAFB] transition-colors">
+                      <td className="p-3 font-mono font-bold text-[#101828]">{inv.id}</td>
+                      <td className="p-3 font-mono text-[#667085]">{new Date(inv.date).toLocaleDateString()}</td>
+                      <td className="p-3 text-[#344054] font-medium">
+                        {inv.planName} · <span className="capitalize">{inv.interval}</span>
+                      </td>
+                      <td className="p-3">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-mono ${
+                          inv.provider === 'stripe'
+                            ? 'bg-[#635BFF]/10 text-[#635BFF] border border-[#635BFF]/30'
+                            : 'bg-[#3395FF]/10 text-[#0c6cd4] border border-[#3395FF]/30'
+                        }`}>
+                          {inv.provider === 'stripe' ? 'Stripe' : 'Razorpay'}
+                        </span>
+                      </td>
+                      <td className="p-3 font-mono font-bold text-[#101828]">
+                        {inv.currency === 'INR' ? '₹' : '$'}{inv.amount.toLocaleString()}
+                      </td>
+                      <td className="p-3">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#ECFDF3] text-[#027A48] border border-[#ABEFC6]">
+                          {inv.status}
+                        </span>
+                      </td>
+                      <td className="p-3 text-right">
+                        <button
+                          onClick={() => showToast(`Invoice ${inv.id} downloaded`, 'success')}
+                          className="inline-flex items-center gap-1 text-[#7C3AED] hover:text-[#6D28D9] font-medium text-xs p-1 hover:bg-[#F4F0FD] rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>Receipt</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
-      </div>
+      )}
 
       {/* Add Funds Modal */}
       {isAddFundsModalOpen && (

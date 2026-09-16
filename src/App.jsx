@@ -40,6 +40,7 @@ import { ClientPortal } from './components/portal/ClientPortal';
 import { AdminTopBar } from './components/layout/AdminTopBar';
 import { BroadcastDueModal } from './components/inbox/BroadcastDueModal';
 import { SuperAdminTenantsPage } from './components/admin/SuperAdminTenantsPage';
+import { CheckoutModal } from './components/billing/CheckoutModal';
 
 const AppContent = () => {
   const {
@@ -182,6 +183,7 @@ const AppContent = () => {
       </div>
 
       {/* Interactive Global Modals */}
+      <CheckoutModal />
       <UpgradeModal />
       <UsageModal />
       <SearchCommandPalette />

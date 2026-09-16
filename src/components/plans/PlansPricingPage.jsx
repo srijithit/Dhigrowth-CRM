@@ -12,7 +12,7 @@ import {
 import { useApp } from '../../context/AppContext';
 
 export const PlansPricingPage = () => {
-  const { currentPlan, setCurrentPlan, showToast, setActiveTab } = useApp();
+  const { currentPlan, openCheckout, subscription, showToast, setActiveTab } = useApp();
 
   const [interval, setInterval] = useState('monthly'); // 'monthly' | 'quarterly' | 'half-yearly' | 'yearly'
 
@@ -49,8 +49,8 @@ export const PlansPricingPage = () => {
     {
       id: 'Growth',
       name: 'Growth',
-      subtitle: 'Perfect for solo founders',
-      channelsText: 'Any 1 of 3',
+      subtitle: 'Perfect for solo founders & D2C stores',
+      channelsText: 'Any 1 of 3 Channels',
       channelsIcons: ['whatsapp', 'instagram', 'messenger'],
       priceINR: interval === 'yearly' ? '1,424' : '1,899',
       priceGST: interval === 'yearly' ? '₹1,680' : '₹2,241',
@@ -58,10 +58,21 @@ export const PlansPricingPage = () => {
       isCurrent: currentPlan === 'Growth',
     },
     {
+      id: 'Pro',
+      name: 'Pro',
+      subtitle: 'Built for high-volume brands & scaling teams',
+      channelsText: 'All 3 Channels + Webhooks',
+      channelsIcons: ['whatsapp', 'instagram', 'messenger'],
+      priceINR: interval === 'yearly' ? '2,625' : '3,499',
+      priceGST: interval === 'yearly' ? '₹3,097' : '₹4,128',
+      isBestValue: false,
+      isCurrent: currentPlan === 'Pro',
+    },
+    {
       id: 'Business',
       name: 'Business',
-      subtitle: 'Omnichannel brands scaling with AI',
-      channelsText: 'All 4 Channels',
+      subtitle: 'Omnichannel brands scaling with sub-second AI',
+      channelsText: 'All 4 Channels + Custom RAG',
       channelsIcons: ['whatsapp', 'instagram', 'messenger', 'line'],
       priceINR: interval === 'yearly' ? '3,749' : '4,999',
       priceGST: interval === 'yearly' ? '₹4,423' : '₹5,898',
@@ -71,8 +82,7 @@ export const PlansPricingPage = () => {
   ];
 
   const handlePlanSelect = (planName) => {
-    setCurrentPlan(planName);
-    showToast(`Switched plan to ${planName}!`, 'success');
+    openCheckout(planName, interval === 'yearly' ? 'yearly' : 'monthly', 'razorpay');
   };
 
   return (

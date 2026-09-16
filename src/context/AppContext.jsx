@@ -106,6 +106,20 @@ export const AppProvider = ({ children }) => {
   const [currentPlan, setCurrentPlan] = useState('Business');
   const [daysRemaining, setDaysRemaining] = useState(6);
 
+  // SaaS Subscription & Unified Checkout State (Stripe / Razorpay)
+  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
+  const [checkoutData, setCheckoutData] = useState({ planId: 'Growth', billingCycle: 'monthly', provider: 'razorpay' });
+  const [subscription, setSubscription] = useState(null);
+
+  const openCheckout = (planId = 'Growth', billingCycle = 'monthly', provider = 'razorpay') => {
+    setCheckoutData({ planId, billingCycle, provider });
+    setIsCheckoutModalOpen(true);
+  };
+
+  const closeCheckout = () => {
+    setIsCheckoutModalOpen(false);
+  };
+
   // Authentication & Session State (Tenant-Isolated Session Support)
   const [currentUser, setCurrentUser] = useState(() => {
     try {
@@ -703,7 +717,34 @@ export const AppProvider = ({ children }) => {
     } catch {}
 
     fetchMetaConfig(currentWorkspaceId, currentUser.username || currentUser.slug);
+    refreshSubscription();
   }, [currentUser?.username, currentUser?.workspaceId, currentWorkspaceId, adminViewProfile]);
+
+  const refreshSubscription = async () => {
+    try {
+      const activeWs = currentWorkspaceId || 'b0000000-0000-0000-0000-000000000001';
+      let res;
+      try {
+        res = await fetch(`${BACKEND_URL}/api/billing/subscription?workspaceId=${encodeURIComponent(activeWs)}`);
+      } catch {}
+      if (!res || !res.ok) {
+        try {
+          res = await fetch(`http://localhost:4000/api/billing/subscription?workspaceId=${encodeURIComponent(activeWs)}`);
+        } catch {}
+      }
+      if (res && res.ok) {
+        const data = await res.json();
+        if (data.subscription) {
+          setSubscription(data.subscription);
+          if (data.subscription.planId) {
+            setCurrentPlan(data.subscription.planId);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[AppContext] Note refreshing subscription:', err.message);
+    }
+  };
 
   // Client Workspace View Mode: 'crm' (Full CRM UI with Sidebar & TeamInbox) | 'portal' (BYOK Client Suite)
   const [clientViewMode, setClientViewMode] = useState(() => {
@@ -2029,6 +2070,13 @@ export const AppProvider = ({ children }) => {
         toggleTenantPermission,
         currentWorkspaceId,
         urlTenantSlug,
+        // SaaS Subscription & Checkout
+        isCheckoutModalOpen,
+        closeCheckout,
+        openCheckout,
+        checkoutData,
+        subscription,
+        refreshSubscription,
       }}
     >
       {children}

@@ -4,7 +4,7 @@ import confetti from 'canvas-confetti';
 import { useApp } from '../../context/AppContext';
 
 export const UpgradeModal = () => {
-  const { isUpgradeModalOpen, setIsUpgradeModalOpen, currentPlan, setCurrentPlan, showToast } = useApp();
+  const { isUpgradeModalOpen, setIsUpgradeModalOpen, currentPlan, openCheckout, showToast } = useApp();
   const [billingCycle, setBillingCycle] = useState('monthly'); // monthly | yearly
 
   if (!isUpgradeModalOpen) return null;
@@ -12,7 +12,7 @@ export const UpgradeModal = () => {
   const PLANS = [
     {
       name: 'Growth',
-      price: billingCycle === 'yearly' ? '₹1,050' : '₹1,450',
+      price: billingCycle === 'yearly' ? '₹1,424' : '₹1,899',
       period: '/ month',
       description: 'Ideal for solo creators and growing direct-to-consumer stores.',
       features: [
@@ -26,7 +26,7 @@ export const UpgradeModal = () => {
     },
     {
       name: 'Pro',
-      price: billingCycle === 'yearly' ? '₹1,875' : '₹2,450',
+      price: billingCycle === 'yearly' ? '₹2,625' : '₹3,499',
       period: '/ month',
       description: 'Built for high-volume e-commerce brands and scaling teams.',
       features: [
@@ -41,7 +41,7 @@ export const UpgradeModal = () => {
     },
     {
       name: 'Business',
-      price: billingCycle === 'yearly' ? '₹2,625' : '₹3,450',
+      price: billingCycle === 'yearly' ? '₹3,749' : '₹4,999',
       period: '/ month',
       description: 'Unlimited team agents, sub-second voice AI calling, and verified Green Tick.',
       features: [
@@ -57,14 +57,10 @@ export const UpgradeModal = () => {
   ];
 
   const handleSelectPlan = (planName) => {
-    setCurrentPlan(planName);
-    confetti({
-      particleCount: 90,
-      spread: 70,
-      origin: { y: 0.6 },
-    });
-    showToast(`🎉 Upgraded to ${planName} Plan! Features are fully unlocked.`, 'success');
     setIsUpgradeModalOpen(false);
+    if (openCheckout) {
+      openCheckout(planName, billingCycle, 'razorpay');
+    }
   };
 
   return (

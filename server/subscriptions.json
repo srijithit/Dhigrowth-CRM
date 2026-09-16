@@ -1,0 +1,61 @@
+{
+  "workspaces": {
+    "b0000000-0000-0000-0000-000000000001": {
+      "workspaceId": "b0000000-0000-0000-0000-000000000001",
+      "planId": "Business",
+      "planName": "Business",
+      "billingCycle": "yearly",
+      "status": "active",
+      "provider": "stripe",
+      "currentPeriodStart": "2026-09-01T00:00:00.000Z",
+      "currentPeriodEnd": "2027-09-01T00:00:00.000Z",
+      "cancelAtPeriodEnd": false,
+      "trialDaysRemaining": 0,
+      "paymentMethod": {
+        "brand": "visa",
+        "last4": "4242"
+      },
+      "billingDetails": {
+        "companyName": "Dhigrowth CRM",
+        "gstin": "27AADCS1234F1Z5",
+        "billingEmail": "sri@dhigrowth.com"
+      }
+    },
+    "ws-test": {
+      "workspaceId": "ws-test",
+      "planId": "Growth",
+      "planName": "Growth",
+      "billingCycle": "monthly",
+      "status": "active",
+      "provider": "razorpay",
+      "currentPeriodStart": "2026-09-16T12:26:16.042Z",
+      "currentPeriodEnd": "2026-10-16T12:26:16.042Z",
+      "cancelAtPeriodEnd": false,
+      "trialDaysRemaining": 0,
+      "paymentMethod": {
+        "provider": "razorpay",
+        "brand": "UPI / NetBanking",
+        "last4": "2026"
+      },
+      "billingDetails": {},
+      "updatedAt": "2026-09-16T12:26:16.042Z"
+    }
+  },
+  "invoices": [
+    {
+      "id": "inv_1789561576042",
+      "invoiceNumber": "INV-2026-3394",
+      "workspaceId": "ws-test",
+      "planName": "Growth",
+      "billingCycle": "monthly",
+      "amount": 1899,
+      "currency": "INR",
+      "status": "paid",
+      "paymentId": "pay_1789561576042",
+      "orderId": "ord_1789561576042",
+      "date": "2026-09-16T12:26:16.042Z",
+      "periodEnd": "2026-10-16T12:26:16.042Z",
+      "billingDetails": {}
+    }
+  ]
+}
