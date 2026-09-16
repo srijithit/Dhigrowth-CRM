@@ -128,7 +128,7 @@ export const ApiWebhooksPage = () => {
 
           <div className="flex items-center gap-3">
             <a
-              href="https://docs.sendiee.com"
+              href="https://docs.dhigrowth.com"
               target="_blank"
               rel="noreferrer"
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#EAECF0] bg-white hover:bg-[#F9FAFB] text-xs font-semibold text-[#475467] transition-colors cursor-pointer shadow-2xs"

@@ -134,7 +134,7 @@ export const INITIAL_CHATS = [
       {
         id: 'm202',
         sender: 'ai',
-        text: 'Hey David! 🚀 Absolutely. Sendiee provides native Shopify & WooCommerce webhooks. Whenever a cart is abandoned or purchase is completed, we post `InitiateCheckout` or `Purchase` directly to Meta Conversions API with 9.8/10 event match quality.',
+        text: 'Hey David! 🚀 Absolutely. Dhigrowth provides native Shopify & WooCommerce webhooks. Whenever a cart is abandoned or purchase is completed, we post `InitiateCheckout` or `Purchase` directly to Meta Conversions API with 9.8/10 event match quality.',
         time: '09:40 AM',
         status: 'read',
         tokenCost: '$0.006',
@@ -220,7 +220,7 @@ export const INITIAL_CHATS = [
       {
         id: 'm402',
         sender: 'ai',
-        text: 'Yes Elena! When anyone comments a keyword like "LINK" or "PRICE", Sendiee instantly comments back and slides into their DMs with the exact product link and coupon code!',
+        text: 'Yes Elena! When anyone comments a keyword like "LINK" or "PRICE", Dhigrowth instantly comments back and slides into their DMs with the exact product link and coupon code!',
         time: '06:12 AM',
         status: 'read',
         tokenCost: '$0.004',
@@ -292,9 +292,9 @@ export const META_APPROVED_TEMPLATES = [
     status: 'APPROVED',
     header: '📦 Your Order is on the way!',
     body: 'Hi {{1}}, your order #{{2}} has been dispatched via {{3}}. Track live delivery status below.',
-    footer: 'Sendiee Official Delivery Bot',
+    footer: 'Dhigrowth Official Delivery Bot',
     buttons: [
-      { type: 'URL', text: 'Track Order', url: 'https://track.sendiee.com/{{2}}' },
+      { type: 'URL', text: 'Track Order', url: 'https://track.dhigrowth.com/{{2}}' },
       { type: 'QUICK_REPLY', text: 'Chat with AI Support' }
     ]
   },
@@ -308,7 +308,7 @@ export const META_APPROVED_TEMPLATES = [
     body: 'Your selected items are selling fast! Use exclusive code {{2}} at checkout for an extra {{3}} off.',
     footer: 'Offer expires in 6 hours',
     buttons: [
-      { type: 'URL', text: 'Complete My Order', url: 'https://store.sendiee.com/checkout' },
+      { type: 'URL', text: 'Complete My Order', url: 'https://store.dhigrowth.com/checkout' },
       { type: 'QUICK_REPLY', text: 'Ask about sizing/color' }
     ]
   },
@@ -319,7 +319,7 @@ export const META_APPROVED_TEMPLATES = [
     language: 'en_US',
     status: 'APPROVED',
     header: null,
-    body: 'Your Sendiee verification code is {{1}}. Valid for 10 minutes. Never share this code with anyone.',
+    body: 'Your Dhigrowth verification code is {{1}}. Valid for 10 minutes. Never share this code with anyone.',
     footer: 'Security Notification',
     buttons: [
       { type: 'COPY_CODE', text: 'Copy Code', code: '{{1}}' }
@@ -409,7 +409,7 @@ export const AI_VOICE_CALL_LOGS = [
     contact: 'Rajesh Verma (+91 98200 11223)',
     direction: 'Outbound Campaign',
     duration: '1m 48s',
-    agentModel: 'Sendiee Voice-Agent v3 (0.9s latency)',
+    agentModel: 'Dhigrowth Voice-Agent v3 (0.9s latency)',
     status: 'Qualified Hot Lead',
     sentiment: 'High Intent',
     summary: 'Customer confirmed interest in the 5-seater office suite, requested WhatsApp brochure and callback from sales.',
@@ -419,7 +419,7 @@ export const AI_VOICE_CALL_LOGS = [
     contact: 'Jessica Taylor (+1 650 443 8901)',
     direction: 'Inbound Support',
     duration: '2m 15s',
-    agentModel: 'Sendiee Voice-Agent v3 (0.8s latency)',
+    agentModel: 'Dhigrowth Voice-Agent v3 (0.8s latency)',
     status: 'Resolved Support Query',
     sentiment: 'Satisfied',
     summary: 'Inquired about order dispatch status. AI looked up order #SD-8821 and provided live tracking URL via SMS & WhatsApp.',

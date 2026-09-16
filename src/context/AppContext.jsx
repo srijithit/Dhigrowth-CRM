@@ -661,7 +661,7 @@ export const AppProvider = ({ children }) => {
         notes: [],
         messages: [
           { id: 'm201', sender: 'user', text: 'Saw your reel about Meta CAPI integration. Can we trigger events from Shopify webhooks directly?', time: '09:40 AM' },
-          { id: 'm202', sender: 'ai', text: 'Hey David! 🚀 Absolutely. Whenever a cart is abandoned or purchase is completed, Sendiee posts events directly to Meta Conversions API with 9.8/10 match quality.', time: '09:40 AM' },
+          { id: 'm202', sender: 'ai', text: 'Hey David! 🚀 Absolutely. Whenever a cart is abandoned or purchase is completed, Dhigrowth posts events directly to Meta Conversions API with 9.8/10 match quality.', time: '09:40 AM' },
         ],
       },
       {

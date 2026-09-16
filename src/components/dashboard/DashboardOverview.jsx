@@ -106,7 +106,7 @@ export const DashboardOverview = () => {
           Good morning, {currentUser?.name || 'Sri'}
         </h1>
         <p className="text-xs lg:text-sm text-[#475467]">
-          Here's your Sendiee workspace at a glance.
+          Here's your Dhigrowth workspace at a glance.
         </p>
       </div>
 
@@ -742,7 +742,7 @@ export const DashboardOverview = () => {
           <div>
             <h2 className="text-lg font-bold text-[#101828]">Finish setting up</h2>
             <p className="text-xs text-[#667085] mt-0.5">
-              A few steps to get the most out of Sendiee
+              A few steps to get the most out of Dhigrowth
             </p>
           </div>
 

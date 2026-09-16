@@ -85,7 +85,7 @@ export const UpgradeModal = () => {
             <span>Official Meta Business Partner Platform</span>
           </div>
           <h2 className="text-2xl lg:text-3xl font-bold text-[#101828] tracking-tight">
-            Upgrade your Sendiee Workspace
+            Upgrade your Dhigrowth Workspace
           </h2>
           <p className="text-xs lg:text-sm text-[#475467] max-w-lg mx-auto">
             Zero markup on Meta WhatsApp conversation fees. Pay-per-use AI token wallet and unlimited scalability.
