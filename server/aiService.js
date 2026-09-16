@@ -2,14 +2,18 @@ import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const AI_CONFIG_FILE = path.resolve(__dirname, 'aiConfig.json');
 
+// Ensure environment variables are loaded
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
 const getSupabase = () => {
-  const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-  const key = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+  const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || 'https://ttjtlqsfwaksyqrrutvv.supabase.co';
+  const key = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR0anRscXNmd2Frc3lxcnJ1dHZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkxMDM1ODIsImV4cCI6MjEwNDY3OTU4Mn0.FtIIhGCFzaQ5zjkjmHj1qABZ-kucDiArWHAgrg1i01Y';
   if (!url || !key) return null;
   return createClient(url, key);
 };
@@ -33,17 +37,13 @@ Core Behavior Instructions:
 5. MULTI-LINGUAL: If the user writes in Hindi, Tamil, Hinglish, or any other language, understand and reply naturally in that same language.
 6. CONVERSATION CONTEXT & AFFIRMATIONS: If the user says "Yes", "Ok", "Sure", "I am interested", or agrees with our previous suggestion/question, understand the context of the prior messages. Warmly acknowledge their confirmation, ask them for the next detail needed, or offer available meeting/demo slots.`;
 
-const DHIGROWTH_WELCOME = `Hello! 👋 Welcome to **DhiGrowth IT Services**.
-
-How can our AI Business Concierge help you today? 🤖
-
-We help businesses with:
-📱 **App Development**
-🤖 **AI Business Solutions & Development**
-💬 **WhatsApp CRM & Automation**
-💻 **Custom IT Solutions**
-
-Tell us what your business needs, and let's build something powerful together! 🚀`;
+const DHIGROWTH_WELCOME = {
+  reply: `Hello! 👋 Welcome to **DhiGrowth IT Services**.\n\nHow can our AI Business Concierge help you today? 🤖\n\nWe help businesses with:\n📱 **App Development**\n🤖 **AI Business Solutions & Development**\n💬 **WhatsApp CRM & Automation**\n💻 **Custom IT Solutions**\n\nTell us what your business needs, and let's build something powerful together! 🚀`,
+  imageUrl: 'https://www.dhigrowth.com/logo.png',
+  toString: function () {
+    return this.reply;
+  },
+};
 
 let cachedRemoteConfig = null;
 
