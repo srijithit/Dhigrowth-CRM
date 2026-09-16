@@ -10,7 +10,6 @@ import {
   Key,
   Radio,
   Trash2,
-  LogIn,
   Layers,
   Sparkles,
   Zap,
@@ -29,7 +28,6 @@ export const SuperAdminTenantsPage = () => {
     deleteTenantUser,
     toggleTenantPermission,
     currentUser,
-    login,
     showToast,
   } = useApp();
 
@@ -98,11 +96,6 @@ export const SuperAdminTenantsPage = () => {
         },
       });
     }
-  };
-
-  const handleImpersonate = (tenant) => {
-    login(tenant.username, tenant.password);
-    showToast(`Switched active workspace session to ${tenant.name} (${tenant.workspaceId})`, 'success');
   };
 
   const filteredTenants = (tenants || []).filter((t) => {
@@ -378,18 +371,6 @@ export const SuperAdminTenantsPage = () => {
                         </>
                       )}
                     </button>
-
-                    {/* Impersonate / Switch Workspace */}
-                    {!isSelf && (
-                      <button
-                        onClick={() => handleImpersonate(tenant)}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#ECFDF5] hover:bg-[#D1FAE5] text-[#047857] border border-[#A7F3D0] text-xs font-bold transition-colors cursor-pointer"
-                        title="Sign into this workspace immediately"
-                      >
-                        <LogIn className="w-3.5 h-3.5" />
-                        Impersonate
-                      </button>
-                    )}
 
                     {/* Delete Tenant (Guard primary admin) */}
                     {!tenant.isAdmin && (
