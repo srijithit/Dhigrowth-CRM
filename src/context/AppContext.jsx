@@ -65,10 +65,21 @@ export const AppProvider = ({ children }) => {
 
   const fetchMetaConfig = async () => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/meta-config`);
-      if (res.ok) {
-        const data = await res.json();
-        setMetaConfig(data);
+      let res;
+      try {
+        res = await fetch(`${BACKEND_URL}/api/meta-config`);
+      } catch {}
+      if (!res || !res.ok) {
+        try {
+          res = await fetch('http://localhost:4000/api/meta-config');
+        } catch {}
+      }
+      if (res && res.ok) {
+        const raw = await res.text();
+        if (raw && !raw.trim().startsWith('<')) {
+          const data = JSON.parse(raw);
+          setMetaConfig(data);
+        }
       }
     } catch (err) {
       console.warn('[AppContext] Could not fetch meta config from server:', err);
@@ -78,15 +89,41 @@ export const AppProvider = ({ children }) => {
   const saveMetaConfig = async (newConfig) => {
     setIsMetaLoading(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/api/meta-config`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...newConfig,
-          updatedBy: currentUser?.username || 'kiki',
-        }),
-      });
-      const data = await res.json();
+      let res;
+      try {
+        res = await fetch(`${BACKEND_URL}/api/meta-config`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...newConfig,
+            updatedBy: currentUser?.username || 'kiki',
+          }),
+        });
+      } catch {}
+
+      if (!res || !res.ok) {
+        try {
+          res = await fetch('http://localhost:4000/api/meta-config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...newConfig,
+              updatedBy: currentUser?.username || 'kiki',
+            }),
+          });
+        } catch {}
+      }
+
+      if (!res) throw new Error('Cannot connect to backend server. Please verify backend is running.');
+
+      const raw = await res.text();
+      let data;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        throw new Error('Server returned HTML response instead of JSON. Ensure backend is running.');
+      }
+
       if (!res.ok) throw new Error(data.error || 'Failed to save Meta configuration');
 
       setMetaConfig((prev) => ({
@@ -105,12 +142,34 @@ export const AppProvider = ({ children }) => {
 
   const testMetaConfig = async (configToTest) => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/meta-config/test`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(configToTest || {}),
-      });
-      const data = await res.json();
+      let res;
+      try {
+        res = await fetch(`${BACKEND_URL}/api/meta-config/test`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(configToTest || {}),
+        });
+      } catch {}
+
+      if (!res || !res.ok) {
+        try {
+          res = await fetch('http://localhost:4000/api/meta-config/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(configToTest || {}),
+          });
+        } catch {}
+      }
+
+      if (!res) return { success: false, error: 'Could not connect to backend server.' };
+
+      const raw = await res.text();
+      let data;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        return { success: false, error: 'Server returned HTML response instead of JSON.' };
+      }
       return data;
     } catch (err) {
       return { success: false, error: err.message };
@@ -121,7 +180,7 @@ export const AppProvider = ({ children }) => {
   const [aiConfig, setAiConfig] = useState({
     provider: 'gemini',
     apiKey: '',
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.5-flash',
     systemPrompt: '',
     hasKey: false,
     maskedKey: '',
@@ -130,14 +189,25 @@ export const AppProvider = ({ children }) => {
 
   const fetchAiConfig = async () => {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/ai-config`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.config) {
-          setAiConfig((prev) => ({
-            ...prev,
-            ...data.config,
-          }));
+      let res;
+      try {
+        res = await fetch(`${BACKEND_URL}/api/ai-config`);
+      } catch {}
+      if (!res || !res.ok) {
+        try {
+          res = await fetch('http://localhost:4000/api/ai-config');
+        } catch {}
+      }
+      if (res && res.ok) {
+        const raw = await res.text();
+        if (raw && !raw.trim().startsWith('<')) {
+          const data = JSON.parse(raw);
+          if (data.success && data.config) {
+            setAiConfig((prev) => ({
+              ...prev,
+              ...data.config,
+            }));
+          }
         }
       }
     } catch (err) {
@@ -158,18 +228,31 @@ export const AppProvider = ({ children }) => {
             updatedBy: currentUser?.username || 'user',
           }),
         });
-      } catch {
-        res = await fetch(`http://localhost:4000/api/ai-config`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...newConfig,
-            updatedBy: currentUser?.username || 'user',
-          }),
-        });
+      } catch {}
+
+      if (!res || !res.ok) {
+        try {
+          res = await fetch(`http://localhost:4000/api/ai-config`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...newConfig,
+              updatedBy: currentUser?.username || 'user',
+            }),
+          });
+        } catch {}
       }
 
-      const data = await res.json();
+      if (!res) throw new Error('Cannot connect to backend server. Please verify backend is running.');
+
+      const raw = await res.text();
+      let data;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        throw new Error('Server returned HTML response instead of JSON.');
+      }
+
       if (!res.ok) throw new Error(data.error || 'Failed to save AI configuration');
 
       setAiConfig((prev) => ({
@@ -202,14 +285,29 @@ export const AppProvider = ({ children }) => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(configToTest || {}),
         });
-      } catch {
-        res = await fetch(`http://localhost:4000/api/ai-config/test`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(configToTest || {}),
-        });
+      } catch {}
+
+      if (!res || !res.ok) {
+        try {
+          res = await fetch(`http://localhost:4000/api/ai-config/test`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(configToTest || {}),
+          });
+        } catch {}
       }
-      const data = await res.json();
+
+      if (!res) {
+        return { success: false, error: 'Could not connect to backend server. Please verify backend is running.' };
+      }
+
+      const raw = await res.text();
+      let data;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        return { success: false, error: 'Server returned HTML response instead of JSON. Ensure backend is running.' };
+      }
       return data;
     } catch (err) {
       return { success: false, error: err.message };
