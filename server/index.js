@@ -650,6 +650,110 @@ const handleAiGenerate = async (req, res) => {
 app.post('/api/ai/generate', handleAiGenerate);
 app.post('/api/ai-config/generate', handleAiGenerate);
 
+// 10. Multi-Tenant Directory Cloud Persistence Endpoints
+const TENANTS_FILE = path.resolve(__dirname, 'tenants.json');
+
+function loadTenants() {
+  try {
+    if (fs.existsSync(TENANTS_FILE)) {
+      const raw = fs.readFileSync(TENANTS_FILE, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (err) {
+    console.warn('[Tenants] Error reading tenants.json:', err.message);
+  }
+  return [
+    {
+      id: 'b0000000-0000-0000-0000-000000000001',
+      workspaceId: 'b0000000-0000-0000-0000-000000000001',
+      name: 'Sri',
+      username: 'sri',
+      email: 'sri@dhigrowth.com',
+      companyName: 'Dhigrowth CRM',
+      slug: 'sri',
+      role: 'Dhigrowth CRM User',
+      plan: 'Enterprise Scale',
+      isAdmin: false,
+      isExternalClient: false,
+      password: 'dhigrowth2026',
+      permissions: { sendDueToAll: true, teamInbox: true, metaKeys: true, aiStudio: true, fileManager: true, invoicing: true },
+      status: 'active',
+      createdAt: '2026-09-10T00:00:00.000Z',
+    },
+    {
+      id: 'b0000000-0000-0000-0000-000000000002',
+      workspaceId: 'b0000000-0000-0000-0000-000000000002',
+      name: 'Kiki',
+      username: 'kiki',
+      email: 'kiki@client-org.com',
+      companyName: "Kiki's Client Workspace",
+      slug: 'kiki',
+      role: 'External Client (BYOK)',
+      plan: 'Pro Plan',
+      isAdmin: false,
+      isExternalClient: true,
+      password: 'kiki123',
+      permissions: { sendDueToAll: true, teamInbox: true, metaKeys: false, aiStudio: false, fileManager: false, invoicing: true },
+      status: 'active',
+      createdAt: '2026-09-11T00:00:00.000Z',
+    },
+  ];
+}
+
+function saveTenants(tenantsList) {
+  try {
+    fs.writeFileSync(TENANTS_FILE, JSON.stringify(tenantsList, null, 2), 'utf-8');
+    return true;
+  } catch (err) {
+    console.error('[Tenants] Error saving tenants.json:', err.message);
+    return false;
+  }
+}
+
+app.get('/api/tenants', (req, res) => {
+  try {
+    const list = loadTenants();
+    res.json({ success: true, tenants: list });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/tenants', (req, res) => {
+  try {
+    const newTenant = req.body;
+    if (!newTenant || !newTenant.username) {
+      return res.status(400).json({ success: false, error: 'Tenant username is required' });
+    }
+    const list = loadTenants();
+    const existingIndex = list.findIndex(
+      (t) => t.id === newTenant.id || t.username?.toLowerCase() === newTenant.username?.toLowerCase()
+    );
+    if (existingIndex >= 0) {
+      list[existingIndex] = { ...list[existingIndex], ...newTenant };
+    } else {
+      list.push(newTenant);
+    }
+    saveTenants(list);
+    res.json({ success: true, message: `Tenant "${newTenant.name}" saved!`, tenant: newTenant });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/tenants/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    let list = loadTenants();
+    list = list.filter((t) => t.id !== id && t.workspaceId !== id && t.username !== id);
+    saveTenants(list);
+    res.json({ success: true, message: 'Tenant removed from cloud directory' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`\n================================================================`);
   console.log(`🚀 Dhigrowth CRM Meta Webhook Server running on port ${PORT}`);

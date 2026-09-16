@@ -399,9 +399,49 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  // Fetch cloud-registered tenants from backend
+  const fetchTenantsCloud = async () => {
+    try {
+      let res;
+      try {
+        res = await fetch(`${BACKEND_URL}/api/tenants`);
+      } catch {}
+      if (!res || !res.ok) {
+        try {
+          res = await fetch('http://localhost:4000/api/tenants');
+        } catch {}
+      }
+      if (res && res.ok) {
+        const data = await res.json();
+        if (data?.tenants && Array.isArray(data.tenants)) {
+          setTenants((prev) => {
+            const merged = [...prev];
+            data.tenants.forEach((ct) => {
+              const idx = merged.findIndex(
+                (m) => m.id === ct.id || m.username?.toLowerCase() === ct.username?.toLowerCase()
+              );
+              if (idx >= 0) {
+                merged[idx] = { ...merged[idx], ...ct };
+              } else {
+                merged.push(ct);
+              }
+            });
+            try {
+              localStorage.setItem('dhigrowth_tenants', JSON.stringify(merged));
+            } catch {}
+            return merged;
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('[TenantsCloud] Notice:', err.message);
+    }
+  };
+
   useEffect(() => {
     fetchMetaConfig();
     fetchAiConfig();
+    fetchTenantsCloud();
   }, []);
 
   // Bcrypt hashed passwords for secure authentication (Cost Factor: 10)
@@ -723,6 +763,21 @@ export const AppProvider = ({ children }) => {
       origin: { y: 0.6 },
     });
 
+    // Cloud Sync to Render backend so accessible on any device on Vercel
+    try {
+      fetch(`${BACKEND_URL}/api/tenants`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newTenant),
+      }).catch(() => {
+        fetch('http://localhost:4000/api/tenants', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newTenant),
+        }).catch(() => {});
+      });
+    } catch {}
+
     showToast(`🎉 Tenant "${newTenant.name}" (${newTenant.companyName}) created successfully!`, 'success');
     return newTenant;
   };
@@ -740,6 +795,14 @@ export const AppProvider = ({ children }) => {
     try {
       localStorage.setItem('dhigrowth_tenants', JSON.stringify(filtered));
     } catch {}
+
+    // Cloud delete from Render backend
+    try {
+      fetch(`${BACKEND_URL}/api/tenants/${target.id || tenantId}`, { method: 'DELETE' }).catch(() => {
+        fetch(`http://localhost:4000/api/tenants/${target.id || tenantId}`, { method: 'DELETE' }).catch(() => {});
+      });
+    } catch {}
+
     showToast(`Tenant "${target.name}" removed from directory.`, 'info');
   };
 
