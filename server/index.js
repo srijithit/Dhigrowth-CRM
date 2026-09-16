@@ -13,6 +13,12 @@ import {
   broadcastDueInvoicesToAll,
 } from './invoiceService.js';
 import { generateInvoicePdf } from './invoicePdfGenerator.js';
+import {
+  getActiveAiConfig,
+  saveActiveAiConfig,
+  testAiConnection,
+  DEFAULT_SYSTEM_PROMPT,
+} from './aiService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -569,6 +575,54 @@ app.post('/api/meta-config/test', async (req, res) => {
   }
 });
 
+// 9. AI API Engine Configuration Endpoints (User-Side)
+app.get('/api/ai-config', (req, res) => {
+  try {
+    const config = getActiveAiConfig();
+    res.json({
+      success: true,
+      config,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/ai-config', (req, res) => {
+  try {
+    const { provider, apiKey, model, systemPrompt, updatedBy = 'user' } = req.body || {};
+    const saved = saveActiveAiConfig({ provider, apiKey, model, systemPrompt, updatedBy });
+    res.json({
+      success: true,
+      message: `AI Engine updated successfully to ${saved.provider.toUpperCase()} (${saved.model})!`,
+      config: {
+        provider: saved.provider,
+        model: saved.model,
+        hasKey: Boolean(saved.apiKey),
+        maskedKey: saved.apiKey ? `${saved.apiKey.slice(0, 7)}...${saved.apiKey.slice(-4)}` : '',
+        systemPrompt: saved.systemPrompt,
+        updatedAt: saved.updatedAt,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/ai-config/test', async (req, res) => {
+  try {
+    const { provider, apiKey, model, testPrompt } = req.body || {};
+    const result = await testAiConnection({ provider, apiKey, model, testPrompt });
+    res.json({
+      success: true,
+      data: result,
+      message: `Connected successfully to ${result.provider.toUpperCase()} (${result.model}) in ${result.latencyMs}ms!`,
+    });
+  } catch (err) {
+    console.error('[AI Test Error]:', err.message);
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`\n================================================================`);

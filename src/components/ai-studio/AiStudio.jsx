@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Bot,
   Sparkles,
@@ -13,37 +13,199 @@ import {
   Zap,
   RefreshCw,
   Eye,
+  EyeOff,
+  Key,
+  ExternalLink,
   MessageSquare,
   ShieldCheck,
-  Mic,
-  Database
+  CheckCircle2,
+  AlertCircle,
+  Database,
+  Layers,
+  Save,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
-export const AiStudio = () => {
-  const { aiConfig, setAiConfig, knowledgeBase, setKnowledgeBase, showToast } = useApp();
+const PROVIDERS = [
+  {
+    id: 'gemini',
+    name: 'Google Gemini',
+    badge: 'Free Tier Available',
+    badgeColor: 'bg-[#DCFCE7] text-[#15803D] border-[#86EFAC]',
+    placeholder: 'AIzaSy...',
+    keyUrl: 'https://aistudio.google.com/app/apikey',
+    docs: 'Free tier with zero card setup. Get your key instantly at Google AI Studio.',
+    models: [
+      { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash (Recommended)', note: 'Ultra fast & lightweight' },
+      { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', note: 'Next-gen intelligence' },
+      { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', note: 'Deep reasoning & long context' },
+    ],
+  },
+  {
+    id: 'groq',
+    name: 'Groq Cloud',
+    badge: 'Ultra Fast (<300ms)',
+    badgeColor: 'bg-[#FEF3C7] text-[#B45309] border-[#FCD34D]',
+    placeholder: 'gsk_...',
+    keyUrl: 'https://console.groq.com/keys',
+    docs: 'Lightning-fast Llama models with generous free tier at Groq Console.',
+    models: [
+      { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile', note: 'High intelligence & speed' },
+      { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant', note: 'Instant sub-200ms latency' },
+      { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B', note: 'Balanced MoE model' },
+    ],
+  },
+  {
+    id: 'openai',
+    name: 'OpenAI (ChatGPT)',
+    badge: 'Industry Standard',
+    badgeColor: 'bg-[#EDE9FE] text-[#6D28D9] border-[#DDD6FE]',
+    placeholder: 'sk-...',
+    keyUrl: 'https://platform.openai.com/api-keys',
+    docs: 'Best-in-class natural conversation understanding from OpenAI Platform.',
+    models: [
+      { id: 'gpt-4o-mini', name: 'GPT-4o Mini (Recommended)', note: 'Fast, cheap & fluent' },
+      { id: 'gpt-4o', name: 'GPT-4o Flagship', note: 'Multimodal flagship' },
+      { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', note: 'Legacy fast model' },
+    ],
+  },
+  {
+    id: 'deepseek',
+    name: 'DeepSeek',
+    badge: 'Cost Efficient',
+    badgeColor: 'bg-[#E0F2FE] text-[#0369A1] border-[#BAE6FD]',
+    placeholder: 'sk-...',
+    keyUrl: 'https://platform.deepseek.com/api_keys',
+    docs: 'State-of-the-art cost-effective reasoning engine from DeepSeek.',
+    models: [
+      { id: 'deepseek-chat', name: 'DeepSeek Chat (V3)', note: 'High performance at lowest cost' },
+    ],
+  },
+];
 
+export const AiStudio = () => {
+  const {
+    aiConfig,
+    setAiConfig,
+    saveAiConfig,
+    testAiConfig,
+    isAiConfigLoading,
+    knowledgeBase,
+    setKnowledgeBase,
+    showToast,
+  } = useApp();
+
+  // Local form state for AI API Key & Provider
+  const [provider, setProvider] = useState(aiConfig?.provider || 'gemini');
+  const [apiKey, setApiKey] = useState(aiConfig?.apiKey || '');
+  const [model, setModel] = useState(aiConfig?.model || 'gemini-1.5-flash');
+  const [systemPrompt, setSystemPrompt] = useState(aiConfig?.systemPrompt || '');
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [isTestingKey, setIsTestingKey] = useState(false);
+  const [testResult, setTestResult] = useState(null);
+
+  // Sync state if aiConfig updates from server
+  useEffect(() => {
+    if (aiConfig) {
+      if (aiConfig.provider) setProvider(aiConfig.provider);
+      if (aiConfig.model) setModel(aiConfig.model);
+      if (aiConfig.apiKey && !apiKey) setApiKey(aiConfig.apiKey);
+      if (aiConfig.systemPrompt && !systemPrompt) setSystemPrompt(aiConfig.systemPrompt);
+    }
+  }, [aiConfig]);
+
+  const currentProviderConfig = PROVIDERS.find((p) => p.id === provider) || PROVIDERS[0];
+
+  const handleProviderChange = (newProviderId) => {
+    setProvider(newProviderId);
+    const target = PROVIDERS.find((p) => p.id === newProviderId);
+    if (target && target.models?.length > 0) {
+      setModel(target.models[0].id);
+    }
+    setTestResult(null);
+  };
+
+  const handleTestApiKey = async () => {
+    if (!apiKey.trim() && !aiConfig?.hasKey) {
+      showToast('Please enter an API Key to test connection.', 'error');
+      return;
+    }
+
+    setIsTestingKey(true);
+    setTestResult(null);
+
+    try {
+      const res = await testAiConfig({
+        provider,
+        apiKey: apiKey.trim(),
+        model,
+        testPrompt: 'Hello! Are you online and ready to assist WhatsApp customers with IT services?',
+      });
+
+      if (res && res.success && res.data) {
+        setTestResult({
+          success: true,
+          reply: res.data.reply,
+          latencyMs: res.data.latencyMs,
+          model: res.data.model,
+          provider: res.data.provider,
+        });
+        showToast(`🎉 Connected to ${provider.toUpperCase()} (${res.data.latencyMs}ms)!`, 'success');
+      } else {
+        setTestResult({
+          success: false,
+          error: res?.error || 'Connection failed. Please check your API key and quota.',
+        });
+        showToast(res?.error || 'AI test failed', 'error');
+      }
+    } catch (err) {
+      setTestResult({
+        success: false,
+        error: err.message || 'Network error while testing AI API.',
+      });
+      showToast(err.message, 'error');
+    } finally {
+      setIsTestingKey(false);
+    }
+  };
+
+  const handleSaveConfig = async (e) => {
+    e?.preventDefault();
+    try {
+      await saveAiConfig({
+        provider,
+        apiKey: apiKey.trim(),
+        model,
+        systemPrompt,
+      });
+    } catch (err) {
+      // Error is handled in AppContext
+    }
+  };
+
+  // Sandbox Live Test Messages
   const [testMessages, setTestMessages] = useState([
     {
       id: 't1',
       sender: 'user',
-      text: 'Do you ship to Mumbai and what are the delivery charges?',
+      text: 'Hi! What services does DhiGrowth provide and can you help with WhatsApp CRM?',
       time: '11:00 AM',
     },
     {
       id: 't2',
       sender: 'ai',
-      text: 'Yes! We provide complimentary express delivery to Mumbai & all major cities within 24-48 hours with Cash on Delivery supported. 🎉',
+      text: 'Hello! 👋 We provide App Development, AI Business Solutions, WhatsApp CRM & Custom IT Solutions. We can deploy full Meta Cloud API automation for your business right away! 🚀',
       time: '11:00 AM',
     },
   ]);
 
   const [testInput, setTestInput] = useState('');
+  const [isSandboxTyping, setIsSandboxTyping] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newCat, setNewCat] = useState('Catalog');
   const [isAddingDoc, setIsAddingDoc] = useState(false);
 
-  const handleTestSend = (e) => {
+  const handleTestSend = async (e) => {
     e.preventDefault();
     if (!testInput.trim()) return;
 
@@ -54,25 +216,66 @@ export const AiStudio = () => {
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
+    const currentQuery = testInput;
     setTestMessages((prev) => [...prev, userMsg]);
-    const curr = testInput;
     setTestInput('');
+    setIsSandboxTyping(true);
 
-    setTimeout(() => {
-      let reply = `Sendiee AI evaluated "${curr}" with high intent (92%). Recommendation: Our bestselling 100% Linen King Set in beige is available for ₹2,499.`;
-      if (curr.toLowerCase().includes('price') || curr.toLowerCase().includes('cost')) {
-        reply = `Price is ₹2,499 with complimentary shipping and Cash on Delivery. Would you like me to book your order?`;
+    try {
+      // If user has entered an API key, call the live AI API directly!
+      if (apiKey || aiConfig?.hasKey) {
+        const res = await testAiConfig({
+          provider,
+          apiKey: apiKey.trim(),
+          model,
+          testPrompt: currentQuery,
+        });
+
+        if (res?.success && res?.data?.reply) {
+          setTestMessages((prev) => [
+            ...prev,
+            {
+              id: `ai-${Date.now()}`,
+              sender: 'ai',
+              text: res.data.reply,
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              modelTag: `${provider.toUpperCase()} · ${res.data.latencyMs}ms`,
+            },
+          ]);
+          return;
+        }
       }
+
+      // Simulated fallback if no API key is present
+      setTimeout(() => {
+        let reply = `Thank you for reaching out! DhiGrowth AI Concierge is ready to help with App Development, AI Business Solutions, and WhatsApp CRM.`;
+        if (currentQuery.toLowerCase().includes('price') || currentQuery.toLowerCase().includes('cost')) {
+          reply = `Our project pricing is customized based on your business scope. Feel free to share brief details and we will prepare a tailored proposal! 🤝`;
+        }
+        setTestMessages((prev) => [
+          ...prev,
+          {
+            id: `ai-${Date.now()}`,
+            sender: 'ai',
+            text: reply,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            modelTag: 'Local Rules Engine',
+          },
+        ]);
+      }, 600);
+    } catch (err) {
       setTestMessages((prev) => [
         ...prev,
         {
           id: `ai-${Date.now()}`,
           sender: 'ai',
-          text: reply,
+          text: `⚠️ Error reaching ${provider}: ${err.message}`,
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         },
       ]);
-    }, 700);
+    } finally {
+      setIsSandboxTyping(false);
+    }
   };
 
   const handleAddDoc = (e) => {
@@ -94,74 +297,235 @@ export const AiStudio = () => {
   };
 
   return (
-    <div className="p-6 lg:p-10 space-y-6 max-w-[1300px] mx-auto font-sans">
+    <div className="p-6 lg:p-10 space-y-6 max-w-[1350px] mx-auto font-sans">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#101828]">AI Assistants & Prompt Studio</h1>
-          <p className="text-xs text-[#667085]">
-            Configure model intelligence, tune system prompts, and ground responses with RAG knowledge documents.
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-black text-[#101828] tracking-tight">
+              AI Assistants & Prompt Studio
+            </h1>
+            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#F4F0FD] text-[#7C3AED] border border-[#E9D8FD] font-mono">
+              v2.5 Live
+            </span>
+          </div>
+          <p className="text-xs text-[#667085] mt-0.5">
+            Configure your AI API keys, choose models (Gemini, OpenAI, Groq), and empower 24/7 intelligent WhatsApp auto-pilot replies.
           </p>
         </div>
 
         <button
-          onClick={() => showToast('AI Assistant synced to WhatsApp Cloud API webhook!', 'success')}
-          className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-bold px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+          onClick={handleSaveConfig}
+          disabled={isAiConfigLoading}
+          className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-bold px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-xs transition-all cursor-pointer disabled:opacity-75"
         >
-          <Sparkles className="w-4 h-4" />
-          <span>Deploy to WhatsApp</span>
+          {isAiConfigLoading ? (
+            <RefreshCw className="w-4 h-4 animate-spin" />
+          ) : (
+            <Save className="w-4 h-4" />
+          )}
+          <span>Save & Activate on WhatsApp</span>
         </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Config Column (7 cols) */}
         <div className="lg:col-span-7 space-y-6">
-          {/* Foundation Model Selector */}
-          <div className="sendiee-card p-6 space-y-4">
-            <div className="text-xs font-bold uppercase text-[#667085] flex items-center gap-2 font-mono">
-              <Cpu className="w-4 h-4 text-[#7C3AED]" />
-              <span>Foundation Model</span>
+          {/* Card 1: AI Provider & API Key Configuration */}
+          <div className="sendiee-card p-6 space-y-5 border border-[#E9D8FD]/80 shadow-sm bg-white">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-[#F4F0FD] border border-[#E9D8FD] flex items-center justify-center text-[#7C3AED]">
+                  <Key className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[#101828]">AI Provider & API Credentials</h3>
+                  <p className="text-[11px] text-[#667085]">Select your AI engine and enter your API Key to enable live replies</p>
+                </div>
+              </div>
+
+              {aiConfig?.hasKey && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#DCFCE7] text-[#15803D] border border-[#86EFAC] font-mono">
+                  <span className="w-2 h-2 rounded-full bg-[#16A34A] animate-pulse" />
+                  <span>LIVE CONNECTED</span>
+                </span>
+              )}
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { name: 'Gemini 2.5 Flash', latency: '<0.6s latency', note: 'Fast & Best Value' },
-                { name: 'Claude 3.5 Sonnet', latency: '<1.1s latency', note: 'Nuanced Tone' },
-                { name: 'GPT-4o Omnichannel', latency: '<0.9s latency', note: 'Vision & Speech' },
-              ].map((m) => (
-                <button
-                  key={m.name}
-                  onClick={() => setAiConfig({ ...aiConfig, model: m.name })}
-                  className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
-                    aiConfig.model === m.name
-                      ? 'border-[#7C3AED] bg-[#F4F0FD] text-[#101828] shadow-2xs'
-                      : 'border-[#EAECF0] bg-white text-[#475467] hover:border-[#D0D5DD]'
-                  }`}
-                >
-                  <div className="font-bold text-xs text-[#101828]">{m.name}</div>
-                  <div className="text-[10px] text-[#16A34A] font-mono mt-0.5">{m.latency}</div>
-                  <div className="text-[9px] text-[#98A2B3] mt-1">{m.note}</div>
-                </button>
-              ))}
+            {/* Provider Selector Tabs */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-[#344054]">Select AI Engine Provider</label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {PROVIDERS.map((p) => {
+                  const isSelected = provider === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handleProviderChange(p.id)}
+                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                        isSelected
+                          ? 'border-[#7C3AED] bg-[#F4F0FD] text-[#101828] ring-2 ring-[#7C3AED]/20 shadow-2xs'
+                          : 'border-[#EAECF0] bg-[#F9FAFB] text-[#475467] hover:border-[#D0D5DD] hover:bg-white'
+                      }`}
+                    >
+                      <div className="font-bold text-xs text-[#101828]">{p.name}</div>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full mt-2 w-fit border ${p.badgeColor}`}>
+                        {p.badge}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
+
+            {/* API Key Input */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-[#344054] flex items-center gap-1.5">
+                  <span>{currentProviderConfig.name} API Key</span>
+                  <span className="text-red-500">*</span>
+                </label>
+
+                <a
+                  href={currentProviderConfig.keyUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[11px] font-semibold text-[#7C3AED] hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Get {currentProviderConfig.name} Key</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+
+              <div className="relative">
+                <input
+                  type={showApiKey ? 'text' : 'password'}
+                  value={apiKey}
+                  onChange={(e) => {
+                    setApiKey(e.target.value);
+                    setTestResult(null);
+                  }}
+                  placeholder={aiConfig?.maskedKey || currentProviderConfig.placeholder}
+                  className="w-full bg-[#F9FAFB] border border-[#EAECF0] pl-3.5 pr-20 py-2.5 rounded-xl text-xs font-mono text-[#101828] focus:bg-white focus:outline-none focus:border-[#7C3AED] transition-colors"
+                />
+
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowApiKey(!showApiKey)}
+                    className="p-1.5 text-[#667085] hover:text-[#101828] rounded-lg hover:bg-[#EAECF0]/60 cursor-pointer"
+                    title={showApiKey ? 'Hide key' : 'Show key'}
+                  >
+                    {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-[#667085]">
+                {currentProviderConfig.docs}
+              </p>
+            </div>
+
+            {/* Model Selection Dropdown */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-[#344054]">Model Name</label>
+              <select
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                className="w-full bg-[#F9FAFB] border border-[#EAECF0] px-3.5 py-2.5 rounded-xl text-xs text-[#101828] font-bold focus:outline-none focus:border-[#7C3AED] cursor-pointer"
+              >
+                {currentProviderConfig.models.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name} — {m.note}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Action Buttons: Test Connection & Save */}
+            <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={handleTestApiKey}
+                disabled={isTestingKey}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-white border border-[#D0D5DD] hover:bg-[#F9FAFB] text-[#344054] text-xs font-bold flex items-center justify-center gap-2 shadow-2xs transition-colors cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-[#7C3AED] ${isTestingKey ? 'animate-spin' : ''}`} />
+                <span>{isTestingKey ? 'Testing API...' : 'Test Connection'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveConfig}
+                disabled={isAiConfigLoading}
+                className="w-full sm:flex-1 py-2.5 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>Save & Connect Engine</span>
+              </button>
+            </div>
+
+            {/* Test Result Feedback Box */}
+            {testResult && (
+              <div
+                className={`p-3.5 rounded-2xl border text-xs space-y-1.5 animate-in fade-in ${
+                  testResult.success
+                    ? 'bg-[#F0FDF4] border-[#86EFAC] text-[#166534]'
+                    : 'bg-[#FEF2F2] border-[#FECACA] text-[#991B1B]'
+                }`}
+              >
+                <div className="flex items-center gap-2 font-bold">
+                  {testResult.success ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 text-[#16A34A]" />
+                      <span>Connected Successfully! ({testResult.provider.toUpperCase()} · {testResult.latencyMs}ms)</span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="w-4 h-4 text-[#DC2626]" />
+                      <span>Connection Error</span>
+                    </>
+                  )}
+                </div>
+
+                {testResult.success ? (
+                  <p className="text-[11px] text-[#15803D] bg-white/70 p-2.5 rounded-xl border border-[#BBF7D0] italic">
+                    "{testResult.reply}"
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-[#B91C1C]">
+                    {testResult.error}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* System Prompt */}
-          <div className="sendiee-card p-6 space-y-3">
-            <div className="text-xs font-bold uppercase text-[#667085] flex items-center gap-2 font-mono">
-              <Sliders className="w-4 h-4 text-[#7C3AED]" />
-              <span>System Instructions</span>
+          {/* Card 2: System Instructions & Persona */}
+          <div className="sendiee-card p-6 space-y-3 bg-white">
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-bold uppercase text-[#667085] flex items-center gap-2 font-mono">
+                <Sliders className="w-4 h-4 text-[#7C3AED]" />
+                <span>Business Persona & System Instructions</span>
+              </div>
+              <span className="text-[10px] text-[#98A2B3]">Injected into every live WhatsApp conversation</span>
             </div>
 
             <textarea
               rows={5}
-              value={aiConfig.systemPrompt}
-              onChange={(e) => setAiConfig({ ...aiConfig, systemPrompt: e.target.value })}
-              className="w-full bg-[#F9FAFB] border border-[#EAECF0] p-3.5 rounded-xl text-xs text-[#101828] font-mono leading-relaxed focus:outline-none focus:border-[#7C3AED] resize-none"
+              value={systemPrompt}
+              onChange={(e) => setSystemPrompt(e.target.value)}
+              placeholder="You are DhiGrowth AI Business Concierge..."
+              className="w-full bg-[#F9FAFB] border border-[#EAECF0] p-3.5 rounded-xl text-xs text-[#101828] font-mono leading-relaxed focus:bg-white focus:outline-none focus:border-[#7C3AED] resize-none"
             />
+            <p className="text-[11px] text-[#667085]">
+              Customize your tone, service highlights (App Development, AI Solutions, WhatsApp CRM), and instructions for handling price inquiries.
+            </p>
           </div>
 
-          {/* Knowledge Base */}
-          <div className="sendiee-card p-6 space-y-4">
+          {/* Card 3: RAG Knowledge Base */}
+          <div className="sendiee-card p-6 space-y-4 bg-white">
             <div className="flex items-center justify-between">
               <div className="text-xs font-bold uppercase text-[#667085] flex items-center gap-2 font-mono">
                 <Database className="w-4 h-4 text-[#7C3AED]" />
@@ -182,7 +546,7 @@ export const AiStudio = () => {
                   <input
                     type="text"
                     required
-                    placeholder="Document Title"
+                    placeholder="Document Title (e.g. Services Pricing 2026)"
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
                     className="bg-white border border-[#EAECF0] px-3.5 py-1.5 rounded-xl text-xs text-[#101828] focus:outline-none focus:border-[#7C3AED]"
@@ -192,14 +556,14 @@ export const AiStudio = () => {
                     onChange={(e) => setNewCat(e.target.value)}
                     className="bg-white border border-[#EAECF0] px-3.5 py-1.5 rounded-xl text-xs text-[#101828] focus:outline-none focus:border-[#7C3AED]"
                   >
-                    <option value="Catalog">Product Catalog</option>
-                    <option value="Policy FAQ">Policy FAQ</option>
+                    <option value="Catalog">Product & Services Catalog</option>
+                    <option value="Policy FAQ">Policy & Delivery FAQ</option>
                     <option value="Pricing">Pricing Sheet</option>
                   </select>
                 </div>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-xl text-xs font-bold"
+                  className="px-4 py-2 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-xl text-xs font-bold cursor-pointer"
                 >
                   Index Document
                 </button>
@@ -227,55 +591,78 @@ export const AiStudio = () => {
         </div>
 
         {/* Right Sandbox Simulator (5 cols) */}
-        <div className="lg:col-span-5 sendiee-card p-6 flex flex-col h-[600px] justify-between">
-          <div className="flex items-center justify-between pb-3 border-b border-[#EAECF0]">
-            <div className="flex items-center gap-2">
-              <Bot className="w-4 h-4 text-[#7C3AED]" />
-              <h3 className="text-xs font-bold uppercase text-[#101828] font-mono">
-                Interactive AI Sandbox
-              </h3>
+        <div className="lg:col-span-5 sendiee-card p-6 flex flex-col h-[740px] justify-between bg-white border border-[#EAECF0]">
+          <div>
+            <div className="flex items-center justify-between pb-3 border-b border-[#EAECF0]">
+              <div className="flex items-center gap-2">
+                <Bot className="w-4 h-4 text-[#7C3AED]" />
+                <h3 className="text-xs font-bold uppercase text-[#101828] font-mono">
+                  Interactive AI Sandbox
+                </h3>
+              </div>
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#F4F0FD] text-[#7C3AED] border border-[#E9D8FD]">
+                {provider.toUpperCase()} · {model.split('-')[0]}
+              </span>
             </div>
-            <span className="text-[10px] font-mono text-[#16A34A] font-bold">● Active</span>
+            <p className="text-[11px] text-[#667085] mt-2">
+              Type any customer query below to chat with your live AI model in real time.
+            </p>
           </div>
 
-          <div className="flex-1 overflow-y-auto space-y-3 py-3">
+          <div className="flex-1 overflow-y-auto space-y-3 py-3 pr-1">
             {testMessages.map((m) => (
               <div
                 key={m.id}
                 className={`flex flex-col ${m.sender === 'user' ? 'items-start' : 'items-end'}`}
               >
                 <div
-                  className={`p-3 rounded-2xl text-xs max-w-[85%] leading-relaxed ${
+                  className={`p-3.5 rounded-2xl text-xs max-w-[88%] leading-relaxed ${
                     m.sender === 'user'
                       ? 'bg-[#F9FAFB] border border-[#EAECF0] text-[#101828]'
                       : 'bg-[#F4F0FD] border border-[#E9D8FD] text-[#101828]'
                   }`}
                 >
                   {m.sender === 'ai' && (
-                    <div className="text-[10px] font-mono text-[#7C3AED] font-bold mb-1 flex items-center gap-1">
-                      <Sparkles className="w-3 h-3 text-[#7C3AED]" />
-                      <span>{aiConfig.model}</span>
+                    <div className="text-[10px] font-mono text-[#7C3AED] font-bold mb-1 flex items-center justify-between gap-1">
+                      <span className="flex items-center gap-1">
+                        <Sparkles className="w-3 h-3 text-[#7C3AED]" />
+                        <span>DhiGrowth AI</span>
+                      </span>
+                      {m.modelTag && (
+                        <span className="text-[9px] text-[#667085] bg-white px-1.5 py-0.2 rounded border border-[#E9D8FD]">
+                          {m.modelTag}
+                        </span>
+                      )}
                     </div>
                   )}
-                  <p>{m.text}</p>
+                  <p className="whitespace-pre-line">{m.text}</p>
                 </div>
+                <span className="text-[9px] text-[#98A2B3] mt-1 px-1">{m.time}</span>
               </div>
             ))}
+
+            {isSandboxTyping && (
+              <div className="flex items-center gap-2 p-3 bg-[#F4F0FD] border border-[#E9D8FD] rounded-2xl w-fit text-xs text-[#7C3AED]">
+                <Sparkles className="w-3.5 h-3.5 animate-spin" />
+                <span className="font-semibold text-[11px]">AI is generating response...</span>
+              </div>
+            )}
           </div>
 
           <form onSubmit={handleTestSend} className="pt-3 border-t border-[#EAECF0] flex gap-2">
             <input
               type="text"
-              placeholder="Test customer query..."
+              placeholder="Ask anything (e.g. What is your app pricing?)..."
               value={testInput}
               onChange={(e) => setTestInput(e.target.value)}
-              className="flex-1 bg-[#F9FAFB] border border-[#EAECF0] px-3.5 py-2 rounded-xl text-xs text-[#101828] focus:outline-none focus:border-[#7C3AED]"
+              className="flex-1 bg-[#F9FAFB] border border-[#EAECF0] px-3.5 py-2.5 rounded-xl text-xs text-[#101828] focus:bg-white focus:outline-none focus:border-[#7C3AED]"
             />
             <button
               type="submit"
-              className="px-3.5 py-2 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-xl text-xs font-bold flex items-center justify-center cursor-pointer"
+              disabled={isSandboxTyping || !testInput.trim()}
+              className="px-4 py-2.5 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-xl text-xs font-bold flex items-center justify-center cursor-pointer disabled:opacity-50 transition-all"
             >
-              <Send className="w-3.5 h-3.5" />
+              <Send className="w-4 h-4" />
             </button>
           </form>
         </div>

@@ -117,8 +117,108 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  // AI Engine & API Configuration State
+  const [aiConfig, setAiConfig] = useState({
+    provider: 'gemini',
+    apiKey: '',
+    model: 'gemini-1.5-flash',
+    systemPrompt: '',
+    hasKey: false,
+    maskedKey: '',
+  });
+  const [isAiConfigLoading, setIsAiConfigLoading] = useState(false);
+
+  const fetchAiConfig = async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/ai-config`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.config) {
+          setAiConfig((prev) => ({
+            ...prev,
+            ...data.config,
+          }));
+        }
+      }
+    } catch (err) {
+      console.warn('[AppContext] Could not fetch AI config from server:', err);
+    }
+  };
+
+  const saveAiConfig = async (newConfig) => {
+    setIsAiConfigLoading(true);
+    try {
+      let res;
+      try {
+        res = await fetch(`${BACKEND_URL}/api/ai-config`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...newConfig,
+            updatedBy: currentUser?.username || 'user',
+          }),
+        });
+      } catch {
+        res = await fetch(`http://localhost:4000/api/ai-config`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...newConfig,
+            updatedBy: currentUser?.username || 'user',
+          }),
+        });
+      }
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to save AI configuration');
+
+      setAiConfig((prev) => ({
+        ...prev,
+        ...newConfig,
+        hasKey: Boolean(newConfig.apiKey || prev.apiKey),
+        maskedKey: newConfig.apiKey
+          ? `${newConfig.apiKey.slice(0, 7)}...${newConfig.apiKey.slice(-4)}`
+          : prev.maskedKey,
+      }));
+      showToast(
+        `🤖 ${newConfig.provider?.toUpperCase() || 'AI'} API credentials saved & connected to WhatsApp!`,
+        'success'
+      );
+      return data;
+    } catch (err) {
+      showToast(err.message, 'error');
+      throw err;
+    } finally {
+      setIsAiConfigLoading(false);
+    }
+  };
+
+  const testAiConfig = async (configToTest) => {
+    try {
+      let res;
+      try {
+        res = await fetch(`${BACKEND_URL}/api/ai-config/test`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(configToTest || {}),
+        });
+      } catch {
+        res = await fetch(`http://localhost:4000/api/ai-config/test`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(configToTest || {}),
+        });
+      }
+      const data = await res.json();
+      return data;
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  };
+
   useEffect(() => {
     fetchMetaConfig();
+    fetchAiConfig();
   }, []);
 
   // Bcrypt hashed passwords for secure authentication (Cost Factor: 10)
@@ -509,18 +609,6 @@ export const AppProvider = ({ children }) => {
       roas: '1066x',
     },
   ]);
-
-  // AI Configuration State
-  const [aiConfig, setAiConfig] = useState({
-    model: 'Gemini 2.5 Flash',
-    temperature: 0.3,
-    systemPrompt: `You are DhiGrowth's elite AI Business Concierge for Meta channels (WhatsApp, Instagram, Messenger).
-- Speak professionally, warmly, and concisely.
-- Welcome clients to DhiGrowth IT Services.
-- Help businesses with App Development, AI Business Solutions, WhatsApp CRM & Automation, and Custom IT Solutions.`,
-    autoTagLeads: true,
-    multimodalVision: true,
-  });
 
   // Knowledge Base Documents
   const [knowledgeBase, setKnowledgeBase] = useState([
@@ -1099,6 +1187,12 @@ export const AppProvider = ({ children }) => {
         userPermissions,
         updateUserPermission,
         hasPermission,
+        aiConfig,
+        setAiConfig,
+        saveAiConfig,
+        testAiConfig,
+        fetchAiConfig,
+        isAiConfigLoading,
       }}
     >
       {children}
