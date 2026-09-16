@@ -81,40 +81,6 @@ export const Header = () => {
 
       {/* Right Controls */}
       <div className="flex items-center gap-3">
-        {/* Admin Profile Switcher Pill */}
-        {isAdmin && (
-          <div className="flex items-center gap-1 bg-[#F4F0FD] border border-[#E9D8FD] p-1 rounded-xl">
-            <span className="text-[10px] font-bold text-[#7C3AED] px-1 font-mono uppercase tracking-wider hidden sm:inline">
-              Profile:
-            </span>
-            <button
-              type="button"
-              onClick={() => switchAdminProfile('sri')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                adminViewProfile === 'sri'
-                  ? 'bg-[#7C3AED] text-white shadow-2xs'
-                  : 'text-[#475467] hover:bg-white'
-              }`}
-              title="View Sri's DhiGrowth CRM"
-            >
-              <span>👤 Sri (CRM)</span>
-              {adminViewProfile === 'sri' && <span className="w-1.5 h-1.5 rounded-full bg-[#4ADE80]" />}
-            </button>
-            <button
-              type="button"
-              onClick={() => switchAdminProfile('kiki')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                adminViewProfile === 'kiki'
-                  ? 'bg-[#7C3AED] text-white shadow-2xs'
-                  : 'text-[#475467] hover:bg-white'
-              }`}
-              title="View Kiki's Workspace"
-            >
-              <span>⚡ Kiki (Client)</span>
-              {adminViewProfile === 'kiki' && <span className="w-1.5 h-1.5 rounded-full bg-[#4ADE80]" />}
-            </button>
-          </div>
-        )}
 
         {/* BYOK Client Suite Switcher Pill (For Kiki or Admin viewing Kiki) */}
         {(isKiki || (isAdmin && adminViewProfile === 'kiki')) && (
