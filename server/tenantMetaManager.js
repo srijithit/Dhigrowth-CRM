@@ -70,6 +70,15 @@ function saveToDisk() {
  * Get Meta credentials for a specific tenant or workspace
  */
 export function getTenantMetaConfig({ workspaceId, userId, username, slug }) {
+  // Ensure store reflects latest disk state
+  if (fs.existsSync(TENANT_META_FILE)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(TENANT_META_FILE, 'utf-8'));
+      if (data.tenants) tenantConfigs.tenants = data.tenants;
+      if (data.phoneToTenant) tenantConfigs.phoneToTenant = data.phoneToTenant;
+    } catch {}
+  }
+
   const keys = [
     workspaceId,
     userId,
