@@ -69,7 +69,7 @@ export const getActiveAiConfig = () => {
     provider === 'openai' ? 'gpt-4o-mini' :
     provider === 'groq' ? 'llama-3.3-70b-versatile' :
     provider === 'deepseek' ? 'deepseek-chat' :
-    'gemini-1.5-flash'
+    'gemini-2.5-flash'
   );
 
   const systemPrompt = fileConfig.systemPrompt || process.env.AI_SYSTEM_PROMPT || DEFAULT_SYSTEM_PROMPT;
@@ -117,7 +117,7 @@ async function callAiProvider({ provider, apiKey, model, systemPrompt, userMessa
 
   if (provider === 'gemini') {
     // Google Gemini API
-    const targetModel = model || 'gemini-1.5-flash';
+    const targetModel = model || 'gemini-2.5-flash';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
 
     const res = await fetch(url, {
