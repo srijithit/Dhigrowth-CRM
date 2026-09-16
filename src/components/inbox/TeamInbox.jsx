@@ -49,6 +49,8 @@ export const TeamInbox = () => {
     chats,
     activeChatId,
     setActiveChatId,
+    openChat,
+    requestNotificationPermission,
     sendMessage,
     toggleAiForChat,
     addInternalNote,
@@ -60,6 +62,12 @@ export const TeamInbox = () => {
     isBroadcastDueModalOpen,
     setIsBroadcastDueModalOpen,
   } = useApp();
+
+  useEffect(() => {
+    if (typeof requestNotificationPermission === 'function') {
+      requestNotificationPermission().catch(() => {});
+    }
+  }, [requestNotificationPermission]);
 
   const [inputMessage, setInputMessage] = useState('');
   const [noteInput, setNoteInput] = useState('');
@@ -407,19 +415,21 @@ export const TeamInbox = () => {
     { name: 'German', code: 'de', native: 'Deutsch', flag: '🇩🇪' },
   ];
 
-  const filteredChats = chats.filter((chat) => {
-    if (statusFilter === 'ai' && !chat.aiHandled) return false;
-    if (statusFilter === 'human' && chat.aiHandled) return false;
-    if (statusFilter === 'hot' && chat.tag !== 'Hot') return false;
-    if (
-      searchTerm &&
-      !chat.contactName.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      !chat.phone.toLowerCase().includes(searchTerm.toLowerCase())
-    ) {
-      return false;
-    }
-    return true;
-  });
+  const filteredChats = [...(chats || [])]
+    .filter((chat) => {
+      if (statusFilter === 'ai' && !chat.aiHandled) return false;
+      if (statusFilter === 'human' && chat.aiHandled) return false;
+      if (statusFilter === 'hot' && chat.tag !== 'Hot') return false;
+      if (
+        searchTerm &&
+        !chat.contactName?.toLowerCase().includes(searchTerm.toLowerCase()) &&
+        !chat.phone?.toLowerCase().includes(searchTerm.toLowerCase())
+      ) {
+        return false;
+      }
+      return true;
+    })
+    .sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0));
 
   const [isSendingLive, setIsSendingLive] = useState(false);
   const [agentMode, setAgentMode] = useState('manual'); // 'manual' | 'ai'
@@ -819,10 +829,12 @@ export const TeamInbox = () => {
             return (
               <div
                 key={chat.id}
-                onClick={() => setActiveChatId(chat.id)}
+                onClick={() => (openChat ? openChat(chat.id) : setActiveChatId(chat.id))}
                 className={`p-3.5 flex items-start gap-3 cursor-pointer transition-all ${
                   isSelected
                     ? 'bg-[#F4F0FD] border-l-4 border-l-[#7C3AED]'
+                    : chat.unreadCount > 0
+                    ? 'bg-[#F0FDF4]/50 hover:bg-[#F0FDF4]'
                     : 'hover:bg-[#F9FAFB]'
                 }`}
               >
@@ -841,13 +853,22 @@ export const TeamInbox = () => {
 
                 <div className="flex-1 min-w-0 space-y-1">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-bold text-[#101828] truncate">
+                    <h3 className={`text-xs ${chat.unreadCount > 0 ? 'font-black text-[#101828]' : 'font-bold text-[#101828]'} truncate`}>
                       {chat.contactName}
                     </h3>
-                    <span className="text-[10px] text-[#98A2B3] font-mono">{chat.lastSeen}</span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {chat.unreadCount > 0 && (
+                        <span className="px-1.5 py-0.2 rounded-full bg-[#16A34A] text-white text-[9px] font-extrabold font-mono shadow-xs animate-pulse">
+                          {chat.unreadCount} new
+                        </span>
+                      )}
+                      <span className={`text-[10px] ${chat.unreadCount > 0 ? 'text-[#16A34A] font-bold' : 'text-[#98A2B3]'} font-mono`}>
+                        {chat.lastSeen}
+                      </span>
+                    </div>
                   </div>
 
-                  <p className="text-xs text-[#475467] truncate line-clamp-1">
+                  <p className={`text-xs truncate line-clamp-1 ${chat.unreadCount > 0 ? 'font-semibold text-[#101828]' : 'text-[#475467]'}`}>
                     {lastMsg ? lastMsg.text : 'New lead inbound'}
                   </p>
 

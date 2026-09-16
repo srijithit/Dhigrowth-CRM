@@ -19,6 +19,11 @@ import {
   ensureWorkspaceExists,
 } from '../services/supabaseClient';
 import { BACKEND_URL } from '../services/apiConfig';
+import {
+  playNotificationSound,
+  showDesktopNotification,
+  requestNotificationPermission,
+} from '../services/notificationService';
 
 export const SEED_TENANTS = [
   {
@@ -1258,11 +1263,13 @@ export const AppProvider = ({ children }) => {
             if (!convMessagesMap[m.conversation_id]) {
               convMessagesMap[m.conversation_id] = [];
             }
+            const msgDate = new Date(m.sent_at || m.created_at || Date.now());
             convMessagesMap[m.conversation_id].push({
               id: m.id,
               sender: m.ai_generated ? 'ai' : m.direction === 'inbound' ? 'user' : 'agent',
               text: m.content,
-              time: new Date(m.sent_at || m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              time: msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              timestamp: msgDate.getTime(),
             });
           });
 
@@ -1276,8 +1283,12 @@ export const AppProvider = ({ children }) => {
                     sender: 'ai',
                     text: `Hello! 👋 Welcome to **DhiGrowth IT Services**.\n\nHow can our AI Business Concierge help you today? 🤖\n\nWe help businesses with:\n📱 **App Development**\n🤖 **AI Business Solutions & Development**\n💬 **WhatsApp CRM & Automation**\n💻 **Custom IT Solutions**\n\nTell us what your business needs, and let’s build something powerful together! 🚀`,
                     time: 'Recent',
+                    timestamp: new Date(c.created_at || Date.now()).getTime(),
                   },
                 ];
+
+            const lastMsg = contactMsgs[contactMsgs.length - 1];
+            const lastMessageTimestamp = lastMsg?.timestamp || new Date(c.updated_at || c.created_at || Date.now()).getTime();
 
             return {
               id: c.id,
@@ -1289,7 +1300,8 @@ export const AppProvider = ({ children }) => {
               channel: 'whatsapp',
               tag: c.custom_attributes?.tag || (c.lead_score >= 90 ? 'Hot' : c.lead_score >= 70 ? 'Interested' : 'Discovery'),
               city: c.custom_attributes?.city || 'Mumbai, IN',
-              lastSeen: 'Active',
+              lastSeen: lastMsg?.time || 'Active',
+              lastMessageTimestamp,
               unreadCount: 0,
               aiHandled: true,
               dealValue: c.custom_attributes?.dealValue || '₹2,499',
@@ -1303,6 +1315,9 @@ export const AppProvider = ({ children }) => {
               messages: contactMsgs,
             };
           });
+
+          // Sort descending by newest message first
+          dbChats.sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0));
 
           setChats((prev) => {
             const hasChanged = dbChats.some((newChat) => {
@@ -1323,10 +1338,15 @@ export const AppProvider = ({ children }) => {
               if (!oldChat) return newChat;
               return {
                 ...newChat,
+                unreadCount: oldChat.unreadCount !== undefined ? oldChat.unreadCount : newChat.unreadCount,
                 notes: oldChat.notes?.length > 0 ? oldChat.notes : newChat.notes,
                 tag: oldChat.tag || newChat.tag,
               };
             });
+
+            // Always prioritize newest active conversation at top
+            updated.sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0));
+
             try {
               localStorage.setItem(`dhigrowth_chats_${currentWorkspaceId}`, JSON.stringify(updated));
             } catch {}
@@ -1343,40 +1363,72 @@ export const AppProvider = ({ children }) => {
       }
     };
 
+    // Initial cloud sync once on workspace load / switch
     syncCloudData();
 
-    // 4. Initial cloud sync once on workspace load / switch
-    syncCloudData();
-
-    // 5. Connect Realtime WebSocket Stream (Completely replaces 2-second HTTP polling!)
+    // Connect Realtime WebSocket Stream (Completely replaces 2-second HTTP polling!)
     const subscription = subscribeToWorkspaceRealtime(currentWorkspaceId, {
       onNewMessage: (newMsg) => {
         if (!isMounted || !newMsg) return;
+        const msgTimestamp = new Date(newMsg.sent_at || newMsg.created_at || Date.now()).getTime();
         const formatted = {
           id: newMsg.id,
           sender: newMsg.ai_generated ? 'ai' : newMsg.direction === 'inbound' ? 'user' : 'agent',
           text: newMsg.content,
-          time: new Date(newMsg.sent_at || newMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          time: new Date(msgTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          timestamp: msgTimestamp,
         };
 
-        setChats((prev) =>
-          prev.map((c) => {
-            if (
+        const isInbound = !newMsg.ai_generated && newMsg.direction === 'inbound';
+
+        setChats((prev) => {
+          const targetIndex = prev.findIndex(
+            (c) =>
               c.conversationId === newMsg.conversation_id ||
               c.id === newMsg.conversation_id ||
               (!c.conversationId && prev.length === 1)
-            ) {
-              if (c.messages.some((m) => m.id === newMsg.id)) return c;
-              return {
-                ...c,
-                conversationId: c.conversationId || newMsg.conversation_id,
-                messages: [...c.messages, formatted],
-                lastSeen: 'Just now',
-              };
+          );
+
+          if (targetIndex < 0) {
+            // New inbound lead not yet in memory
+            if (isInbound) {
+              playNotificationSound();
+              showDesktopNotification('New Lead', newMsg.content);
+              showToast(`💬 New message received!`, 'info');
             }
-            return c;
-          })
-        );
+            syncCloudData();
+            return prev;
+          }
+
+          const target = prev[targetIndex];
+          if (target.messages.some((m) => m.id === newMsg.id)) return prev;
+
+          const isCurrentActive = target.id === activeChatId;
+
+          // Sound and desktop notification on inbound messages
+          if (isInbound) {
+            playNotificationSound();
+            showDesktopNotification(target.contactName, newMsg.content);
+            showToast(`💬 ${target.contactName}: "${newMsg.content.slice(0, 45)}${newMsg.content.length > 45 ? '...' : ''}"`, 'info');
+          }
+
+          const updatedTarget = {
+            ...target,
+            conversationId: target.conversationId || newMsg.conversation_id,
+            messages: [...target.messages, formatted],
+            lastSeen: 'Just now',
+            lastMessageTimestamp: msgTimestamp,
+            unreadCount: isCurrentActive ? 0 : (target.unreadCount || 0) + 1,
+          };
+
+          // MOVE TO TOP (Newest message comes means it shows first!)
+          const remaining = prev.filter((_, idx) => idx !== targetIndex);
+          const updated = [updatedTarget, ...remaining];
+          try {
+            localStorage.setItem(`dhigrowth_chats_${currentWorkspaceId}`, JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
       },
       onContactChange: (payload) => {
         if (!isMounted) return;
@@ -1444,29 +1496,50 @@ export const AppProvider = ({ children }) => {
     showToast('🎉 $5.00 launch credit added to your wallet!', 'success');
   };
 
+  // Open Chat and clear unread badge
+  const openChat = (chatId) => {
+    setActiveChatId(chatId);
+    setChats((prev) => {
+      const target = prev.find((c) => c.id === chatId);
+      if (!target || !target.unreadCount) return prev;
+      const updated = prev.map((c) => (c.id === chatId ? { ...c, unreadCount: 0 } : c));
+      try {
+        localStorage.setItem(`dhigrowth_chats_${currentWorkspaceId}`, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
   // Send Message in Inbox
   const sendMessage = (text, sender = 'agent') => {
     if (!text.trim()) return;
 
+    const now = Date.now();
     const newMsg = {
-      id: `msg-${Date.now()}`,
+      id: `msg-${now}`,
       sender,
       text,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      time: new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: now,
     };
 
-    setChats((prev) =>
-      prev.map((c) => {
-        if (c.id === activeChatId) {
-          return {
-            ...c,
-            messages: [...c.messages, newMsg],
-            lastSeen: 'Just now',
-          };
-        }
-        return c;
-      })
-    );
+    setChats((prev) => {
+      const targetIndex = prev.findIndex((c) => c.id === activeChatId);
+      if (targetIndex === -1) return prev;
+      const target = prev[targetIndex];
+      const updatedTarget = {
+        ...target,
+        messages: [...target.messages, newMsg],
+        lastSeen: 'Just now',
+        lastMessageTimestamp: now,
+      };
+      const remaining = prev.filter((_, idx) => idx !== targetIndex);
+      const updated = [updatedTarget, ...remaining];
+      try {
+        localStorage.setItem(`dhigrowth_chats_${currentWorkspaceId}`, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
 
     setMetrics((prev) => ({
       ...prev,
@@ -1521,17 +1594,35 @@ export const AppProvider = ({ children }) => {
           reply = `Hello ${activeChatObj?.contactName || 'there'}! 👋 Welcome to DhiGrowth IT Services.\n\nHow can our AI Business Concierge help you today? Tell us what your business needs and let's build something powerful together! 🚀`;
         }
 
+        const aiTime = Date.now();
         const aiMsg = {
-          id: `ai-${Date.now()}`,
+          id: `ai-${aiTime}`,
           sender: 'ai',
           text: reply,
           media_url: imageUrl || null,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          time: new Date(aiTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          timestamp: aiTime,
         };
 
-        setChats((prevChats) =>
-          prevChats.map((c) => (c.id === activeChatId ? { ...c, messages: [...c.messages, aiMsg] } : c))
-        );
+        playNotificationSound();
+
+        setChats((prevChats) => {
+          const targetIndex = prevChats.findIndex((c) => c.id === activeChatId);
+          if (targetIndex === -1) return prevChats;
+          const target = prevChats[targetIndex];
+          const updatedTarget = {
+            ...target,
+            messages: [...target.messages, aiMsg],
+            lastSeen: 'Just now',
+            lastMessageTimestamp: aiTime,
+          };
+          const remaining = prevChats.filter((_, idx) => idx !== targetIndex);
+          const updated = [updatedTarget, ...remaining];
+          try {
+            localStorage.setItem(`dhigrowth_chats_${currentWorkspaceId}`, JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
 
         setMetrics((prev) => ({
           ...prev,
@@ -1773,6 +1864,11 @@ export const AppProvider = ({ children }) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Calculate total unread messages across all chats
+  const totalUnreadCount = useMemo(() => {
+    return (chats || []).reduce((acc, c) => acc + (c.unreadCount || 0), 0);
+  }, [chats]);
+
   return (
     <AppContext.Provider
       value={{
@@ -1798,6 +1894,11 @@ export const AppProvider = ({ children }) => {
         chats,
         activeChatId,
         setActiveChatId,
+        openChat,
+        totalUnreadCount,
+        playNotificationSound,
+        showDesktopNotification,
+        requestNotificationPermission,
         sendMessage,
         toggleAiForChat,
         addInternalNote,

@@ -39,6 +39,7 @@ export const Sidebar = () => {
     setIsUpgradeModalOpen,
     currentUser,
     logout,
+    totalUnreadCount,
   } = useApp();
 
   const NAV_SECTIONS = [
@@ -263,7 +264,7 @@ export const Sidebar = () => {
                         }
                       }}
                       title={isSidebarCollapsed ? item.label : undefined}
-                      className={`w-full flex items-center rounded-xl text-xs font-medium transition-all group cursor-pointer ${
+                      className={`relative w-full flex items-center rounded-xl text-xs font-medium transition-all group cursor-pointer ${
                         isSidebarCollapsed ? 'justify-center p-2.5' : 'justify-between px-3 py-2'
                       } ${
                         isActive
@@ -286,16 +287,28 @@ export const Sidebar = () => {
 
                       {!isSidebarCollapsed && (
                         <div className="flex items-center gap-1.5 shrink-0">
-                          {item.dotColor && (
-                            <span className={`w-2 h-2 rounded-full ${item.dotColor}`} />
-                          )}
-                          {item.hasDot && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#7C3AED]" />
-                          )}
-                          {item.hasArrow && (
-                            <ArrowUpRight className="w-3.5 h-3.5 text-[#98A2B3]" />
+                          {item.id === 'inbox' && totalUnreadCount > 0 ? (
+                            <span className="px-1.5 py-0.5 rounded-full bg-[#16A34A] text-white text-[10px] font-bold font-mono shadow-xs animate-pulse">
+                              {totalUnreadCount}
+                            </span>
+                          ) : (
+                            <>
+                              {item.dotColor && (
+                                <span className={`w-2 h-2 rounded-full ${item.dotColor}`} />
+                              )}
+                              {item.hasDot && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#7C3AED]" />
+                              )}
+                              {item.hasArrow && (
+                                <ArrowUpRight className="w-3.5 h-3.5 text-[#98A2B3]" />
+                              )}
+                            </>
                           )}
                         </div>
+                      )}
+
+                      {isSidebarCollapsed && item.id === 'inbox' && totalUnreadCount > 0 && (
+                        <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-[#16A34A] rounded-full ring-2 ring-white animate-pulse" />
                       )}
                     </button>
                   );
