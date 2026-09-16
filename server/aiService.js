@@ -16,20 +16,21 @@ const getSupabase = () => {
 
 const DEFAULT_WORKSPACE_ID = process.env.VITE_DEFAULT_WORKSPACE_ID || 'b0000000-0000-0000-0000-000000000001';
 
-export const DEFAULT_SYSTEM_PROMPT = `You are DhiGrowth AI Business Concierge, an expert IT consultant and sales concierge for DhiGrowth IT Services on WhatsApp.
+export const DEFAULT_SYSTEM_PROMPT = `You are DhiGrowth AI Business Concierge, the official intelligent assistant for DhiGrowth IT Services on WhatsApp.
 
 About DhiGrowth IT Services:
 We provide:
-📱 App Development (iOS, Android, Cross-platform, React Native, Flutter)
-🤖 AI Business Solutions & Development (Custom AI agents, LLM integrations, automated workflows)
-💬 WhatsApp CRM & Automation (Omnichannel messaging, Meta Cloud API, lead capture, 24/7 auto-pilot)
-💻 Custom IT Solutions (Web development, cloud infrastructure, API integrations, enterprise software)
+📱 App Development (iOS, Android, Cross-platform, Flutter, React Native)
+🤖 AI Business Solutions & Development (Custom AI agents, LLM integrations, workflow automations, 24/7 concierges)
+💬 WhatsApp CRM & Automation (Official Meta Cloud API, lead capture, automated broadcasts, team inboxes)
+💻 Custom IT Solutions (Web & SaaS development, cloud infrastructure, API integrations, enterprise software)
 
-Guidelines:
-1. Speak concisely, professionally, and warmly.
-2. If customer asks about any of our services, give a tailored, punchy 2-3 sentence overview highlighting business benefits.
-3. Invite them to share their project vision or book a quick strategy consultation.
-4. Keep the response clean and nicely formatted with emojis for WhatsApp.`;
+Core Behavior Instructions:
+1. UNDERSTAND THE USER'S SPECIFIC WORDS: Whatever question, topic, or industry the user mentions (e.g. ecommerce, fitness, healthcare, real estate, APIs, timelines, pricing, technologies), directly comprehend and analyze their exact question.
+2. TAILORED & RELEVANT: Give a direct, helpful, and highly relevant answer addressing specifically what THEY asked. Do not give generic replies or repeat boilerplate.
+3. CONCISE FOR WHATSAPP: Keep replies concise (2-4 clear sentences or short punchy bullet points with emojis).
+4. NEXT STEPS: Invite them to share details about their vision or offer to book a quick consultation call.
+5. MULTI-LINGUAL: If the user writes in Hindi, Tamil, Hinglish, or any other language, understand and reply naturally in that same language.`;
 
 const DHIGROWTH_WELCOME = `Hello! 👋 Welcome to **DhiGrowth IT Services**.
 
@@ -172,26 +173,57 @@ async function callAiProvider({ provider, apiKey, model, systemPrompt, userMessa
     const targetModel = model || 'gemini-2.5-flash';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
 
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: 'user',
-            parts: [
+    let res;
+    let data;
+    const maxAttempts = 2;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: {
+              parts: [{ text: systemPrompt }],
+            },
+            contents: [
               {
-                text: `${systemPrompt}\n\nCustomer Message: "${userMessage}"`,
+                role: 'user',
+                parts: [
+                  {
+                    text: userMessage,
+                  },
+                ],
               },
             ],
-          },
-        ],
-      }),
-    });
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 500,
+            },
+          }),
+        });
 
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error?.message || `Gemini API error (${res.status})`);
+        data = await res.json();
+        if (res.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+          break;
+        }
+
+        // If high demand or rate limit, wait and retry once
+        if (attempt < maxAttempts && (res.status === 503 || res.status === 429 || data.error?.message?.includes('high demand'))) {
+          console.log(`[AIService] Gemini experiencing high demand, retrying in 1.2s (attempt ${attempt}/${maxAttempts})...`);
+          await new Promise((resolve) => setTimeout(resolve, 1200));
+        }
+      } catch (networkErr) {
+        if (attempt < maxAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, 800));
+        } else {
+          throw networkErr;
+        }
+      }
+    }
+
+    if (!res || !res.ok) {
+      throw new Error(data?.error?.message || `Gemini API error (${res?.status || 'network'})`);
     }
 
     const reply = data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -355,16 +387,16 @@ export const generateAIResponse = async ({
   }
 
   // 4. Smart Business Rules Engine Fallback
-  if (query.includes('app') || query.includes('mobile') || query.includes('android') || query.includes('ios')) {
-    return `📱 **DhiGrowth App Development**\n\nWe build sleek, scalable iOS & Android mobile apps tailored to your business operations and customer experience.\n\nWhat kind of app are you planning to build? Tell us your idea and let's bring it to life! 🚀`;
+  if (/\b(whatsapp|crm|marketing|broadcast|catalog|lead|inbox)\b/i.test(query)) {
+    return `💬 **WhatsApp CRM & Automation**\n\nSupercharge your sales with official Meta WhatsApp Cloud API integration, broadcast campaigns, catalog bots, and AI auto-pilot replies.\n\nReady to convert leads faster on WhatsApp? Let's connect! 📈`;
   }
 
-  if (query.includes('ai') || query.includes('bot') || query.includes('automation') || query.includes('agent')) {
+  if (/\b(ai|bot|automation|agent|chatgpt|llm)\b/i.test(query)) {
     return `🤖 **AI Business Solutions & Development**\n\nFrom autonomous AI customer concierges to workflow automations and custom LLM integrations, we help you reduce costs and run operations 24/7.\n\nWould you like a demo of how AI can automate your business tasks? ✨`;
   }
 
-  if (query.includes('whatsapp') || query.includes('crm') || query.includes('marketing') || query.includes('broadcast')) {
-    return `💬 **WhatsApp CRM & Automation**\n\nSupercharge your sales with official Meta WhatsApp Cloud API integration, broadcast campaigns, team inboxes, and AI auto-pilot replies.\n\nReady to convert leads faster on WhatsApp? Let's connect! 📈`;
+  if (/\b(app|mobile|android|ios|flutter|react native)\b/i.test(query)) {
+    return `📱 **DhiGrowth App Development**\n\nWe build sleek, scalable iOS & Android mobile apps tailored to your business operations and customer experience.\n\nWhat kind of app are you planning to build? Tell us your idea and let's bring it to life! 🚀`;
   }
 
   if (query.includes('website') || query.includes('web') || query.includes('software') || query.includes('it solution')) {
@@ -375,6 +407,6 @@ export const generateAIResponse = async ({
     return `💼 Our project pricing is customized based on your business scope and requirements.\n\nFeel free to share brief details of your project, and our team will provide a tailored quote and roadmap! 🤝`;
   }
 
-  // Default friendly concierge reply
-  return `Thank you for reaching out, ${customerName || 'friend'}! 🙏\n\nOur **DhiGrowth IT Services** team has received your message: "${customerMessage}". An expert consultant will assist you shortly, or feel free to tell us more about your business needs! 🚀`;
+  // Conversational fallback
+  return `Hello ${customerName || 'there'}! 👋 Welcome to **DhiGrowth IT Services**.\n\nRegarding your inquiry about "${customerMessage}": our team would be thrilled to help you build and scale this! Would you like to schedule a quick 15-minute consultation, or tell us a bit more about your requirements? 🚀`;
 };
