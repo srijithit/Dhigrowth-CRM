@@ -62,8 +62,8 @@ export const SuperAdminTenantsPage = () => {
     const url = `${window.location.origin}/?tenant=${slug}`;
     navigator.clipboard.writeText(url);
     setCopiedSlug(slug);
-    showToast(`Copied isolated localhost URL for tenant "${slug}"!`, 'success');
-    setTimeout(() => setCopiedSlug(null), 2500);
+    showToast(`Copied workspace URL for tenant "${slug}"!`, 'success');
+    setTimeout(() => setCopiedSlug(null), 3000);
   };
 
   const togglePasswordVisibility = (id) => {
@@ -348,7 +348,7 @@ export const SuperAdminTenantsPage = () => {
 
                   {/* Launch & Action Buttons */}
                   <div className="flex flex-wrap items-center gap-2 lg:self-center">
-                    {/* Launch Workspace Window */}
+                    {/* Launch Window */}
                     <a
                       href={`${window.location.origin}/?tenant=${tenant.slug || tenant.username}`}
                       target="_blank"
@@ -357,7 +357,7 @@ export const SuperAdminTenantsPage = () => {
                       title="Open dedicated workspace in a new tab"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
-                      Launch Workspace
+                      Launch
                     </a>
 
                     {/* Copy Workspace URL */}
@@ -470,7 +470,7 @@ export const SuperAdminTenantsPage = () => {
                 <div>
                   <h3 className="text-lg font-bold text-[#101828]">Add New Tenant / User</h3>
                   <p className="text-xs text-[#667085]">
-                    Spawns an isolated customer workspace with custom credentials and localhost URL
+                    Spawns an isolated customer workspace with custom credentials and direct access
                   </p>
                 </div>
               </div>

@@ -11,7 +11,7 @@ export const AdminTopBar = () => {
         type="button"
         onClick={() => setActiveTab('super-admin')}
         className="px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer bg-[#F4F0FD] hover:bg-[#EDE5FA] text-[#7C3AED] border border-[#E9D8FD] shadow-2xs"
-        title="Open Tenant Directory & Localhost Manager"
+        title="Open Tenant Directory"
       >
         <Users className="w-4 h-4" />
         <span>Tenant Directory</span>
