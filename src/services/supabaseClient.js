@@ -23,6 +23,48 @@ export const DEFAULT_WORKSPACE_ID =
  * Data service methods partitioned strictly by workspace_id
  */
 
+// 0. Ensure Workspace Row Exists in Supabase (prevents foreign key violation)
+export const ensureWorkspaceExists = async (workspaceId, workspaceName = 'Client Workspace') => {
+  if (!supabase || !workspaceId || workspaceId === DEFAULT_WORKSPACE_ID) return true;
+  try {
+    const { data: existing } = await supabase
+      .from('workspaces')
+      .select('id')
+      .eq('id', workspaceId)
+      .maybeSingle();
+
+    if (existing) return true;
+
+    const safeSlug = (workspaceName || 'workspace')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '-')
+      .replace(/-+/g, '-')
+      .substring(0, 40);
+
+    const { error: insertErr } = await supabase
+      .from('workspaces')
+      .insert([
+        {
+          id: workspaceId,
+          organization_id: 'a0000000-0000-0000-0000-000000000001',
+          name: workspaceName,
+          slug: `${safeSlug}-${Date.now().toString(36)}`,
+          plan: 'business',
+          plan_status: 'active',
+        },
+      ]);
+
+    if (insertErr && insertErr.code !== '23505') {
+      console.warn('Could not auto-create workspace row in Supabase:', insertErr.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('ensureWorkspaceExists notice:', err.message);
+    return false;
+  }
+};
+
 // 1. Fetch Contacts
 export const getContacts = async (workspaceId = DEFAULT_WORKSPACE_ID) => {
   if (!supabase) return null;
@@ -52,6 +94,9 @@ export const createContact = async ({
   tag = 'Interested',
 }) => {
   if (!supabase) return null;
+
+  // Auto-ensure workspace row exists before inserting contact
+  await ensureWorkspaceExists(workspaceId, `${fullName}'s Workspace`);
 
   // Insert Contact
   const { data: contact, error: contactErr } = await supabase

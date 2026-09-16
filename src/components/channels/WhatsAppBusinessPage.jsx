@@ -29,7 +29,8 @@ export const WhatsAppBusinessPage = () => {
     connectChannel,
     disconnectChannel,
     showToast,
-    setActiveTab
+    setActiveTab,
+    currentUser,
   } = useApp();
 
   const isConnected = channels.whatsapp.connected;
@@ -394,7 +395,7 @@ export const WhatsAppBusinessPage = () => {
               <div className="p-6 space-y-5">
                 <div>
                   <h3 className="text-lg font-bold text-[#101828]">
-                    Continue as Sri?
+                    Continue as {currentUser?.name || 'User'}?
                   </h3>
                   <p className="text-xs text-[#475467] mt-1 leading-relaxed">
                     Dhigrowth CRM will receive your name, business portfolio details, and manage WhatsApp Cloud API messaging webhooks on your behalf.
@@ -421,7 +422,7 @@ export const WhatsAppBusinessPage = () => {
                     onClick={() => setMetaStep(2)}
                     className="flex-1 py-2.5 bg-[#0866FF] hover:bg-[#0055D4] text-white font-bold text-xs rounded-xl cursor-pointer shadow-xs"
                   >
-                    Continue as Sri
+                    Continue as {currentUser?.name || 'User'}
                   </button>
                 </div>
               </div>

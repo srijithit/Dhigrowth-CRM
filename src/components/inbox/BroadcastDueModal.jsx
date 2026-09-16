@@ -98,15 +98,8 @@ export const BroadcastDueModal = ({ onClose }) => {
 
   if (!isBroadcastDueModalOpen) return null;
 
-  // Compile recipients: fallback to client demo contacts if chats is empty
-  const fallbackContacts = [
-    { id: 'c-1', contactName: 'Alex Morgan', phone: '+91 97914 71277', email: 'alex@clientcorp.in', city: 'Mumbai' },
-    { id: 'c-2', contactName: 'Elena Rostova', phone: '+91 97914 71277', email: 'elena@enterprise.com', city: 'Bengaluru' },
-    { id: 'c-3', contactName: 'Priya Sharma', phone: '+91 97914 71277', email: 'priya@techpartners.in', city: 'Chennai' },
-    { id: 'c-4', contactName: 'David Chen', phone: '+91 97914 71277', email: 'david@globaltrade.co', city: 'Delhi' },
-  ];
-
-  const effectiveChats = chats && chats.length > 0 ? chats : fallbackContacts;
+  // Recipients scoped strictly to current workspace
+  const effectiveChats = chats || [];
 
   const handleClose = () => {
     setIsBroadcastDueModalOpen(false);
@@ -405,20 +398,26 @@ export const BroadcastDueModal = ({ onClose }) => {
                   {effectiveChats.length} Contacts
                 </span>
               </div>
-              <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
-                {effectiveChats.map((c, i) => (
-                  <span
-                    key={c.id || i}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-semibold bg-white border border-[#EAECF0] text-[#344054] shadow-2xs"
-                  >
-                    <ContactAvatar name={c.contactName || c.customerName} size="xs" />
-                    <span>{c.contactName || c.customerName}</span>
-                    <span className="font-mono text-[#98A2B3] text-[10px]">
-                      ({(c.phone || '').slice(-4) || 'WA'})
+              {effectiveChats.length === 0 ? (
+                <div className="py-2 text-xs text-[#667085] italic">
+                  No contacts found in this workspace yet. Please create or import contacts before broadcasting invoices.
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+                  {effectiveChats.map((c, i) => (
+                    <span
+                      key={c.id || i}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-semibold bg-white border border-[#EAECF0] text-[#344054] shadow-2xs"
+                    >
+                      <ContactAvatar name={c.contactName || c.customerName} size="xs" />
+                      <span>{c.contactName || c.customerName}</span>
+                      <span className="font-mono text-[#98A2B3] text-[10px]">
+                        ({(c.phone || '').slice(-4) || 'WA'})
+                      </span>
                     </span>
-                  </span>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Invoice Service & Amount */}
@@ -627,8 +626,8 @@ export const BroadcastDueModal = ({ onClose }) => {
               </button>
               <button
                 type="submit"
-                disabled={isBroadcasting}
-                className="flex-1 py-3 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75"
+                disabled={isBroadcasting || effectiveChats.length === 0}
+                className="flex-1 py-3 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isBroadcasting ? (
                   <>

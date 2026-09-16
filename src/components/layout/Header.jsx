@@ -130,9 +130,9 @@ export const Header = () => {
               {(currentUser?.name?.[0] || currentUser?.username?.[0] || 'S').toUpperCase()}
             </div>
             <span className="text-xs font-semibold text-[#344054]">
-              {currentUser?.username || 'sri'}
+              {currentUser?.name || currentUser?.username || 'Sri'}
             </span>
-            <span className="text-xs">👑</span>
+            {currentUser?.isAdmin && <span className="text-xs">👑</span>}
             <ChevronDown className="w-3.5 h-3.5 text-[#98A2B3]" />
           </button>
 
@@ -140,10 +140,10 @@ export const Header = () => {
             <div className="absolute right-0 mt-2 w-60 bg-white border border-[#EAECF0] rounded-2xl shadow-xl p-2 z-50 space-y-1 animate-in fade-in">
               <div className="px-3 py-2 border-b border-[#F2F4F7]">
                 <div className="text-xs font-bold text-[#101828]">
-                  {currentUser?.name || "Sri's Workspace"}
+                  {currentUser?.organization || (currentUser?.name ? `${currentUser.name}'s Workspace` : "Workspace")}
                 </div>
                 <div className="text-[10px] text-[#667085] font-mono">
-                  {currentUser?.email || 'admin@dhigrowth.com'}
+                  {currentUser?.email || 'support@dhigrowth.com'}
                 </div>
                 <div className="mt-1 inline-block px-1.5 py-0.5 rounded-md bg-[#DCFCE7] text-[#15803D] text-[9px] font-bold font-mono">
                   {currentUser?.role || 'Workspace Owner'}

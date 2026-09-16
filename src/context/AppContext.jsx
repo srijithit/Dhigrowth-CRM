@@ -15,6 +15,7 @@ import {
   sendChatMessage,
   subscribeToNewMessages,
   DEFAULT_WORKSPACE_ID,
+  ensureWorkspaceExists,
 } from '../services/supabaseClient';
 import { BACKEND_URL } from '../services/apiConfig';
 
@@ -660,6 +661,8 @@ export const AppProvider = ({ children }) => {
   const logout = () => {
     const slug = currentUser?.slug || urlTenantSlug;
     setCurrentUser(null);
+    setChats([]);
+    setActiveChatId(null);
     try {
       localStorage.removeItem('dhigrowth_auth_session');
       sessionStorage.removeItem('dhigrowth_auth_session');
@@ -747,6 +750,14 @@ export const AppProvider = ({ children }) => {
       } catch {}
       return next;
     });
+
+    // Auto-create workspace in Supabase and initialize isolated local state
+    if (isSupabaseConfigured) {
+      ensureWorkspaceExists(newWorkspaceId, newTenant.companyName).catch(() => {});
+    }
+    try {
+      localStorage.setItem(`dhigrowth_chats_${newWorkspaceId}`, JSON.stringify([]));
+    } catch {}
 
     confetti({
       particleCount: 80,
@@ -1015,8 +1026,29 @@ export const AppProvider = ({ children }) => {
     avgResponseLatency: '3.2s',
   });
 
-  // Chats List for Shared Inbox
-  const [chats, setChats] = useState(() => {
+  // Helper to load strictly workspace-scoped chats
+  const getInitialChatsForWorkspace = (wsId) => {
+    // If it's a tenant workspace (not Sri's default workspace), start completely isolated: []
+    if (wsId && wsId !== DEFAULT_WORKSPACE_ID) {
+      try {
+        const saved = localStorage.getItem(`dhigrowth_chats_${wsId}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) return parsed;
+        }
+      } catch {}
+      return [];
+    }
+
+    // Default Seed / Sri Workspace
+    try {
+      const saved = localStorage.getItem(`dhigrowth_chats_${DEFAULT_WORKSPACE_ID}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+
     if (isSupabaseConfigured) return [];
     return [
       {
@@ -1097,9 +1129,24 @@ export const AppProvider = ({ children }) => {
         ],
       },
     ];
+  };
+
+  // Chats List partitioned strictly per workspace
+  const [chats, setChats] = useState(() => {
+    return getInitialChatsForWorkspace(currentWorkspaceId);
   });
 
-  const [activeChatId, setActiveChatId] = useState(isSupabaseConfigured ? null : 'c1');
+  const [activeChatId, setActiveChatId] = useState(() => {
+    const initial = getInitialChatsForWorkspace(currentWorkspaceId);
+    return initial.length > 0 ? initial[0].id : null;
+  });
+
+  // Strict Tenant Isolation: When workspace ID changes, immediately swap local chats
+  useEffect(() => {
+    const initial = getInitialChatsForWorkspace(currentWorkspaceId);
+    setChats(initial);
+    setActiveChatId(initial.length > 0 ? initial[0].id : null);
+  }, [currentWorkspaceId]);
 
   // Campaigns List
   const [campaigns, setCampaigns] = useState([
@@ -1185,6 +1232,16 @@ export const AppProvider = ({ children }) => {
             totalLeads: contactsResult.length,
           }));
 
+          // If this workspace has 0 contacts, set chats to empty and clear localStorage
+          if (contactsResult.length === 0) {
+            setChats([]);
+            setActiveChatId(null);
+            try {
+              localStorage.setItem(`dhigrowth_chats_${currentWorkspaceId}`, JSON.stringify([]));
+            } catch {}
+            return;
+          }
+
           // Create map of contact_id -> conversation_id
           const contactToConvMap = {};
           (convsResult || []).forEach((cv) => {
@@ -1260,7 +1317,7 @@ export const AppProvider = ({ children }) => {
               return prev;
             }
 
-            return dbChats.map((newChat) => {
+            const updated = dbChats.map((newChat) => {
               const oldChat = prev.find((p) => p.id === newChat.id);
               if (!oldChat) return newChat;
               return {
@@ -1269,6 +1326,10 @@ export const AppProvider = ({ children }) => {
                 tag: oldChat.tag || newChat.tag,
               };
             });
+            try {
+              localStorage.setItem(`dhigrowth_chats_${currentWorkspaceId}`, JSON.stringify(updated));
+            } catch {}
+            return updated;
           });
 
           setActiveChatId((prev) => {
@@ -1497,6 +1558,7 @@ export const AppProvider = ({ children }) => {
     if (isSupabaseConfigured) {
       try {
         const res = await createDbContact({
+          workspaceId: currentWorkspaceId,
           fullName: leadData.name,
           phoneNumber: leadData.phone,
           email: leadData.email,
@@ -1544,7 +1606,13 @@ export const AppProvider = ({ children }) => {
       ],
     };
 
-    setChats((prev) => [newLead, ...prev]);
+    setChats((prev) => {
+      const updated = [newLead, ...prev];
+      try {
+        localStorage.setItem(`dhigrowth_chats_${currentWorkspaceId}`, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     setActiveChatId(newDbId);
     setMetrics((prev) => ({ ...prev, totalLeads: prev.totalLeads + 1 }));
     confetti({

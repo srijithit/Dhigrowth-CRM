@@ -103,10 +103,10 @@ export const DashboardOverview = () => {
       {/* 2. Main Greeting */}
       <div className="space-y-1">
         <h1 className="text-2xl lg:text-3xl font-bold text-[#101828] tracking-tight">
-          Good morning, {currentUser?.name || 'Sri'}
+          Good morning, {currentUser?.name || 'there'} 👋
         </h1>
         <p className="text-xs lg:text-sm text-[#475467]">
-          Here's your Dhigrowth workspace at a glance.
+          Here's your {currentUser?.organization || 'workspace'} at a glance.
         </p>
       </div>
 

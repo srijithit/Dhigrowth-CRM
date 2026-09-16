@@ -870,6 +870,25 @@ export const TeamInbox = () => {
               </div>
             );
           })}
+
+          {filteredChats.length === 0 && (
+            <div className="p-6 text-center text-xs text-[#98A2B3] flex flex-col items-center justify-center h-52 space-y-2.5">
+              <div className="w-10 h-10 rounded-full bg-[#F2F4F7] flex items-center justify-center text-[#98A2B3]">
+                <MessageCircle className="w-5 h-5 text-[#98A2B3]" />
+              </div>
+              <div>
+                <p className="font-semibold text-[#344054]">No conversations yet</p>
+                <p className="text-[11px] text-[#667085] mt-0.5">Messages in this workspace will appear here</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddContactModalOpen(true)}
+                className="text-xs font-bold text-[#7C3AED] hover:text-[#6D28D9] hover:underline cursor-pointer"
+              >
+                + Add your first contact
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

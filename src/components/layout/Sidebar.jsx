@@ -207,25 +207,26 @@ export const Sidebar = () => {
         {/* User Workspace Box */}
         <div className="p-3">
           <div
+            onClick={() => setActiveTab('dashboard')}
             className={`flex items-center rounded-xl border border-[#EAECF0] bg-[#F9FAFB] hover:bg-[#F2F4F7] transition-colors cursor-pointer ${
               isSidebarCollapsed ? 'justify-center p-2' : 'justify-between p-2.5'
             }`}
-            title="Sri's Workspace"
+            title={currentUser?.organization || (currentUser?.name ? `${currentUser.name}'s Workspace` : 'Workspace')}
           >
             <div className="flex items-center gap-2.5 min-w-0">
-              <img
-                src="/workspace-avatar.png"
-                alt="Workspace"
-                className="w-8 h-8 rounded-lg object-cover ring-1 ring-[#EAECF0] shrink-0"
-              />
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold flex items-center justify-center text-xs shrink-0 ring-1 ring-[#EAECF0] uppercase shadow-2xs">
+                {(currentUser?.name || currentUser?.username || 'W').charAt(0)}
+              </div>
               {!isSidebarCollapsed && (
                 <div className="min-w-0 text-left">
                   <div className="flex items-center gap-1">
-                    <span className="text-xs font-bold text-[#101828] truncate">sri</span>
-                    <span className="text-xs">👑</span>
+                    <span className="text-xs font-bold text-[#101828] truncate">
+                      {currentUser?.name || currentUser?.username || 'Dhigrowth'}
+                    </span>
+                    {currentUser?.isAdmin && <span className="text-xs">👑</span>}
                   </div>
-                  <div className="text-[10px] font-medium text-[#98A2B3] uppercase tracking-wider font-mono">
-                    WORKSPACE
+                  <div className="text-[10px] font-medium text-[#98A2B3] uppercase tracking-wider font-mono truncate max-w-[120px]">
+                    {currentUser?.organization || (currentUser?.name ? `${currentUser.name} Workspace` : 'WORKSPACE')}
                   </div>
                 </div>
               )}
