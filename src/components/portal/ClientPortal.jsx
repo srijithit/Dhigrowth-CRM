@@ -59,7 +59,11 @@ export const ClientPortal = () => {
     saveMetaConfig,
     testMetaConfig,
     isMetaLoading,
+    hasPermission,
+    setIsBroadcastDueModalOpen,
   } = useApp();
+
+  const canSendDue = hasPermission('sendDueToAll', 'kiki');
 
   const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'meta-keys' | 'messenger' | 'auto-reply' | 'logs'
 
@@ -768,7 +772,22 @@ export const ClientPortal = () => {
 
         {/* User Badge & Sign Out */}
         <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 bg-[#F9FAFB] border border-[#EAECF0] px-3 py-1.5 rounded-xl">
+          {canSendDue && (
+            <button
+              type="button"
+              onClick={() => setIsBroadcastDueModalOpen(true)}
+              className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#7C3AED] to-[#9333EA] hover:from-[#6D28D9] hover:to-[#7E22CE] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer group"
+              title="Send Payment Due PDF with payment link to all WhatsApp contacts"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-300 group-hover:scale-110 transition-transform" />
+              <span>Send Due to All</span>
+              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-white/20 font-bold uppercase tracking-wider hidden md:inline">
+                Auto-Receipt
+              </span>
+            </button>
+          )}
+
+          <div className="hidden sm:flex items-center gap-2 bg-[#F9FAFB] border border-[#EAECF0] px-3.5 py-1.5 rounded-xl">
             <div className="w-6 h-6 rounded-full bg-[#7C3AED] text-white flex items-center justify-center text-xs font-bold">
               K
             </div>
@@ -909,6 +928,19 @@ export const ClientPortal = () => {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
+                  {canSendDue && (
+                    <button
+                      type="button"
+                      onClick={() => setIsBroadcastDueModalOpen(true)}
+                      className="px-4 py-2.5 rounded-xl bg-[#F59E0B] hover:bg-[#D97706] text-white text-xs font-bold flex items-center gap-2 shadow-sm transition-all cursor-pointer group"
+                    >
+                      <Zap className="w-4 h-4 text-white group-hover:scale-110 transition-transform" />
+                      <span>Send Due to All Contacts</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-white/25 font-bold uppercase tracking-wider">
+                        Auto-Receipt
+                      </span>
+                    </button>
+                  )}
                   <button
                     onClick={() => setActiveTab('messenger')}
                     className="px-4 py-2.5 rounded-xl bg-white text-[#7C3AED] hover:bg-[#F9FAFB] text-xs font-bold flex items-center gap-2 shadow-sm transition-all cursor-pointer"
@@ -1264,6 +1296,17 @@ export const ClientPortal = () => {
               </div>
 
               <div className="flex items-center gap-2">
+                {canSendDue && (
+                  <button
+                    type="button"
+                    onClick={() => setIsBroadcastDueModalOpen(true)}
+                    className="px-3.5 py-1.5 rounded-xl bg-[#F4F0FD] hover:bg-[#EDE5FA] border border-[#E9D8FD] text-[#7C3AED] text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer group"
+                    title="Send Payment Due PDF with payment link to all WhatsApp contacts"
+                  >
+                    <Zap className="w-3.5 h-3.5 text-[#7C3AED] group-hover:scale-110 transition-transform" />
+                    <span>Send Due to All</span>
+                  </button>
+                )}
                 <button
                   onClick={() => setIsNewChatModalOpen(true)}
                   className="px-3.5 py-1.5 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"

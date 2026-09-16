@@ -266,6 +266,90 @@ export const AppProvider = ({ children }) => {
     showToast('Signed out of workspace', 'info');
   };
 
+  // Multi-Tenant User Permissions State (Admin can manage permissions for other users)
+  const DEFAULT_USER_PERMISSIONS = {
+    kiki: {
+      sendDueToAll: true, // Enabled for Kiki
+      metaKeys: true,
+      isolatedInbox: true,
+      autoReply: true,
+      messenger: true,
+    },
+    sri: {
+      sendDueToAll: true,
+      teamInbox: true,
+      channels: true,
+      campaigns: true,
+      metaKeys: true,
+    },
+  };
+
+  const [userPermissions, setUserPermissions] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dhigrowth_user_permissions');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          ...DEFAULT_USER_PERMISSIONS,
+          ...parsed,
+          kiki: { ...DEFAULT_USER_PERMISSIONS.kiki, ...(parsed.kiki || {}) },
+          sri: { ...DEFAULT_USER_PERMISSIONS.sri, ...(parsed.sri || {}) },
+        };
+      }
+    } catch {}
+    return DEFAULT_USER_PERMISSIONS;
+  });
+
+  const updateUserPermission = (username, permissionKey, isEnabled) => {
+    const cleanUser = username?.toLowerCase()?.trim();
+    if (!cleanUser) return;
+
+    setUserPermissions((prev) => {
+      const updated = {
+        ...prev,
+        [cleanUser]: {
+          ...(prev[cleanUser] || {}),
+          [permissionKey]: isEnabled,
+        },
+      };
+      try {
+        localStorage.setItem('dhigrowth_user_permissions', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    const labelMap = {
+      sendDueToAll: 'Send Due to All Contacts',
+      metaKeys: 'Meta API Credentials',
+      autoReply: 'Auto-Reply Bot Rules',
+      isolatedInbox: 'WhatsApp Inbox',
+      teamInbox: 'Team Inbox Access',
+      channels: 'Connected Channels',
+      campaigns: 'Broadcast Campaigns',
+    };
+    const featureName = labelMap[permissionKey] || permissionKey;
+    showToast(
+      `Updated ${cleanUser.toUpperCase()} permissions: "${featureName}" is now ${isEnabled ? 'ENABLED' : 'DISABLED'}`,
+      isEnabled ? 'success' : 'info'
+    );
+  };
+
+  const hasPermission = (permissionKey, targetUser = null) => {
+    // Super Admin has master access to everything
+    const activeUsername = currentUser?.username?.toLowerCase()?.trim();
+    if (currentUser?.isAdmin || activeUsername === 'admin') {
+      return true;
+    }
+
+    const checkUser = targetUser ? targetUser.toLowerCase().trim() : activeUsername;
+    if (!checkUser) return false;
+
+    const userPerms = userPermissions[checkUser];
+    if (!userPerms) return false;
+
+    return Boolean(userPerms[permissionKey]);
+  };
+
 
   // Channels Connection State
   const [channels, setChannels] = useState({
@@ -1012,6 +1096,9 @@ export const AppProvider = ({ children }) => {
         adminViewProfile,
         setAdminViewProfile,
         switchAdminProfile,
+        userPermissions,
+        updateUserPermission,
+        hasPermission,
       }}
     >
       {children}

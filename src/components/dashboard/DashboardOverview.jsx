@@ -57,6 +57,8 @@ export const DashboardOverview = () => {
     setIsBroadcastDueModalOpen,
     adminViewProfile,
     switchAdminProfile,
+    userPermissions,
+    updateUserPermission,
   } = useApp();
 
   const [activeChannelToConnect, setActiveChannelToConnect] = useState(null);
@@ -180,6 +182,84 @@ export const DashboardOverview = () => {
                 </div>
               </div>
 
+              {/* Sri Feature Access Toggles (Admin Controlled) */}
+              <div
+                className="bg-[#0F172A]/70 border border-[#334155] rounded-xl p-3 space-y-2"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-bold text-[#E2E8F0] flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-[#7C3AED]" />
+                    <span>Feature Access Controls</span>
+                  </span>
+                  <span className="text-[10px] font-mono text-[#94A3B8]">Admin Managed</span>
+                </div>
+
+                <div className="space-y-1.5">
+                  {/* Send Due to All Toggle */}
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-[#1E293B] border border-[#334155]/60">
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <div>
+                        <div className="font-bold text-white text-[11px] flex items-center gap-1">
+                          <span>Send Due to All Contacts</span>
+                          <span className="text-[8px] font-bold px-1.5 py-0.2 bg-[#DCFCE7]/20 text-[#86EFAC] rounded-full">
+                            Auto-Receipt
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-[#94A3B8]">Due PDF + 1-Click Pay Link</div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateUserPermission(
+                          'sri',
+                          'sendDueToAll',
+                          !userPermissions?.sri?.sendDueToAll
+                        )
+                      }
+                      className={`w-9 h-5 rounded-full p-0.5 transition-colors cursor-pointer flex items-center ${
+                        userPermissions?.sri?.sendDueToAll
+                          ? 'bg-[#10B981] justify-end'
+                          : 'bg-[#475467] justify-start'
+                      }`}
+                      title="Toggle Send Due to All access for Sri"
+                    >
+                      <div className="w-4 h-4 rounded-full bg-white shadow-xs" />
+                    </button>
+                  </div>
+
+                  {/* Team Inbox Toggle */}
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-[#1E293B] border border-[#334155]/60">
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="w-3.5 h-3.5 text-[#38BDF8] shrink-0" />
+                      <div>
+                        <div className="font-bold text-white text-[11px]">Team Inbox & Chats</div>
+                        <div className="text-[10px] text-[#94A3B8]">Live WhatsApp messaging</div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateUserPermission(
+                          'sri',
+                          'teamInbox',
+                          !userPermissions?.sri?.teamInbox
+                        )
+                      }
+                      className={`w-9 h-5 rounded-full p-0.5 transition-colors cursor-pointer flex items-center ${
+                        userPermissions?.sri?.teamInbox
+                          ? 'bg-[#10B981] justify-end'
+                          : 'bg-[#475467] justify-start'
+                      }`}
+                    >
+                      <div className="w-4 h-4 rounded-full bg-white shadow-xs" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <button
                 type="button"
                 onClick={(e) => {
@@ -234,6 +314,112 @@ export const DashboardOverview = () => {
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="text-[#94A3B8]">Access Scope:</span>
                   <span className="font-semibold text-[#CBD5E1]">Own Meta Keys, Separate Inbox & Bot</span>
+                </div>
+              </div>
+
+              {/* Kiki Feature Access Toggles (Admin Controlled) */}
+              <div
+                className="bg-[#0F172A]/70 border border-[#334155] rounded-xl p-3 space-y-2"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-bold text-[#E2E8F0] flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-[#10B981]" />
+                    <span>Feature Access Controls</span>
+                  </span>
+                  <span className="text-[10px] font-mono text-[#94A3B8]">Admin Managed</span>
+                </div>
+
+                <div className="space-y-1.5">
+                  {/* Send Due to All Contacts Toggle */}
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-[#1E293B] border border-[#334155]/60">
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <div>
+                        <div className="font-bold text-white text-[11px] flex items-center gap-1">
+                          <span>Send Due to All Contacts</span>
+                          <span className="text-[8px] font-bold px-1.5 py-0.2 bg-[#DCFCE7]/20 text-[#86EFAC] rounded-full">
+                            Auto-Receipt
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-[#94A3B8]">Due PDF + 1-Click Pay Link button in Kiki Suite</div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateUserPermission(
+                          'kiki',
+                          'sendDueToAll',
+                          !userPermissions?.kiki?.sendDueToAll
+                        )
+                      }
+                      className={`w-9 h-5 rounded-full p-0.5 transition-colors cursor-pointer flex items-center ${
+                        userPermissions?.kiki?.sendDueToAll
+                          ? 'bg-[#10B981] justify-end'
+                          : 'bg-[#475467] justify-start'
+                      }`}
+                      title="Toggle Send Due to All access for Kiki"
+                    >
+                      <div className="w-4 h-4 rounded-full bg-white shadow-xs" />
+                    </button>
+                  </div>
+
+                  {/* Meta API Keys Toggle */}
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-[#1E293B] border border-[#334155]/60">
+                    <div className="flex items-center gap-2">
+                      <Key className="w-3.5 h-3.5 text-[#38BDF8] shrink-0" />
+                      <div>
+                        <div className="font-bold text-white text-[11px]">Meta Cloud API Keys (BYOK)</div>
+                        <div className="text-[10px] text-[#94A3B8]">Allow custom WABA & token config</div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateUserPermission(
+                          'kiki',
+                          'metaKeys',
+                          !userPermissions?.kiki?.metaKeys
+                        )
+                      }
+                      className={`w-9 h-5 rounded-full p-0.5 transition-colors cursor-pointer flex items-center ${
+                        userPermissions?.kiki?.metaKeys
+                          ? 'bg-[#10B981] justify-end'
+                          : 'bg-[#475467] justify-start'
+                      }`}
+                    >
+                      <div className="w-4 h-4 rounded-full bg-white shadow-xs" />
+                    </button>
+                  </div>
+
+                  {/* Auto-Reply Bot Rules Toggle */}
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-[#1E293B] border border-[#334155]/60">
+                    <div className="flex items-center gap-2">
+                      <Bot className="w-3.5 h-3.5 text-[#C084FC] shrink-0" />
+                      <div>
+                        <div className="font-bold text-white text-[11px]">Auto-Reply Bot Rules</div>
+                        <div className="text-[10px] text-[#94A3B8]">Keyword triggers & automated responses</div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateUserPermission(
+                          'kiki',
+                          'autoReply',
+                          !userPermissions?.kiki?.autoReply
+                        )
+                      }
+                      className={`w-9 h-5 rounded-full p-0.5 transition-colors cursor-pointer flex items-center ${
+                        userPermissions?.kiki?.autoReply
+                          ? 'bg-[#10B981] justify-end'
+                          : 'bg-[#475467] justify-start'
+                      }`}
+                    >
+                      <div className="w-4 h-4 rounded-full bg-white shadow-xs" />
+                    </button>
+                  </div>
                 </div>
               </div>
 

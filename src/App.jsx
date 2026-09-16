@@ -38,6 +38,7 @@ import { LoginPage } from './components/auth/LoginPage';
 import { MetaApiSettings } from './components/settings/MetaApiSettings';
 import { ClientPortal } from './components/portal/ClientPortal';
 import { AdminTopBar } from './components/layout/AdminTopBar';
+import { BroadcastDueModal } from './components/inbox/BroadcastDueModal';
 
 const AppContent = () => {
   const {
@@ -74,6 +75,7 @@ const AppContent = () => {
         )}
         <ClientPortal />
         <Toast />
+        <BroadcastDueModal />
       </div>
     );
   }
@@ -179,6 +181,7 @@ const AppContent = () => {
       <SearchCommandPalette />
       <SendieeWidgetModal />
       <Toast />
+      <BroadcastDueModal />
     </div>
   );
 };
