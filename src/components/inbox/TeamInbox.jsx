@@ -474,27 +474,59 @@ export const TeamInbox = () => {
     setInputMessage('');
   };
 
-  // 1. AI Reply Generator
-  const handleGenerateAiReply = () => {
+  // 1. AI Reply Generator (Connects to Live Gemini AI Engine)
+  const handleGenerateAiReply = async () => {
     setIsGeneratingAi(true);
-    const messages = activeChat.messages || [];
-    const lastUserMsg = [...messages].reverse().find((m) => m.sender === 'user')?.text || '';
+    const messages = activeChat?.messages || [];
+    const lastUserMsg = [...messages].reverse().find((m) => m.sender === 'user')?.text || activeChat?.lastMessage || 'I want to know more';
 
-    setTimeout(() => {
-      let aiDraft = `Hi ${activeChat.contactName}, thank you for reaching out to Dhigrowth CRM! How can I assist you with your order today?`;
+    try {
+      let res;
+      try {
+        res = await fetch(`${BACKEND_URL}/api/ai/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customerMessage: lastUserMsg,
+            customerName: activeChat?.contactName || 'Valued Client',
+            channelType: activeChat?.channel || 'whatsapp',
+          }),
+        });
+      } catch {}
 
-      if (lastUserMsg.toLowerCase().includes('cod') || lastUserMsg.toLowerCase().includes('bandra') || lastUserMsg.toLowerCase().includes('address')) {
-        aiDraft = `Great! Confirmed your Cash on Delivery order to Bandra West, Mumbai. Our delivery partner will dispatch your parcel within 24 hours with live tracking. 🎉`;
-      } else if (lastUserMsg.toLowerCase().includes('price') || lastUserMsg.toLowerCase().includes('cost') || lastUserMsg.toLowerCase().includes('discount')) {
-        aiDraft = `The total price is ₹2,499 with free express shipping. You can also apply promo code LAUNCH10 for an instant 10% discount!`;
-      } else if (lastUserMsg.toLowerCase().includes('stock') || lastUserMsg.toLowerCase().includes('available')) {
-        aiDraft = `Yes, this item is in stock in our Mumbai fulfillment center. Would you like me to reserve one for you?`;
+      if (!res || !res.ok) {
+        try {
+          res = await fetch('http://localhost:4000/api/ai/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              customerMessage: lastUserMsg,
+              customerName: activeChat?.contactName || 'Valued Client',
+              channelType: activeChat?.channel || 'whatsapp',
+            }),
+          });
+        } catch {}
       }
 
+      if (res && res.ok) {
+        const data = await res.json();
+        if (data.success && data.reply) {
+          setInputMessage(data.reply);
+          showToast('✨ AI smart response drafted with Gemini!', 'success');
+          return;
+        }
+      }
+
+      // Fallback if offline
+      let aiDraft = `Hi ${activeChat?.contactName || 'there'}! Welcome to DhiGrowth IT Services. How can our AI & IT team assist your business today? 🚀`;
       setInputMessage(aiDraft);
+      showToast('✨ AI response drafted!', 'success');
+    } catch (err) {
+      console.warn('AI draft error:', err);
+      showToast('Failed to draft with AI: ' + err.message, 'error');
+    } finally {
       setIsGeneratingAi(false);
-      showToast('✨ AI smart response drafted in editor!', 'success');
-    }, 450);
+    }
   };
 
   // Helper for real-time translation

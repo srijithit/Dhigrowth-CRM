@@ -980,12 +980,49 @@ export const AppProvider = ({ children }) => {
     }));
 
     if (sender === 'user') {
-      setTimeout(() => {
-        let reply = `Thank you for your message! Sendiee AI is assisting you with "${text}". Our team has also been notified.`;
-        if (text.toLowerCase().includes('price') || text.toLowerCase().includes('cost') || text.toLowerCase().includes('how much')) {
-          reply = `Our current rate is ₹2,499 with free COD shipping across India! Would you like me to book this for you?`;
-        } else if (text.toLowerCase().includes('track') || text.toLowerCase().includes('order')) {
-          reply = `Your order is on the way via BlueDart Express (Air AWB #BD-99482). Live tracking has been sent to your WhatsApp.`;
+      const activeChatObj = chats.find((c) => c.id === activeChatId);
+      (async () => {
+        let reply = '';
+        try {
+          let res;
+          try {
+            res = await fetch(`${BACKEND_URL}/api/ai/generate`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                customerMessage: text,
+                customerName: activeChatObj?.contactName || 'Valued Client',
+                channelType: activeChatObj?.channel || 'whatsapp',
+              }),
+            });
+          } catch {}
+
+          if (!res || !res.ok) {
+            try {
+              res = await fetch('http://localhost:4000/api/ai/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  customerMessage: text,
+                  customerName: activeChatObj?.contactName || 'Valued Client',
+                  channelType: activeChatObj?.channel || 'whatsapp',
+                }),
+              });
+            } catch {}
+          }
+
+          if (res && res.ok) {
+            const data = await res.json();
+            if (data.success && data.reply) {
+              reply = data.reply;
+            }
+          }
+        } catch (e) {
+          console.warn('AI auto reply error:', e);
+        }
+
+        if (!reply) {
+          reply = `Hello ${activeChatObj?.contactName || 'there'}! 👋 Welcome to DhiGrowth IT Services.\n\nHow can our AI Business Concierge help you today? Tell us what your business needs and let's build something powerful together! 🚀`;
         }
 
         const aiMsg = {
@@ -1004,7 +1041,7 @@ export const AppProvider = ({ children }) => {
           messagesHandled: prev.messagesHandled + 1,
           aiSpend30d: +(prev.aiSpend30d + 0.005).toFixed(3),
         }));
-      }, 800);
+      })();
     }
   };
 

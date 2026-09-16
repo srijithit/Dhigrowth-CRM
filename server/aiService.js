@@ -43,7 +43,33 @@ We help businesses with:
 
 Tell us what your business needs, and let's build something powerful together! 🚀`;
 
-// Read current active AI configuration (saved JSON config > environment variables)
+let cachedRemoteConfig = null;
+
+// Dynamically fetch AI configuration from Supabase channels settings (shared between local and Render)
+export const loadRemoteAiConfig = async () => {
+  try {
+    const supabase = getSupabase();
+    if (supabase) {
+      const { data } = await supabase
+        .from('channels')
+        .select('settings')
+        .eq('type', 'whatsapp')
+        .maybeSingle();
+      if (data?.settings?.ai_config) {
+        cachedRemoteConfig = data.settings.ai_config;
+        return cachedRemoteConfig;
+      }
+    }
+  } catch (err) {
+    console.warn('[AIService] Note fetching Supabase AI settings:', err.message);
+  }
+  return null;
+};
+
+// Initial background load
+loadRemoteAiConfig().catch(() => {});
+
+// Read current active AI configuration (saved JSON config > Supabase remote cache > environment variables)
 export const getActiveAiConfig = () => {
   let fileConfig = {};
   try {
@@ -54,10 +80,12 @@ export const getActiveAiConfig = () => {
     console.warn('[AIService] Could not read aiConfig.json:', err.message);
   }
 
-  // Priority: Saved JSON config > process.env
-  const provider = fileConfig.provider || process.env.AI_PROVIDER || (process.env.GEMINI_API_KEY ? 'gemini' : process.env.OPENAI_API_KEY ? 'openai' : process.env.GROQ_API_KEY ? 'groq' : 'gemini');
+  const remote = cachedRemoteConfig || {};
 
-  let apiKey = fileConfig.apiKey;
+  // Priority: Local JSON file > Supabase remote config > process.env
+  const provider = fileConfig.provider || remote.provider || process.env.AI_PROVIDER || 'gemini';
+
+  let apiKey = fileConfig.apiKey || remote.apiKey;
   if (!apiKey) {
     if (provider === 'openai') apiKey = process.env.OPENAI_API_KEY;
     else if (provider === 'groq') apiKey = process.env.GROQ_API_KEY;
@@ -65,14 +93,15 @@ export const getActiveAiConfig = () => {
     else apiKey = process.env.GEMINI_API_KEY;
   }
 
-  const model = fileConfig.model || process.env.AI_MODEL || (
+  let model = fileConfig.model || remote.model || process.env.AI_MODEL || (
     provider === 'openai' ? 'gpt-4o-mini' :
     provider === 'groq' ? 'llama-3.3-70b-versatile' :
     provider === 'deepseek' ? 'deepseek-chat' :
     'gemini-2.5-flash'
   );
+  if (model === 'gemini-1.5-flash') model = 'gemini-2.5-flash';
 
-  const systemPrompt = fileConfig.systemPrompt || process.env.AI_SYSTEM_PROMPT || DEFAULT_SYSTEM_PROMPT;
+  const systemPrompt = fileConfig.systemPrompt || remote.systemPrompt || process.env.AI_SYSTEM_PROMPT || DEFAULT_SYSTEM_PROMPT;
 
   return {
     provider,
@@ -81,22 +110,45 @@ export const getActiveAiConfig = () => {
     systemPrompt,
     hasKey: Boolean(apiKey),
     maskedKey: apiKey ? `${apiKey.slice(0, 7)}...${apiKey.slice(-4)}` : '',
-    updatedAt: fileConfig.updatedAt || null,
+    updatedAt: fileConfig.updatedAt || remote.updatedAt || null,
   };
 };
 
-export const saveActiveAiConfig = (newConfig) => {
+export const saveActiveAiConfig = async (newConfig) => {
   const existing = getActiveAiConfig();
   const merged = {
     provider: newConfig.provider || existing.provider || 'gemini',
     apiKey: newConfig.apiKey !== undefined ? String(newConfig.apiKey).trim() : existing.apiKey,
-    model: newConfig.model || existing.model,
+    model: newConfig.model === 'gemini-1.5-flash' ? 'gemini-2.5-flash' : (newConfig.model || existing.model || 'gemini-2.5-flash'),
     systemPrompt: newConfig.systemPrompt || existing.systemPrompt || DEFAULT_SYSTEM_PROMPT,
     updatedBy: newConfig.updatedBy || 'user',
     updatedAt: new Date().toISOString(),
   };
 
   fs.writeFileSync(AI_CONFIG_FILE, JSON.stringify(merged, null, 2), 'utf-8');
+
+  // Also sync to Supabase channel settings if available
+  try {
+    const supabase = getSupabase();
+    if (supabase) {
+      await supabase
+        .from('channels')
+        .update({
+          settings: {
+            ai_config: {
+              provider: merged.provider,
+              model: merged.model,
+              systemPrompt: merged.systemPrompt,
+              apiKey: merged.apiKey,
+              updatedAt: merged.updatedAt,
+            },
+          },
+        })
+        .eq('type', 'whatsapp');
+    }
+  } catch (sbErr) {
+    console.warn('[AIService] Note updating Supabase channel settings:', sbErr.message);
+  }
 
   // Update process.env in memory
   if (merged.provider === 'openai') process.env.OPENAI_API_KEY = merged.apiKey;
@@ -269,22 +321,17 @@ export const generateAIResponse = async ({
     console.warn('[AIService] Note checking DB templates:', err.message);
   }
 
-  // 2. Initial Greeting Detection
-  if (
-    query === 'hi' ||
-    query === 'hello' ||
-    query === 'hey' ||
-    query === 'start' ||
-    query === 'menu' ||
-    query === 'help' ||
-    query.startsWith('hi ') ||
-    query.startsWith('hello ') ||
-    query.startsWith('hey ')
-  ) {
+  // 2. Initial Greeting Detection (Only trigger welcome menu on standalone greeting)
+  const isGreeting = ['hi', 'hello', 'hey', 'start', 'menu', 'help', 'hi!', 'hello!', 'hey!'].includes(query) ||
+    query === 'hi there' || query === 'hello there';
+  if (isGreeting) {
     return DHIGROWTH_WELCOME;
   }
 
   // 3. Live AI Execution (Gemini / OpenAI / Groq / DeepSeek)
+  if (!cachedRemoteConfig) {
+    await loadRemoteAiConfig();
+  }
   const activeAi = getActiveAiConfig();
   if (activeAi.hasKey) {
     try {

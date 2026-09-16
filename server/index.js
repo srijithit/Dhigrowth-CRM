@@ -17,6 +17,7 @@ import {
   getActiveAiConfig,
   saveActiveAiConfig,
   testAiConnection,
+  generateAIResponse,
   DEFAULT_SYSTEM_PROMPT,
 } from './aiService.js';
 
@@ -624,6 +625,28 @@ app.post('/api/ai-config/test', async (req, res) => {
     res.status(400).json({ success: false, error: err.message });
   }
 });
+
+// 9.1 Generate Dynamic AI Response On-Demand
+const handleAiGenerate = async (req, res) => {
+  try {
+    const { customerMessage, customerName = 'Valued Client', channelType = 'whatsapp' } = req.body || {};
+    if (!customerMessage) {
+      return res.status(400).json({ success: false, error: 'customerMessage is required' });
+    }
+    const reply = await generateAIResponse({
+      customerName,
+      customerMessage,
+      channelType,
+    });
+    res.json({ success: true, reply });
+  } catch (err) {
+    console.error('[AI Generate Route Error]:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+app.post('/api/ai/generate', handleAiGenerate);
+app.post('/api/ai-config/generate', handleAiGenerate);
 
 app.listen(PORT, () => {
   console.log(`\n================================================================`);
