@@ -269,12 +269,35 @@ async function processIncomingChatMessage({
       console.log('✅ Inbound message recorded in Supabase.');
     }
 
+    // 3.5 Fetch recent conversation history for rich multi-turn context
+    let conversationHistory = [];
+    try {
+      const { data: pastMsgs } = await supabase
+        .from('messages')
+        .select('direction, content, created_at')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: false })
+        .limit(8);
+
+      if (pastMsgs && pastMsgs.length > 0) {
+        conversationHistory = pastMsgs
+          .reverse()
+          .map((m) => ({
+            role: m.direction === 'inbound' ? 'user' : 'assistant',
+            content: m.content,
+          }));
+      }
+    } catch (histErr) {
+      console.warn('[WebhookHandler] Could not load message history:', histErr.message);
+    }
+
     // 4. Generate AI Concierge Response
-    console.log('🤖 Dhigrowth AI Concierge is generating response...');
+    console.log('🤖 Dhigrowth AI Concierge is generating response with history context...');
     const aiResult = await generateAIResponse({
       customerName,
       customerMessage: messageText,
       channelType,
+      conversationHistory,
     });
 
     const aiResponseText = typeof aiResult === 'object' && aiResult.reply ? aiResult.reply : String(aiResult);

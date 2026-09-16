@@ -30,7 +30,8 @@ Core Behavior Instructions:
 2. TAILORED & RELEVANT: Give a direct, helpful, and highly relevant answer addressing specifically what THEY asked. Do not give generic replies or repeat boilerplate.
 3. CONCISE FOR WHATSAPP: Keep replies concise (2-4 clear sentences or short punchy bullet points with emojis).
 4. NEXT STEPS: Invite them to share details about their vision or offer to book a quick consultation call.
-5. MULTI-LINGUAL: If the user writes in Hindi, Tamil, Hinglish, or any other language, understand and reply naturally in that same language.`;
+5. MULTI-LINGUAL: If the user writes in Hindi, Tamil, Hinglish, or any other language, understand and reply naturally in that same language.
+6. CONVERSATION CONTEXT & AFFIRMATIONS: If the user says "Yes", "Ok", "Sure", "I am interested", or agrees with our previous suggestion/question, understand the context of the prior messages. Warmly acknowledge their confirmation, ask them for the next detail needed, or offer available meeting/demo slots.`;
 
 const DHIGROWTH_WELCOME = `Hello! 👋 Welcome to **DhiGrowth IT Services**.
 
@@ -165,13 +166,34 @@ export const saveActiveAiConfig = async (newConfig) => {
 };
 
 // Dispatch AI completion request to specific provider
-async function callAiProvider({ provider, apiKey, model, systemPrompt, userMessage }) {
+async function callAiProvider({ provider, apiKey, model, systemPrompt, userMessage, conversationHistory = [] }) {
   const startTime = Date.now();
 
   if (provider === 'gemini') {
     // Google Gemini API
     const targetModel = model || 'gemini-2.5-flash';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
+
+    // Build rich multi-turn conversation contents for Gemini
+    const geminiContents = [];
+    if (conversationHistory && conversationHistory.length > 0) {
+      for (const item of conversationHistory) {
+        if (!item.content) continue;
+        geminiContents.push({
+          role: item.role === 'assistant' || item.role === 'model' ? 'model' : 'user',
+          parts: [{ text: item.content }],
+        });
+      }
+    }
+
+    // Ensure the latest user message is at the end
+    const lastContent = geminiContents[geminiContents.length - 1];
+    if (!lastContent || lastContent.role !== 'user' || lastContent.parts[0]?.text !== userMessage) {
+      geminiContents.push({
+        role: 'user',
+        parts: [{ text: userMessage }],
+      });
+    }
 
     let res;
     let data;
@@ -186,16 +208,7 @@ async function callAiProvider({ provider, apiKey, model, systemPrompt, userMessa
             system_instruction: {
               parts: [{ text: systemPrompt }],
             },
-            contents: [
-              {
-                role: 'user',
-                parts: [
-                  {
-                    text: userMessage,
-                  },
-                ],
-              },
-            ],
+            contents: geminiContents,
             generationConfig: {
               temperature: 0.7,
               maxOutputTokens: 500,
@@ -251,6 +264,19 @@ async function callAiProvider({ provider, apiKey, model, systemPrompt, userMessa
 
     const targetModel = model || defaultModel;
 
+    const chatMessages = [
+      { role: 'system', content: systemPrompt },
+      ...(conversationHistory || []).map((m) => ({
+        role: m.role === 'model' ? 'assistant' : m.role,
+        content: m.content,
+      })),
+    ];
+
+    const lastMsg = chatMessages[chatMessages.length - 1];
+    if (!lastMsg || lastMsg.role !== 'user' || lastMsg.content !== userMessage) {
+      chatMessages.push({ role: 'user', content: userMessage });
+    }
+
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -259,10 +285,7 @@ async function callAiProvider({ provider, apiKey, model, systemPrompt, userMessa
       },
       body: JSON.stringify({
         model: targetModel,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMessage },
-        ],
+        messages: chatMessages,
         temperature: 0.7,
         max_tokens: 600,
       }),
@@ -381,6 +404,7 @@ export const generateAIResponse = async ({
         model: activeAi.model,
         systemPrompt: activeAi.systemPrompt,
         userMessage: `Customer Name: ${customerName || 'Valued Client'}\nChannel: ${channelType}\nCustomer Message: "${customerMessage}"`,
+        conversationHistory,
       });
 
       if (result.reply) {
@@ -394,6 +418,11 @@ export const generateAIResponse = async ({
   }
 
   // 4. Smart Business Rules Engine Fallback
+  // 4.1 Positive affirmations & confirmations ("yes", "ok", "sure", "proceed", etc.)
+  if (/^(yes|yeah|yep|sure|ok|okay|yup|definitely|absolutely|interested|tell me more|let's do it|demo|start|call me|connect)$/i.test(query)) {
+    return `Awesome, thank you for confirming, ${customerName || 'friend'}! 🎉\n\nWe would love to help you get this started right away. Which service would you like to explore first (Mobile App, Custom AI Agent, WhatsApp CRM, or Web IT)?\n\nOr feel free to share your phone number/preferred time, and our specialist will give you a quick 10-minute discovery call! 🚀`;
+  }
+
   if (/\b(whatsapp|crm|marketing|broadcast|catalog|lead|inbox)\b/i.test(query)) {
     return `💬 **WhatsApp CRM & Automation**\n\nSupercharge your sales with official Meta WhatsApp Cloud API integration, broadcast campaigns, catalog bots, and AI auto-pilot replies.\n\nReady to convert leads faster on WhatsApp? Let's connect! 📈`;
   }
