@@ -27,6 +27,7 @@ import {
   Key,
   Users,
   ShieldCheck,
+  Lock,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -40,7 +41,11 @@ export const Sidebar = () => {
     currentUser,
     logout,
     totalUnreadCount,
+    subscription,
   } = useApp();
+
+  const isPaidActive = subscription?.status === 'active';
+  const GATED_FEATURE_IDS = ['ai-assistants', 'tools', 'lead-studio', 'segmentation', 'campaigns', 'drip-campaigns', 'automations'];
 
   const NAV_SECTIONS = [
     {
@@ -253,6 +258,7 @@ export const Sidebar = () => {
                 {section.items.map((item) => {
                   const Icon = item.icon;
                   const isActive = activeTab === item.id;
+                  const isGated = !isPaidActive && GATED_FEATURE_IDS.includes(item.id);
                   return (
                     <button
                       key={item.id}
@@ -263,7 +269,7 @@ export const Sidebar = () => {
                           setActiveTab(item.id);
                         }
                       }}
-                      title={isSidebarCollapsed ? item.label : undefined}
+                      title={isSidebarCollapsed ? `${item.label}${isGated ? ' (Locked - Active Plan Required)' : ''}` : undefined}
                       className={`relative w-full flex items-center rounded-xl text-xs font-medium transition-all group cursor-pointer ${
                         isSidebarCollapsed ? 'justify-center p-2.5' : 'justify-between px-3 py-2'
                       } ${
@@ -287,7 +293,12 @@ export const Sidebar = () => {
 
                       {!isSidebarCollapsed && (
                         <div className="flex items-center gap-1.5 shrink-0">
-                          {item.id === 'inbox' && totalUnreadCount > 0 ? (
+                          {isGated ? (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-[#F4F0FD] text-[#7C3AED] border border-[#E9D8FD] flex items-center gap-1 shadow-2xs">
+                              <Lock className="w-2.5 h-2.5" />
+                              <span>PRO</span>
+                            </span>
+                          ) : item.id === 'inbox' && totalUnreadCount > 0 ? (
                             <span className="px-1.5 py-0.5 rounded-full bg-[#16A34A] text-white text-[10px] font-bold font-mono shadow-xs animate-pulse">
                               {totalUnreadCount}
                             </span>
@@ -307,7 +318,11 @@ export const Sidebar = () => {
                         </div>
                       )}
 
-                      {isSidebarCollapsed && item.id === 'inbox' && totalUnreadCount > 0 && (
+                      {isSidebarCollapsed && isGated && (
+                        <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#7C3AED] rounded-full ring-1 ring-white" />
+                      )}
+
+                      {isSidebarCollapsed && !isGated && item.id === 'inbox' && totalUnreadCount > 0 && (
                         <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-[#16A34A] rounded-full ring-2 ring-white animate-pulse" />
                       )}
                     </button>

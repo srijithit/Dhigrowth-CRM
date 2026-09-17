@@ -30,6 +30,7 @@ import {
   Cpu,
   Key,
   User,
+  Lock,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -48,6 +49,7 @@ export const DashboardOverview = () => {
     subscription,
     openCheckout,
     refreshSubscription,
+    setSubscriptionStatus,
     metrics,
     channels,
     connectChannel,
@@ -311,6 +313,55 @@ export const DashboardOverview = () => {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Feature Paywall Gating Notice & Quick Toggle */}
+        <div className="pt-2 border-t border-[#F2F4F7]">
+          {!isPaidActive ? (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 bg-[#FFF9EB] border border-[#FEEFC6] rounded-2xl text-xs text-[#B54708]">
+              <div className="flex items-center gap-2">
+                <Lock className="w-4 h-4 text-[#D97706] shrink-0" />
+                <span>
+                  <strong>Features Paywalled:</strong> Mass Broadcasts, Sequences, Automations, AI Studio, Function Tools, Lead Studio, and Segmentation are locked. Subscribe to unlock all features.
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                <button
+                  onClick={() => openCheckout('Growth', 'monthly', 'razorpay')}
+                  className="px-3 py-1.5 bg-[#D97706] hover:bg-[#B45309] text-white font-bold rounded-xl shadow-2xs text-[11px] cursor-pointer"
+                >
+                  Subscribe Now
+                </button>
+                {typeof setSubscriptionStatus === 'function' && (
+                  <button
+                    onClick={() => setSubscriptionStatus('active')}
+                    className="px-2 py-1 bg-white hover:bg-[#FEF08A] text-[#78350F] border border-[#FDE047] font-bold rounded-xl text-[10px] cursor-pointer"
+                    title="Developer toggle: simulate active subscription"
+                  >
+                    ⚡ Test Unlock
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 bg-[#F0FDF4] border border-[#DCFCE7] rounded-2xl text-xs text-[#166534]">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-[#16A34A] shrink-0" />
+                <span>
+                  <strong>All SaaS Features Unlocked:</strong> Active <span className="font-bold uppercase font-mono">{activePlanName}</span> subscription is live. All broadcasting, automations, and AI tools active.
+                </span>
+              </div>
+              {typeof setSubscriptionStatus === 'function' && (
+                <button
+                  onClick={() => setSubscriptionStatus('trialing')}
+                  className="px-2 py-1 bg-white hover:bg-[#FEE2E2] text-[#991B1B] border border-[#FECACA] font-bold rounded-xl text-[10px] cursor-pointer shrink-0 self-end sm:self-auto"
+                  title="Developer toggle: simulate unsubscribed state to test paywall"
+                >
+                  🔒 Test Lock
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

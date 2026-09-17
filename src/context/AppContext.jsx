@@ -746,6 +746,41 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  const setSubscriptionStatus = async (status = 'active', wsId) => {
+    try {
+      const activeWs = wsId || currentWorkspaceId || 'b0000000-0000-0000-0000-000000000001';
+      let res;
+      try {
+        res = await fetch(`${BACKEND_URL}/api/billing/set-status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ workspaceId: activeWs, status }),
+        });
+      } catch {}
+      if (!res || !res.ok) {
+        try {
+          res = await fetch(`http://localhost:4000/api/billing/set-status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ workspaceId: activeWs, status }),
+          });
+        } catch {}
+      }
+      if (res && res.ok) {
+        const data = await res.json();
+        if (data && data.subscription) {
+          setSubscription(data.subscription);
+          if (data.subscription.planId) {
+            setCurrentPlan(data.subscription.planId);
+          }
+          showToast(`Subscription status updated to "${status.toUpperCase()}"!`, 'success');
+        }
+      }
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
   // Client Workspace View Mode: 'crm' (Full CRM UI with Sidebar & TeamInbox) | 'portal' (BYOK Client Suite)
   const [clientViewMode, setClientViewMode] = useState(() => {
     try {
@@ -2077,6 +2112,7 @@ export const AppProvider = ({ children }) => {
         checkoutData,
         subscription,
         refreshSubscription,
+        setSubscriptionStatus,
       }}
     >
       {children}

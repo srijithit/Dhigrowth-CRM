@@ -31,6 +31,7 @@ import {
   createCheckoutSession,
   activateWorkspaceSubscription,
   cancelSubscription,
+  setWorkspaceSubscriptionStatus,
 } from './billingService.js';
 import {
   initTemplateStore,
@@ -883,6 +884,16 @@ app.post('/api/billing/cancel', (req, res) => {
   try {
     const { workspaceId } = req.body || {};
     const result = cancelSubscription(workspaceId);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/billing/set-status', (req, res) => {
+  try {
+    const { workspaceId, status } = req.body || {};
+    const result = setWorkspaceSubscriptionStatus(workspaceId, status || 'trialing');
     res.json(result);
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

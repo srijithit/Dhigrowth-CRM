@@ -64,6 +64,8 @@ export const TeamInbox = () => {
     metaConfig,
     currentWorkspaceId,
     currentUser,
+    subscription,
+    openCheckout,
   } = useApp();
 
   useEffect(() => {
@@ -221,6 +223,13 @@ export const TeamInbox = () => {
 
   const handleBroadcastDueInvoices = async (e) => {
     e?.preventDefault();
+    if (subscription && subscription.status !== 'active') {
+      showToast('🔒 Active subscription required to broadcast invoice dues. Please upgrade your plan.', 'error');
+      if (typeof openCheckout === 'function') {
+        openCheckout('Growth', 'monthly', 'razorpay');
+      }
+      return;
+    }
     setIsBroadcasting(true);
     setBroadcastSummary(null);
 
@@ -441,6 +450,14 @@ export const TeamInbox = () => {
     e?.preventDefault();
     const text = inputMessage.trim();
     if (!text) return;
+
+    if (subscription && subscription.status !== 'active') {
+      showToast('🔒 Active subscription required to send outbound WhatsApp messages. Please choose a plan to unlock full messaging.', 'error');
+      if (typeof openCheckout === 'function') {
+        openCheckout('Growth', 'monthly', 'razorpay');
+      }
+      return;
+    }
 
     setInputMessage('');
     setIsSendingLive(true);

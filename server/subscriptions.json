@@ -5,7 +5,7 @@
       "planId": "Pro",
       "planName": "Pro",
       "billingCycle": "monthly",
-      "status": "active",
+      "status": "trialing",
       "provider": "razorpay",
       "currentPeriodStart": "2026-09-16T12:54:13.076Z",
       "currentPeriodEnd": "2026-10-16T12:54:13.076Z",
@@ -21,7 +21,7 @@
         "gstin": "",
         "billingEmail": "admin@dhigrowth.com"
       },
-      "updatedAt": "2026-09-16T12:54:13.076Z"
+      "updatedAt": "2026-09-17T04:50:07.085Z"
     },
     "ws-test": {
       "workspaceId": "ws-test",

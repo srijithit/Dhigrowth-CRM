@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { sendWhatsAppMessage } from './metaService.js';
 import { getWorkspaceTemplates } from './templateService.js';
+import { getWorkspaceSubscription } from './billingService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -208,6 +209,11 @@ export async function createBroadcastCampaign({
   scheduledAt = null,
   isInstant = true,
 }) {
+  const sub = getWorkspaceSubscription(workspaceId);
+  if (sub && sub.status !== 'active') {
+    throw new Error('🔒 Active subscription required to schedule and run broadcast campaigns. Please upgrade your plan.');
+  }
+
   const newCampaign = {
     id: `camp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
     name: name.trim(),
@@ -402,6 +408,15 @@ export async function sendTestBroadcast({
   sampleContact = { name: 'Srijith Test', city: 'Bangalore', company: 'DhiGrowth CRM' },
   variableMapping = [],
 }) {
+  const sub = getWorkspaceSubscription(workspaceId);
+  if (sub && sub.status !== 'active') {
+    return {
+      success: false,
+      error: '🔒 Active subscription required to test-send broadcast messages. Please upgrade your plan.',
+      requiresSubscription: true,
+    };
+  }
+
   const templates = getWorkspaceTemplates(workspaceId);
   const template = templates.find((t) => t.name === templateName) || templates[0];
 

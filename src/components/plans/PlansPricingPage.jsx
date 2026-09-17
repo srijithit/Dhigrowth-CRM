@@ -7,12 +7,22 @@ import {
   ShieldCheck,
   Building,
   HelpCircle,
-  ExternalLink
+  ExternalLink,
+  Lock,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const PlansPricingPage = () => {
-  const { currentPlan, openCheckout, subscription, showToast, setActiveTab } = useApp();
+  const {
+    currentPlan,
+    openCheckout,
+    subscription,
+    showToast,
+    setActiveTab,
+    setSubscriptionStatus,
+  } = useApp();
+
+  const isPaidActive = subscription?.status === 'active';
 
   const [interval, setInterval] = useState('monthly'); // 'monthly' | 'quarterly' | 'half-yearly' | 'yearly'
 
@@ -96,6 +106,51 @@ export const PlansPricingPage = () => {
           Scale your business with the right plan. Upgrade or downgrade anytime.
         </p>
       </div>
+
+      {/* Active / Inactive Status Alert */}
+      {!isPaidActive ? (
+        <div className="max-w-2xl mx-auto p-4 bg-[#FFF9EB] border border-[#FEEFC6] rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#B54708] shadow-2xs">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-[#FEF08A] text-[#D97706] flex items-center justify-center shrink-0">
+              <Lock className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="font-bold text-[#92400E]">Subscription Inactive — Operational Features Gated</div>
+              <div className="text-[11px] text-[#B45309]">Pick any plan below to instantly activate your subscription and unlock all features.</div>
+            </div>
+          </div>
+          {typeof setSubscriptionStatus === 'function' && (
+            <button
+              onClick={() => setSubscriptionStatus('active')}
+              className="px-3 py-1.5 bg-white hover:bg-[#FEF08A] text-[#78350F] border border-[#FDE047] font-bold rounded-xl text-[10px] cursor-pointer shrink-0"
+              title="Developer toggle: simulate active subscription"
+            >
+              ⚡ Test Unlock
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="max-w-2xl mx-auto p-4 bg-[#F0FDF4] border border-[#DCFCE7] rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#166534] shadow-2xs">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-[#DCFCE7] text-[#16A34A] flex items-center justify-center shrink-0">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="font-bold text-[#14532D]">Active Plan: {subscription?.planName || currentPlan} ({subscription?.billingCycle || 'monthly'})</div>
+              <div className="text-[11px] text-[#15803D]">All features and quotas are active and unlocked.</div>
+            </div>
+          </div>
+          {typeof setSubscriptionStatus === 'function' && (
+            <button
+              onClick={() => setSubscriptionStatus('trialing')}
+              className="px-3 py-1.5 bg-white hover:bg-[#FEE2E2] text-[#991B1B] border border-[#FECACA] font-bold rounded-xl text-[10px] cursor-pointer shrink-0"
+              title="Developer toggle: simulate unsubscribed state to test paywall"
+            >
+              🔒 Test Lock
+            </button>
+          )}
+        </div>
+      )}
 
       {/* 2. Billing Switcher Pills */}
       <div className="flex flex-col items-center gap-3">

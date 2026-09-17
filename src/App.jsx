@@ -38,9 +38,9 @@ import { LoginPage } from './components/auth/LoginPage';
 import { MetaApiSettings } from './components/settings/MetaApiSettings';
 import { ClientPortal } from './components/portal/ClientPortal';
 import { AdminTopBar } from './components/layout/AdminTopBar';
-import { BroadcastDueModal } from './components/inbox/BroadcastDueModal';
 import { SuperAdminTenantsPage } from './components/admin/SuperAdminTenantsPage';
 import { CheckoutModal } from './components/billing/CheckoutModal';
+import { FeaturePaywall } from './components/common/FeaturePaywall';
 
 const AppContent = () => {
   const {
@@ -50,6 +50,7 @@ const AppContent = () => {
     adminViewProfile,
     switchAdminProfile,
     clientViewMode,
+    subscription,
   } = useApp();
 
   if (!isAuthenticated) {
@@ -82,6 +83,8 @@ const AppContent = () => {
       </div>
     );
   }
+
+  const isPaidActive = subscription?.status === 'active';
 
   const renderActiveView = () => {
     switch (activeTab) {
@@ -129,20 +132,76 @@ const AppContent = () => {
       case 'insights':
         return <InsightsPage />;
       case 'tools':
-        return <ToolsPage />;
+        return isPaidActive ? (
+          <ToolsPage />
+        ) : (
+          <FeaturePaywall
+            featureTitle="AI Function Tools & External Webhooks"
+            featureDescription="Connect custom API endpoints, CRM webhooks, and live databases directly into your AI autonomous agents."
+            requiredPlan="Growth"
+          />
+        );
       case 'lead-studio':
-        return <LeadStudioPage />;
+        return isPaidActive ? (
+          <LeadStudioPage />
+        ) : (
+          <FeaturePaywall
+            featureTitle="AI Lead Studio & Audience Enricher"
+            featureDescription="Automatically enrich inbound WhatsApp and Instagram leads with verified company intel, email lookups, and qualification scores."
+            requiredPlan="Growth"
+          />
+        );
       case 'segmentation':
-        return <LeadSegmentationPage />;
+        return isPaidActive ? (
+          <LeadSegmentationPage />
+        ) : (
+          <FeaturePaywall
+            featureTitle="Smart Lead Segmentation"
+            featureDescription="Filter and segment your contacts with high-precision criteria, custom tags, deal stages, and AI buyer intent."
+            requiredPlan="Growth"
+          />
+        );
       case 'ai-assistants':
       case 'ai-studio':
-        return <AiStudio />;
+        return isPaidActive ? (
+          <AiStudio />
+        ) : (
+          <FeaturePaywall
+            featureTitle="AI Studio & Autonomous Auto-Pilot Agents"
+            featureDescription="Deploy 24/7 autonomous WhatsApp, Instagram, and Messenger AI agents trained on your custom company knowledge base."
+            requiredPlan="Growth"
+          />
+        );
       case 'campaigns':
-        return <CampaignManager />;
+        return isPaidActive ? (
+          <CampaignManager />
+        ) : (
+          <FeaturePaywall
+            featureTitle="Mass Broadcast Campaigns"
+            featureDescription="Schedule and blast official Meta pre-approved WhatsApp templates with dynamic variables ({{name}}, {{city}}, {{deal_value}}) to thousands of leads."
+            requiredPlan="Growth"
+          />
+        );
       case 'drip-campaigns':
-        return <DripCampaignsPage />;
+        return isPaidActive ? (
+          <DripCampaignsPage />
+        ) : (
+          <FeaturePaywall
+            featureTitle="Multi-Step Drip Sequences"
+            featureDescription="Nurture leads automatically across minutes, hours, or days with conditional branching and automated follow-ups."
+            requiredPlan="Pro"
+          />
+        );
       case 'automations':
-        return <AutomationsPage />;
+        return isPaidActive ? (
+          <AutomationsPage />
+        ) : (
+          <FeaturePaywall
+            featureTitle="Event Triggers & Workflow Automations"
+            featureDescription="Automate real-time triggers on keyword matches, Shopify order creation, cart abandonment, and CRM status updates."
+            requiredPlan="Growth"
+          />
+        );
       case 'templates':
         return <TemplatesPage />;
       case 'files':
@@ -150,7 +209,15 @@ const AppContent = () => {
       case 'leads':
         return <LeadsCrm />;
       case 'capi':
-        return <MetaCapiEvents />;
+        return isPaidActive ? (
+          <MetaCapiEvents />
+        ) : (
+          <FeaturePaywall
+            featureTitle="Meta Conversions API (CAPI)"
+            featureDescription="Send server-side purchase and lead conversion events directly to Meta Ads Manager for 10x ROAS attribution."
+            requiredPlan="Pro"
+          />
+        );
       case 'super-admin':
       case 'tenants':
       case 'tenant-management':

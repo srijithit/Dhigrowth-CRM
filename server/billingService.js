@@ -155,12 +155,12 @@ export function getWorkspaceSubscription(workspaceId) {
     planId: 'Growth',
     planName: 'Growth',
     billingCycle: 'monthly',
-    status: 'active',
+    status: 'trialing',
     provider: 'demo',
     currentPeriodStart: new Date().toISOString(),
     currentPeriodEnd: new Date(Date.now() + 30 * 86400000).toISOString(),
     cancelAtPeriodEnd: false,
-    trialDaysRemaining: 7,
+    trialDaysRemaining: 0,
     paymentMethod: null,
     billingDetails: {},
   };
@@ -431,6 +431,38 @@ export function cancelSubscription(workspaceId) {
   return {
     success: true,
     message: 'Subscription will not renew after current billing cycle.',
+  };
+}
+
+/**
+ * Set workspace subscription status directly (used for testing paywall locking/unlocking)
+ */
+export function setWorkspaceSubscriptionStatus(workspaceId, status = 'trialing') {
+  const wsId = workspaceId || 'b0000000-0000-0000-0000-000000000001';
+  if (!subscriptionStore.workspaces[wsId]) {
+    subscriptionStore.workspaces[wsId] = {
+      workspaceId: wsId,
+      planId: 'Growth',
+      planName: 'Growth',
+      billingCycle: 'monthly',
+      status,
+      provider: 'razorpay',
+      currentPeriodStart: new Date().toISOString(),
+      currentPeriodEnd: new Date(Date.now() + 30 * 86400000).toISOString(),
+      cancelAtPeriodEnd: false,
+      trialDaysRemaining: status === 'active' ? 30 : 0,
+      paymentMethod: null,
+      billingDetails: {},
+    };
+  } else {
+    subscriptionStore.workspaces[wsId].status = status;
+    subscriptionStore.workspaces[wsId].updatedAt = new Date().toISOString();
+  }
+  saveSubscriptionsToDisk();
+  console.log(`⚡ [BillingService] Workspace ${wsId} subscription status set to: "${status}"`);
+  return {
+    success: true,
+    subscription: subscriptionStore.workspaces[wsId],
   };
 }
 
