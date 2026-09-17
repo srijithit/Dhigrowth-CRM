@@ -2,8 +2,9 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { sendWhatsAppMessage } from './metaService.js';
-import { getWorkspaceTemplates } from './templateService.js';
+import { getWorkspaceTemplates, STARTER_TEMPLATES } from './templateService.js';
 import { getWorkspaceSubscription } from './billingService.js';
+import { getTenantMetaConfig } from './tenantMetaManager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -271,22 +272,58 @@ export async function executeBroadcast(workspaceId, campaignId) {
   console.log(`🚀 [BroadcastService] Starting broadcast dispatch: "${campaign.name}" to ${campaign.targetCount} contacts`);
 
   const templates = getWorkspaceTemplates(workspaceId);
-  const matchedTemplate = templates.find((t) => t.name === campaign.templateName) || templates[0];
+  const matchedTemplate =
+    templates.find((t) => t.name === campaign.templateName) ||
+    templates[0] ||
+    STARTER_TEMPLATES.find((t) => t.name === campaign.templateName) ||
+    STARTER_TEMPLATES[0];
 
-  // Default demo recipients if empty list was provided
-  const targetRecipients = (campaign.recipients && campaign.recipients.length > 0)
+  // Load real contacts from Supabase for this workspace if available
+  let targetRecipients = (campaign.recipients && campaign.recipients.length > 0)
     ? campaign.recipients
-    : [
-        { name: 'Srijith R', phone: '+919876543210', city: 'Bangalore', company: 'DhiGrowth' },
-        { name: 'Maddy S', phone: '+919876543211', city: 'Chennai', company: 'TitanStay' },
-        { name: 'Vikram Mehta', phone: '+919876543212', city: 'Mumbai', company: 'Mehta Logistics' },
-        { name: 'Ananya Sharma', phone: '+919876543213', city: 'Delhi', company: 'Aura Studio' },
-        { name: 'Karthik Raja', phone: '+919876543214', city: 'Hyderabad', company: 'Karthik Ventures' },
-      ];
+    : [];
 
-  const wabaId = process.env.META_WHATSAPP_WABA_ID;
-  const token = process.env.META_WHATSAPP_ACCESS_TOKEN;
-  const phoneId = process.env.META_WHATSAPP_PHONE_NUMBER_ID;
+  if (targetRecipients.length === 0) {
+    try {
+      const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+      const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+      if (supabaseUrl && supabaseKey) {
+        const { createClient } = await import('@supabase/supabase-js');
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        const { data: dbContacts } = await supabase
+          .from('contacts')
+          .select('full_name, phone_number, city')
+          .eq('workspace_id', workspaceId)
+          .limit(100);
+
+        if (dbContacts && dbContacts.length > 0) {
+          targetRecipients = dbContacts.map((c) => ({
+            name: c.full_name,
+            phone: c.phone_number,
+            city: c.city || 'your city',
+            company: '',
+          }));
+        }
+      }
+    } catch (err) {
+      console.warn('[BroadcastService] Contact fetch note:', err.message);
+    }
+  }
+
+  if (targetRecipients.length === 0) {
+    targetRecipients = [
+      { name: 'Srijith R', phone: '+919876543210', city: 'Bangalore', company: 'DhiGrowth' },
+      { name: 'Maddy S', phone: '+919876543211', city: 'Chennai', company: 'TitanStay' },
+      { name: 'Vikram Mehta', phone: '+919876543212', city: 'Mumbai', company: 'Mehta Logistics' },
+      { name: 'Ananya Sharma', phone: '+919876543213', city: 'Delhi', company: 'Aura Studio' },
+      { name: 'Karthik Raja', phone: '+919876543214', city: 'Hyderabad', company: 'Karthik Ventures' },
+    ];
+  }
+
+  const tenantMeta = getTenantMetaConfig({ workspaceId });
+  const wabaId = tenantMeta?.wabaId || process.env.META_WHATSAPP_WABA_ID;
+  const token = tenantMeta?.accessToken || process.env.META_WHATSAPP_ACCESS_TOKEN;
+  const phoneId = tenantMeta?.phoneNumberId || process.env.META_WHATSAPP_PHONE_NUMBER_ID;
 
   let sent = 0;
   let failed = 0;
@@ -418,7 +455,11 @@ export async function sendTestBroadcast({
   }
 
   const templates = getWorkspaceTemplates(workspaceId);
-  const template = templates.find((t) => t.name === templateName) || templates[0];
+  const template =
+    templates.find((t) => t.name === templateName) ||
+    templates[0] ||
+    STARTER_TEMPLATES.find((t) => t.name === templateName) ||
+    STARTER_TEMPLATES[0];
 
   if (!template) {
     throw new Error(`Template "${templateName}" not found`);
@@ -431,8 +472,9 @@ export async function sendTestBroadcast({
     throw new Error('Valid test phone number is required');
   }
 
-  const token = process.env.META_WHATSAPP_ACCESS_TOKEN;
-  const phoneId = process.env.META_WHATSAPP_PHONE_NUMBER_ID;
+  const tenantMeta = getTenantMetaConfig({ workspaceId });
+  const token = tenantMeta?.accessToken || process.env.META_WHATSAPP_ACCESS_TOKEN;
+  const phoneId = tenantMeta?.phoneNumberId || process.env.META_WHATSAPP_PHONE_NUMBER_ID;
 
   let sendResult;
   if (token && phoneId && !token.includes('placeholder')) {

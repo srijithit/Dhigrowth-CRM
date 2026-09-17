@@ -10,7 +10,7 @@ const META_GRAPH_VERSION = 'v20.0';
 const GRAPH_BASE_URL = `https://graph.facebook.com/${META_GRAPH_VERSION}`;
 
 // Default initial starter templates approved by Meta
-const STARTER_TEMPLATES = [
+export const STARTER_TEMPLATES = [
   {
     id: 'tpl_welcome_greeting',
     name: 'welcome_greeting_v2',

@@ -2,6 +2,26 @@
   "workspaces": {
     "b0000000-0000-0000-0000-000000000001": [
       {
+        "id": "tpl_hi_1789625763989",
+        "name": "hi",
+        "category": "UTILITY",
+        "language": "en_US",
+        "status": "APPROVED",
+        "header_type": "NONE",
+        "header_content": null,
+        "body_text": "{{1}} {{2}} {{3}}",
+        "footer_text": "hi,hello",
+        "buttons": [],
+        "variables": [
+          "var_1",
+          "var_2",
+          "var_3"
+        ],
+        "syncedWithMeta": false,
+        "createdAt": "2026-09-17T06:16:03.989Z",
+        "updatedAt": "2026-09-17T06:16:03.989Z"
+      },
+      {
         "id": "tpl_test_product_launch_1789562723381",
         "name": "test_product_launch",
         "category": "MARKETING",
@@ -130,6 +150,27 @@
         "updatedAt": "2026-09-16T12:38:43.091Z"
       }
     ],
-    "b1a0a9dd26af-9d29-b53e-7fd6-c592f69f2bc5": []
+    "b1a0a9dd26af-9d29-b53e-7fd6-c592f69f2bc5": [
+      {
+        "id": "tpl_greeting_1789625996802",
+        "name": "greeting",
+        "category": "UTILITY",
+        "language": "en_US",
+        "status": "APPROVED",
+        "header_type": "NONE",
+        "header_content": null,
+        "body_text": "👋 *Hello {{1}}!*\n\nWelcome to *DhiGrowth IT Services* 🚀\n\nWe help businesses grow with powerful digital solutions:\n\n💻 *App & Website Development*\n🤖 *AI Solutions & Automation*\n📈 *Business Development Solutions*\n💬 *WhatsApp CRM & Automation*\n\n🎯 Looking to take your business to the next level?\n\n👉 *Explore our services:* {{3}}\n\n📩 *Custom Requirement:* {{2}}\n\n*DhiGrowth IT Services* — Building Technology. Growing Businesses. 🚀",
+        "footer_text": "hi,hello",
+        "buttons": [],
+        "variables": [
+          "var_1",
+          "var_3",
+          "var_2"
+        ],
+        "syncedWithMeta": false,
+        "createdAt": "2026-09-17T06:19:56.802Z",
+        "updatedAt": "2026-09-17T06:19:56.803Z"
+      }
+    ]
   }
 }

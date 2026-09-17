@@ -21,9 +21,57 @@ import {
   FileText,
   UserCheck,
   Check,
-  AlertCircle
+  AlertCircle,
+  Smartphone,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+
+export const FALLBACK_BROADCAST_TEMPLATES = [
+  {
+    id: 'tpl_welcome_greeting',
+    name: 'welcome_greeting_v2',
+    category: 'UTILITY',
+    language: 'en_US',
+    status: 'APPROVED',
+    header_type: 'IMAGE',
+    header_content: 'https://images.unsplash.com/photo-1577563908411-5077b6dc7624?w=800&auto=format&fit=crop&q=80',
+    body_text: 'Hello {{1}}! 👋 Welcome to DhiGrowth AI Suite. Your dedicated workspace concierge is ready to assist your team with omnichannel CRM, WhatsApp automation, and custom AI agents. Reply MENU at any time to explore services.',
+    footer_text: 'DhiGrowth Business Partner • Official Meta Tech Provider',
+  },
+  {
+    id: 'tpl_summer_offer',
+    name: 'flash_sale_promo_2026',
+    category: 'MARKETING',
+    language: 'en_US',
+    status: 'APPROVED',
+    header_type: 'IMAGE',
+    header_content: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=800&auto=format&fit=crop&q=80',
+    body_text: 'Hi {{1}}! 🎉 Exclusive offer for {{2}} members: Get an instant {{3}} discount on our scaling plans this week only! Upgrade now to unlock unlimited WhatsApp Cloud API automation and priority AI support.',
+    footer_text: 'Reply STOP to opt out of promotional messages',
+  },
+  {
+    id: 'tpl_order_dispatch',
+    name: 'order_status_update_v1',
+    category: 'UTILITY',
+    language: 'en_US',
+    status: 'APPROVED',
+    header_type: 'TEXT',
+    header_content: 'Order Shipped 📦',
+    body_text: 'Great news {{1}}! Your order #{{2}} has been packed and handed over to our delivery partner. Estimated delivery is {{3}}. Track your real-time status using the link below.',
+    footer_text: 'Need help? Reply HELP to chat with an agent',
+  },
+  {
+    id: 'tpl_event_reminder',
+    name: 'vip_webinar_reminder_2026',
+    category: 'MARKETING',
+    language: 'en_US',
+    status: 'APPROVED',
+    header_type: 'IMAGE',
+    header_content: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&auto=format&fit=crop&q=80',
+    body_text: 'Hey {{1}}, your live masterclass on {{2}} starts in {{3}} minutes! 🚀 Join top founders discovering how to automate customer support and 10x WhatsApp sales conversion.',
+    footer_text: 'Hosted on Zoom • Live Q&A included',
+  },
+];
 
 export const CampaignManager = () => {
   const { currentWorkspaceId, showToast, setIsUpgradeModalOpen, setActiveTab } = useApp();
@@ -106,14 +154,39 @@ export const CampaignManager = () => {
           if (!formTemplateName) {
             setFormTemplateName(data.templates[0].name);
           }
+          return;
         }
       }
     } catch (err) {
       console.warn('Failed to load templates:', err.message);
     }
+
+    // Try workspace localStorage
+    try {
+      const local = localStorage.getItem(`dhigrowth_templates_${currentWorkspaceId}`);
+      if (local) {
+        const parsed = JSON.parse(local);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setTemplates(parsed);
+          if (!formTemplateName) {
+            setFormTemplateName(parsed[0].name);
+          }
+          return;
+        }
+      }
+    } catch {}
+
+    // Fallback to official starter broadcast templates
+    setTemplates(FALLBACK_BROADCAST_TEMPLATES);
+    if (!formTemplateName) {
+      setFormTemplateName(FALLBACK_BROADCAST_TEMPLATES[0].name);
+    }
   };
 
-  const selectedTemplate = templates.find((t) => t.name === formTemplateName) || templates[0];
+  const selectedTemplate =
+    templates.find((t) => t.name === formTemplateName) ||
+    templates[0] ||
+    FALLBACK_BROADCAST_TEMPLATES[0];
   const detectedVariablesCount = selectedTemplate?.body_text
     ? (selectedTemplate.body_text.match(/\{\{(\d+)\}\}/g) || []).length
     : 0;
