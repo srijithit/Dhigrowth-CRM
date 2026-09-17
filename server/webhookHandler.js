@@ -56,49 +56,67 @@ export const handleInboundWebhook = async (req, res) => {
   try {
     // 1. WhatsApp Cloud API Message Processing
     if (body.object === 'whatsapp_business_account') {
-      const entry = body.entry?.[0];
-      const change = entry?.changes?.[0]?.value;
+      const entries = Array.isArray(body.entry) ? body.entry : [body.entry].filter(Boolean);
 
-      if (!change || !change.messages || change.messages.length === 0) {
-        // Status updates (sent/delivered/read receipts)
-        if (change?.statuses) {
-          await handleMessageStatusUpdates(change.statuses);
+      for (const entry of entries) {
+        const changes = Array.isArray(entry.changes) ? entry.changes : [entry.changes].filter(Boolean);
+
+        for (const changeItem of changes) {
+          const change = changeItem?.value;
+          if (!change) continue;
+
+          // Status updates (sent/delivered/read receipts)
+          if (change.statuses && (!change.messages || change.messages.length === 0)) {
+            await handleMessageStatusUpdates(change.statuses);
+            continue;
+          }
+
+          const phoneNumberId =
+            change.metadata?.phone_number_id ||
+            process.env.META_WHATSAPP_PHONE_NUMBER_ID ||
+            '1349867994870208';
+          const matchedTenant = getTenantByPhoneNumberId(phoneNumberId);
+          const tenantWorkspaceId = matchedTenant?.workspaceId || DEFAULT_WORKSPACE_ID;
+          const tenantAccessToken =
+            matchedTenant?.accessToken || process.env.META_WHATSAPP_ACCESS_TOKEN;
+
+          const messages = Array.isArray(change.messages) ? change.messages : [];
+
+          for (const message of messages) {
+            const contactInfo =
+              (change.contacts || []).find((c) => c.wa_id === message.from) || change.contacts?.[0];
+            const senderPhone = message.from; // e.g. "919791471277"
+            const customerName = contactInfo?.profile?.name || `Customer (+${senderPhone})`;
+            const messageText =
+              message.text?.body || (message.type !== 'text' ? `[${message.type} attachment]` : '');
+
+            console.log(
+              `\n📥 [Inbound WhatsApp] From: ${customerName} (+${senderPhone}) | Phone ID: ${phoneNumberId} | Workspace: ${tenantWorkspaceId}`
+            );
+            console.log(`💬 Message: "${messageText}"`);
+
+            // Process message in Supabase & reply
+            await processIncomingChatMessage({
+              channelType: 'whatsapp',
+              senderIdentifier: `+${senderPhone}`,
+              customerName,
+              messageText,
+              externalMessageId: message.id,
+              channelId: 'd0000000-0000-0000-0000-000000000001',
+              workspaceId: tenantWorkspaceId,
+              sendReply: async (replyText, imageUrl) => {
+                return sendWhatsAppMessage({
+                  phoneNumberId,
+                  accessToken: tenantAccessToken,
+                  recipientPhone: senderPhone,
+                  text: replyText,
+                  imageUrl,
+                });
+              },
+            });
+          }
         }
-        return;
       }
-
-      const message = change.messages[0];
-      const contactInfo = change.contacts?.[0];
-      const senderPhone = message.from; // e.g. "919791471277"
-      const customerName = contactInfo?.profile?.name || `Customer (+${senderPhone})`;
-      const messageText = message.text?.body || (message.type !== 'text' ? `[${message.type} attachment]` : '');
-      const phoneNumberId = change.metadata?.phone_number_id || process.env.META_WHATSAPP_PHONE_NUMBER_ID || '1349867994870208';
-      const matchedTenant = getTenantByPhoneNumberId(phoneNumberId);
-      const tenantWorkspaceId = matchedTenant?.workspaceId || DEFAULT_WORKSPACE_ID;
-      const tenantAccessToken = matchedTenant?.accessToken || process.env.META_WHATSAPP_ACCESS_TOKEN;
-
-      console.log(`\n📥 [Inbound WhatsApp] From: ${customerName} (+${senderPhone}) | Phone ID: ${phoneNumberId} | Workspace: ${tenantWorkspaceId}`);
-      console.log(`💬 Message: "${messageText}"`);
-
-      // Process message in Supabase & reply
-      await processIncomingChatMessage({
-        channelType: 'whatsapp',
-        senderIdentifier: `+${senderPhone}`,
-        customerName,
-        messageText,
-        externalMessageId: message.id,
-        channelId: 'd0000000-0000-0000-0000-000000000001',
-        workspaceId: tenantWorkspaceId,
-        sendReply: async (replyText, imageUrl) => {
-          return sendWhatsAppMessage({
-            phoneNumberId,
-            accessToken: tenantAccessToken,
-            recipientPhone: senderPhone,
-            text: replyText,
-            imageUrl,
-          });
-        },
-      });
     }
 
     // 2. Instagram Direct Messages
@@ -187,12 +205,14 @@ async function processIncomingChatMessage({
     // 1. Find or create Contact
     let contactId;
     const cleanDigits = senderIdentifier.replace(/[^0-9]/g, '').slice(-10);
-    const { data: existingContact } = await supabase
+    const { data: contactsList } = await supabase
       .from('contacts')
       .select('id, full_name, phone_number')
       .eq('workspace_id', effectiveWorkspaceId)
       .ilike('phone_number', `%${cleanDigits}%`)
-      .maybeSingle();
+      .limit(1);
+
+    const existingContact = contactsList?.[0] || null;
 
     if (existingContact) {
       contactId = existingContact.id;
@@ -222,13 +242,15 @@ async function processIncomingChatMessage({
 
     // 2. Find or create Conversation
     let conversationId;
-    const { data: existingConv } = await supabase
+    const { data: convsList } = await supabase
       .from('conversations')
       .select('id, status')
       .eq('workspace_id', effectiveWorkspaceId)
       .eq('contact_id', contactId)
       .eq('channel_type', channelType)
-      .maybeSingle();
+      .limit(1);
+
+    const existingConv = convsList?.[0] || null;
 
     if (existingConv) {
       conversationId = existingConv.id;
@@ -277,6 +299,15 @@ async function processIncomingChatMessage({
     } else {
       console.log('✅ Inbound message recorded in Supabase.');
     }
+
+    // Update conversation last_message_text and last_message_at
+    await supabase
+      .from('conversations')
+      .update({
+        last_message_text: messageText,
+        last_message_at: new Date().toISOString(),
+      })
+      .eq('id', conversationId);
 
     // 3.5 Fetch recent conversation history for rich multi-turn context
     let conversationHistory = [];

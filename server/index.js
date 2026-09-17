@@ -1218,4 +1218,18 @@ app.listen(PORT, () => {
   console.log(`🔐 Verify Token: "${process.env.META_WHATSAPP_VERIFY_TOKEN || 'dhigrowth_webhook_secret_2026'}"`);
   console.log(`⚡ Health Check: http://localhost:${PORT}/health`);
   console.log(`================================================================\n`);
+
+  // Automatic Keep-Alive to prevent Render free instance from sleeping
+  const RENDER_APP_URL = process.env.RENDER_EXTERNAL_URL || process.env.VITE_BACKEND_URL || 'https://dhigrowth-backend-8tlq.onrender.com';
+  if (RENDER_APP_URL) {
+    const cleanUrl = RENDER_APP_URL.replace(/\/+$/, '');
+    setInterval(async () => {
+      try {
+        await fetch(`${cleanUrl}/health`);
+        console.log(`⏰ [KeepAlive] Heartbeat ping sent to ${cleanUrl}/health (keeps Render online)`);
+      } catch (err) {
+        console.warn('⏰ [KeepAlive] Ping note:', err.message);
+      }
+    }, 8 * 60 * 1000); // Ping every 8 minutes
+  }
 });

@@ -1508,6 +1508,22 @@ export const AppProvider = ({ children }) => {
               return prev;
             }
 
+            // If a new inbound message arrived from a client, play notification sound & show toast
+            if (prev.length > 0) {
+              dbChats.forEach((newChat) => {
+                const oldChat = prev.find((p) => p.id === newChat.id);
+                if (oldChat) {
+                  const oldLast = oldChat.messages?.[oldChat.messages.length - 1];
+                  const newLast = newChat.messages?.[newChat.messages.length - 1];
+                  if (newLast && newLast.id !== oldLast?.id && newLast.sender === 'user') {
+                    playNotificationSound();
+                    showDesktopNotification(newChat.contactName, newLast.text);
+                    showToast(`💬 ${newChat.contactName}: "${newLast.text.slice(0, 45)}${newLast.text.length > 45 ? '...' : ''}"`, 'info');
+                  }
+                }
+              });
+            }
+
             const updated = dbChats.map((newChat) => {
               const oldChat = prev.find((p) => p.id === newChat.id);
               if (!oldChat) return newChat;
@@ -1634,6 +1650,13 @@ export const AppProvider = ({ children }) => {
       },
     });
 
+    // Auto-polling fallback every 2.5 seconds: guarantees client messages appear live in real-time
+    const pollInterval = setInterval(() => {
+      if (isMounted && typeof document !== 'undefined' && document.visibilityState !== 'hidden') {
+        syncCloudData();
+      }
+    }, 2500);
+
     const handleFocus = () => {
       if (isMounted) syncCloudData();
     };
@@ -1641,6 +1664,7 @@ export const AppProvider = ({ children }) => {
 
     return () => {
       isMounted = false;
+      clearInterval(pollInterval);
       window.removeEventListener('focus', handleFocus);
       if (subscription && typeof subscription.unsubscribe === 'function') {
         subscription.unsubscribe();
