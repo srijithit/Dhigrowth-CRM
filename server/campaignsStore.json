@@ -2,6 +2,78 @@
   "workspaces": {
     "b0000000-0000-0000-0000-000000000001": [
       {
+        "id": "camp_1789626607841_1x6b",
+        "name": "promotion",
+        "channel": "WhatsApp",
+        "templateName": "hi",
+        "status": "completed",
+        "audienceType": "Demo VIP Test List",
+        "targetCount": 5,
+        "sentCount": 0,
+        "deliveredCount": 0,
+        "readCount": 0,
+        "repliedCount": 0,
+        "failedCount": 5,
+        "recipients": [],
+        "variableMapping": [
+          {
+            "index": 1,
+            "field": "first_name",
+            "fallback": "Valued Customer"
+          },
+          {
+            "index": 2,
+            "field": "city",
+            "fallback": "your city"
+          },
+          {
+            "index": 3,
+            "field": "product",
+            "fallback": "Special Offer"
+          }
+        ],
+        "scheduledAt": null,
+        "createdAt": "2026-09-17T06:30:07.841Z",
+        "completedAt": "2026-09-17T06:30:13.826Z",
+        "logs": [
+          {
+            "phone": "919876543210",
+            "name": "Srijith R",
+            "status": "failed",
+            "error": "(#131030) Recipient phone number not in allowed list",
+            "timestamp": "2026-09-17T06:30:09.471Z"
+          },
+          {
+            "phone": "919876543211",
+            "name": "Maddy S",
+            "status": "failed",
+            "error": "(#131030) Recipient phone number not in allowed list",
+            "timestamp": "2026-09-17T06:30:10.466Z"
+          },
+          {
+            "phone": "919876543212",
+            "name": "Vikram Mehta",
+            "status": "failed",
+            "error": "(#131030) Recipient phone number not in allowed list",
+            "timestamp": "2026-09-17T06:30:11.560Z"
+          },
+          {
+            "phone": "919876543213",
+            "name": "Ananya Sharma",
+            "status": "failed",
+            "error": "(#131030) Recipient phone number not in allowed list",
+            "timestamp": "2026-09-17T06:30:12.696Z"
+          },
+          {
+            "phone": "919876543214",
+            "name": "Karthik Raja",
+            "status": "failed",
+            "error": "(#131030) Recipient phone number not in allowed list",
+            "timestamp": "2026-09-17T06:30:13.764Z"
+          }
+        ]
+      },
+      {
         "id": "camp_1789625960568_5u81",
         "name": "Test Broadcast Launch",
         "channel": "WhatsApp",

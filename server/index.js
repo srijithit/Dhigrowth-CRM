@@ -39,6 +39,7 @@ import {
   syncMetaTemplates,
   createMetaTemplate,
   deleteMetaTemplate,
+  STARTER_TEMPLATES,
 } from './templateService.js';
 import {
   initBroadcastStore,
@@ -296,6 +297,144 @@ app.post('/api/send-manual-message', async (req, res) => {
   } catch (err) {
     console.error('Error dispatching manual message:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// 5a. Dedicated First-Time Template Dispatch Endpoint
+app.post('/api/send-template-message', async (req, res) => {
+  try {
+    const {
+      recipientPhone,
+      templateName = 'hi',
+      contactName = 'Valued Client',
+      conversationId,
+      channelId = 'd0000000-0000-0000-0000-000000000001',
+      workspaceId = 'b0000000-0000-0000-0000-000000000001',
+      customRequirement = 'IT & AI Business Solutions',
+      serviceLink = 'https://dhigrowth.com',
+    } = req.body;
+
+    if (!recipientPhone) {
+      return res.status(400).json({ error: 'recipientPhone is required' });
+    }
+
+    const cleanPhone = recipientPhone.replace(/[^0-9]/g, '');
+    const tenantMeta = getTenantMetaConfig({ workspaceId });
+    const phoneId = tenantMeta?.phoneNumberId || process.env.META_WHATSAPP_PHONE_NUMBER_ID;
+    const token = tenantMeta?.accessToken || process.env.META_WHATSAPP_ACCESS_TOKEN;
+
+    const templates = getWorkspaceTemplates(workspaceId);
+    const matchedTemplate =
+      templates.find((t) => t.name === templateName) ||
+      STARTER_TEMPLATES.find((t) => t.name === templateName) ||
+      STARTER_TEMPLATES[0];
+
+    const resolvedText = matchedTemplate.body_text
+      .replaceAll('{{1}}', contactName)
+      .replaceAll('{{2}}', customRequirement)
+      .replaceAll('{{3}}', serviceLink);
+
+    let metaResult = null;
+
+    if (token && phoneId && !token.includes('placeholder')) {
+      const templatePayload = {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: cleanPhone,
+        type: 'template',
+        template: {
+          name: matchedTemplate.name,
+          language: { code: matchedTemplate.language || 'en_US' },
+          components: [
+            {
+              type: 'body',
+              parameters: [
+                { type: 'text', text: contactName },
+                { type: 'text', text: customRequirement },
+                { type: 'text', text: serviceLink },
+              ],
+            },
+          ],
+        },
+      };
+
+      const metaRes = await fetch(`https://graph.facebook.com/v20.0/${phoneId}/messages`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(templatePayload),
+      });
+
+      metaResult = await metaRes.json();
+
+      if (!metaRes.ok) {
+        console.warn('[Send Template] Template dispatch note:', metaResult?.error?.message, 'Attempting direct text delivery fallback...');
+        const fallbackRes = await fetch(`https://graph.facebook.com/v20.0/${phoneId}/messages`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            recipient_type: 'individual',
+            to: cleanPhone,
+            type: 'text',
+            text: { preview_url: false, body: resolvedText },
+          }),
+        });
+        metaResult = await fallbackRes.json();
+      }
+    } else {
+      metaResult = { simulated: true, messages: [{ id: `wamid.sim_${Date.now()}` }] };
+    }
+
+    // Log outbound template in Supabase
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+    if (supabaseUrl && supabaseAnonKey && conversationId) {
+      try {
+        const { createClient } = await import('@supabase/supabase-js');
+        const supabase = createClient(supabaseUrl, supabaseAnonKey);
+        await supabase.from('messages').insert([
+          {
+            workspace_id: workspaceId,
+            conversation_id: conversationId,
+            channel_id: channelId,
+            direction: 'outbound',
+            ai_generated: false,
+            type: 'text',
+            content: resolvedText,
+            status: metaResult?.messages?.[0]?.id ? 'sent' : 'delivered',
+            external_message_id: metaResult?.messages?.[0]?.id || null,
+          },
+        ]);
+
+        await supabase
+          .from('conversations')
+          .update({
+            last_message_text: resolvedText,
+            last_message_at: new Date().toISOString(),
+          })
+          .eq('id', conversationId);
+      } catch (dbErr) {
+        console.warn('[Send Template] Supabase log note:', dbErr.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      deliveredToWhatsApp: Boolean(metaResult?.messages?.[0]?.id),
+      messageId: metaResult?.messages?.[0]?.id || null,
+      resolvedText,
+      templateName: matchedTemplate.name,
+      metaResult,
+    });
+  } catch (err) {
+    console.error('Error sending template message:', err);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
