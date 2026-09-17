@@ -45,6 +45,9 @@ export const DashboardOverview = () => {
     claimBonus,
     currentPlan,
     daysRemaining,
+    subscription,
+    openCheckout,
+    refreshSubscription,
     metrics,
     channels,
     connectChannel,
@@ -93,6 +96,45 @@ export const DashboardOverview = () => {
     setIsInviteModalOpen(false);
   };
 
+  const isPaidActive = subscription?.status === 'active';
+  const activePlanName = subscription?.planName || currentPlan || 'Business';
+
+  // Calculate dynamic days remaining, end dates, start dates and gauge percentage
+  const { calculatedDays, periodEndDateStr, periodEndTimeStr, gaugePercent, billingCycleStr, startDateStr } = React.useMemo(() => {
+    let days = daysRemaining || 6;
+    let endDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    let startDate = new Date(Date.now() - (14 - days) * 24 * 60 * 60 * 1000);
+
+    if (subscription?.currentPeriodEnd) {
+      const end = new Date(subscription.currentPeriodEnd).getTime();
+      const now = Date.now();
+      days = Math.max(0, Math.ceil((end - now) / (1000 * 60 * 60 * 24)));
+      endDate = new Date(subscription.currentPeriodEnd);
+    }
+    if (subscription?.currentPeriodStart) {
+      startDate = new Date(subscription.currentPeriodStart);
+    }
+
+    const totalPeriodDays = subscription?.billingCycle === 'yearly' ? 365 : (isPaidActive ? 30 : 14);
+    const pct = Math.min(100, Math.max(5, Math.round((days / totalPeriodDays) * 100)));
+
+    const endStr = endDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const endHour = endDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    const startStr = startDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const cycle = isPaidActive
+      ? (subscription?.billingCycle === 'yearly' ? 'Yearly' : 'Monthly')
+      : 'Trial';
+
+    return {
+      calculatedDays: days,
+      periodEndDateStr: endStr,
+      periodEndTimeStr: endHour,
+      gaugePercent: pct,
+      billingCycleStr: cycle,
+      startDateStr: startStr,
+    };
+  }, [subscription, daysRemaining, isPaidActive]);
+
   return (
     <div className="p-6 lg:p-10 space-y-6 max-w-[1300px] mx-auto font-sans relative">
       {/* 1. Breadcrumb */}
@@ -122,16 +164,27 @@ export const DashboardOverview = () => {
 
             <div className="flex items-center gap-2.5">
               <h2 className="text-2xl font-bold text-[#101828]">
-                {currentPlan}
+                {activePlanName}
               </h2>
-              <span className="inline-flex items-center gap-1 bg-[#F4F0FD] border border-[#E9D8FD] text-[#7C3AED] text-xs font-semibold px-2.5 py-0.5 rounded-full">
-                <Sparkles className="w-3 h-3 text-[#7C3AED]" />
-                Free trial
-              </span>
+              {isPaidActive ? (
+                <span className="inline-flex items-center gap-1 bg-[#DCFCE7] border border-[#BBF7D0] text-[#16A34A] text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                  <CheckCircle2 className="w-3 h-3 text-[#16A34A]" />
+                  Active plan
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 bg-[#F4F0FD] border border-[#E9D8FD] text-[#7C3AED] text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                  <Sparkles className="w-3 h-3 text-[#7C3AED]" />
+                  Free trial
+                </span>
+              )}
             </div>
 
             <p className="text-xs text-[#667085]">
-              Free trial · Ends <strong className="text-[#101828]">17 Sep 2026 at 4:41 PM</strong>
+              {isPaidActive ? (
+                <>Active subscription · Renews <strong className="text-[#101828]">{periodEndDateStr} at {periodEndTimeStr}</strong></>
+              ) : (
+                <>Free trial · Ends <strong className="text-[#101828]">{periodEndDateStr} at {periodEndTimeStr}</strong></>
+              )}
             </p>
           </div>
 
@@ -144,11 +197,11 @@ export const DashboardOverview = () => {
               <ArrowUpRight className="w-3.5 h-3.5 text-[#667085]" />
             </button>
             <button
-              onClick={() => setIsUpgradeModalOpen(true)}
+              onClick={() => openCheckout ? openCheckout(activePlanName, isPaidActive ? (subscription?.billingCycle || 'monthly') : 'monthly', 'razorpay') : setIsUpgradeModalOpen(true)}
               className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-bold px-5 py-2 rounded-xl transition-all shadow-xs cursor-pointer hover:scale-[1.02] flex items-center gap-1.5"
             >
               <Sparkles className="w-3.5 h-3.5 text-white" />
-              <span>Upgrade</span>
+              <span>{isPaidActive ? 'Manage plan' : 'Upgrade'}</span>
             </button>
           </div>
         </div>
@@ -156,7 +209,11 @@ export const DashboardOverview = () => {
         {/* 4-Item Metric Row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
           {/* Item 1: Circular Days Left Gauge */}
-          <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#EAECF0] flex items-center justify-center">
+          <div
+            onClick={() => openCheckout ? openCheckout(activePlanName, isPaidActive ? (subscription?.billingCycle || 'monthly') : 'monthly', 'razorpay') : setIsUpgradeModalOpen(true)}
+            className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#EAECF0] flex items-center justify-center cursor-pointer hover:border-[#D0D5DD] transition-colors"
+            title="Click to manage subscription"
+          >
             <div className="relative w-20 h-20 flex items-center justify-center">
               <svg className="w-20 h-20 -rotate-90" viewBox="0 0 36 36">
                 <path
@@ -167,8 +224,8 @@ export const DashboardOverview = () => {
                   d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                 />
                 <path
-                  className="text-[#7C3AED]"
-                  strokeDasharray="60, 100"
+                  className={isPaidActive ? "text-[#16A34A]" : "text-[#7C3AED]"}
+                  strokeDasharray={`${gaugePercent}, 100`}
                   strokeLinecap="round"
                   strokeWidth="3.5"
                   stroke="currentColor"
@@ -177,32 +234,40 @@ export const DashboardOverview = () => {
                 />
               </svg>
               <div className="absolute text-center flex flex-col items-center justify-center">
-                <span className="text-xl font-extrabold text-[#101828] leading-none">{daysRemaining}</span>
+                <span className="text-xl font-extrabold text-[#101828] leading-none">{calculatedDays}</span>
                 <span className="text-[8px] font-bold text-[#667085] tracking-tight uppercase mt-0.5">DAYS LEFT</span>
               </div>
             </div>
           </div>
 
-          {/* Item 2: Trial Ends */}
-          <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#EAECF0] flex items-center gap-3.5">
+          {/* Item 2: Trial Ends / Renewal Date */}
+          <div
+            onClick={() => setActiveTab('wallet')}
+            className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#EAECF0] flex items-center gap-3.5 cursor-pointer hover:border-[#D0D5DD] transition-colors"
+            title="View billing & invoices"
+          >
             <div className="w-10 h-10 rounded-xl bg-white border border-[#EAECF0] flex items-center justify-center text-[#7C3AED] shrink-0 shadow-2xs">
               <Calendar className="w-5 h-5 text-[#7C3AED]" />
             </div>
             <div>
               <div className="text-[10px] font-bold text-[#667085] uppercase tracking-wider font-mono">
-                TRIAL ENDS
+                {isPaidActive ? 'RENEWS ON' : 'TRIAL ENDS'}
               </div>
               <div className="text-sm font-bold text-[#101828] mt-0.5">
-                17 Sep 2026
+                {periodEndDateStr}
               </div>
               <div className="text-[11px] text-[#667085]">
-                4:41 PM · local time
+                {periodEndTimeStr} · local time
               </div>
             </div>
           </div>
 
           {/* Item 3: Billing */}
-          <div className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#EAECF0] flex items-center gap-3.5">
+          <div
+            onClick={() => setActiveTab('wallet')}
+            className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#EAECF0] flex items-center gap-3.5 cursor-pointer hover:border-[#D0D5DD] transition-colors"
+            title="View payment history"
+          >
             <div className="w-10 h-10 rounded-xl bg-white border border-[#EAECF0] flex items-center justify-center text-[#7C3AED] shrink-0 shadow-2xs">
               <Calendar className="w-5 h-5 text-[#7C3AED]" />
             </div>
@@ -211,18 +276,25 @@ export const DashboardOverview = () => {
                 BILLING
               </div>
               <div className="text-sm font-bold text-[#101828] mt-0.5">
-                Trial
+                {billingCycleStr}
               </div>
               <div className="text-[11px] text-[#667085]">
-                Started 3 Sep 2026
+                Started {startDateStr}
               </div>
             </div>
           </div>
 
           {/* Item 4: Auto-Pay */}
           <div
-            onClick={() => showToast('Auto-pay can be configured upon linking a payment card', 'info')}
+            onClick={() => {
+              if (isPaidActive) {
+                showToast('Automatic payment active via ' + (subscription?.provider === 'stripe' ? 'Stripe' : 'Razorpay'), 'info');
+              } else {
+                openCheckout ? openCheckout(activePlanName, 'monthly', 'razorpay') : setIsUpgradeModalOpen(true);
+              }
+            }}
             className="p-4 rounded-2xl bg-[#FAF8F5] border border-[#EAECF0] flex items-center gap-3.5 cursor-pointer hover:border-[#D0D5DD] transition-colors group"
+            title={isPaidActive ? "Auto-renewal is active" : "Click to upgrade and enable auto-pay"}
           >
             <div className="w-10 h-10 rounded-xl bg-white border border-[#EAECF0] flex items-center justify-center text-[#7C3AED] shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
               <Zap className="w-5 h-5 text-[#7C3AED]" />
@@ -231,18 +303,18 @@ export const DashboardOverview = () => {
               <div className="text-[10px] font-bold text-[#667085] uppercase tracking-wider font-mono">
                 AUTO-PAY
               </div>
-              <div className="text-sm font-bold text-[#101828] mt-0.5">
-                Off
+              <div className={`text-sm font-bold mt-0.5 ${isPaidActive ? 'text-[#16A34A]' : 'text-[#101828]'}`}>
+                {isPaidActive ? 'Active' : 'Off'}
               </div>
               <div className="text-[11px] text-[#667085]">
-                Enable when you upgrade
+                {isPaidActive ? `Billed via ${subscription?.provider === 'stripe' ? 'Stripe' : 'Razorpay'}` : 'Enable when you upgrade'}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 4. Unlock Business Plan Banner */}
+      {/* 4. Plan Banner */}
       <div className="sendiee-banner-purple p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover-lift">
         <div className="flex items-center gap-4">
           <div className="w-10 h-10 rounded-xl bg-[#7C3AED] text-white flex items-center justify-center shadow-xs shrink-0">
@@ -250,19 +322,27 @@ export const DashboardOverview = () => {
           </div>
           <div>
             <h3 className="text-sm font-bold text-[#101828]">
-              You've unlocked the <span className="text-[#7C3AED]">Business</span> plan
+              {isPaidActive ? (
+                <>Active <span className="text-[#7C3AED]">{activePlanName}</span> Plan</>
+              ) : (
+                <>You've unlocked the <span className="text-[#7C3AED]">{activePlanName}</span> plan</>
+              )}
             </h3>
             <p className="text-xs text-[#475467]">
-              Your free trial is active — <strong>{daysRemaining} days left</strong>. Upgrade anytime to keep these features.
+              {isPaidActive ? (
+                <>Your subscription is active — <strong>{calculatedDays} days until next renewal</strong>. All AI token models & Meta Cloud features unlocked.</>
+              ) : (
+                <>Your free trial is active — <strong>{calculatedDays} days left</strong>. Upgrade anytime to keep these features.</>
+              )}
             </p>
           </div>
         </div>
 
         <button
-          onClick={() => setIsUpgradeModalOpen(true)}
+          onClick={() => openCheckout ? openCheckout(activePlanName, isPaidActive ? (subscription?.billingCycle || 'monthly') : 'monthly', 'razorpay') : setIsUpgradeModalOpen(true)}
           className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-bold px-5 py-2.5 rounded-xl flex items-center gap-1.5 self-start md:self-auto transition-all shadow-xs cursor-pointer hover:scale-[1.02]"
         >
-          <span>Upgrade</span>
+          <span>{isPaidActive ? 'Manage Subscription' : 'Upgrade'}</span>
           <ArrowRight className="w-3.5 h-3.5" />
         </button>
       </div>

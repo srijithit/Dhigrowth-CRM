@@ -2,26 +2,26 @@
   "workspaces": {
     "b0000000-0000-0000-0000-000000000001": {
       "workspaceId": "b0000000-0000-0000-0000-000000000001",
-      "planId": "Growth",
-      "planName": "Growth",
+      "planId": "Pro",
+      "planName": "Pro",
       "billingCycle": "monthly",
       "status": "active",
       "provider": "razorpay",
-      "currentPeriodStart": "2026-09-16T12:33:18.429Z",
-      "currentPeriodEnd": "2026-10-16T12:33:18.429Z",
+      "currentPeriodStart": "2026-09-16T12:54:13.076Z",
+      "currentPeriodEnd": "2026-10-16T12:54:13.076Z",
       "cancelAtPeriodEnd": false,
       "trialDaysRemaining": 0,
       "paymentMethod": {
         "provider": "razorpay",
         "brand": "UPI / NetBanking",
-        "last4": "7814"
+        "last4": "1966"
       },
       "billingDetails": {
-        "companyName": "Dhigrowth CRM",
+        "companyName": "Dhigrowth CRM & Master Operations",
         "gstin": "",
-        "billingEmail": "sri@dhigrowth.com"
+        "billingEmail": "admin@dhigrowth.com"
       },
-      "updatedAt": "2026-09-16T12:33:18.429Z"
+      "updatedAt": "2026-09-16T12:54:13.076Z"
     },
     "ws-test": {
       "workspaceId": "ws-test",
@@ -44,6 +44,44 @@
     }
   },
   "invoices": [
+    {
+      "id": "inv_1789563253076",
+      "invoiceNumber": "INV-2026-4203",
+      "workspaceId": "b0000000-0000-0000-0000-000000000001",
+      "planName": "Pro",
+      "billingCycle": "monthly",
+      "amount": 4129,
+      "currency": "INR",
+      "status": "paid",
+      "paymentId": "pay_razorpay_1789563251966",
+      "orderId": "order_TciPqCl02SGU7x",
+      "date": "2026-09-16T12:54:13.076Z",
+      "periodEnd": "2026-10-16T12:54:13.076Z",
+      "billingDetails": {
+        "companyName": "Dhigrowth CRM & Master Operations",
+        "gstin": "",
+        "billingEmail": "admin@dhigrowth.com"
+      }
+    },
+    {
+      "id": "inv_1789563216487",
+      "invoiceNumber": "INV-2026-4178",
+      "workspaceId": "b0000000-0000-0000-0000-000000000001",
+      "planName": "Business",
+      "billingCycle": "monthly",
+      "amount": 5899,
+      "currency": "INR",
+      "status": "paid",
+      "paymentId": "pay_razorpay_1789563215839",
+      "orderId": "order_TciPCmJVKyF6EU",
+      "date": "2026-09-16T12:53:36.487Z",
+      "periodEnd": "2026-10-16T12:53:36.487Z",
+      "billingDetails": {
+        "companyName": "Dhigrowth CRM & Master Operations",
+        "gstin": "",
+        "billingEmail": "admin@dhigrowth.com"
+      }
+    },
     {
       "id": "inv_1789561998429",
       "invoiceNumber": "INV-2026-7260",
