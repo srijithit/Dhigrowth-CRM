@@ -13,6 +13,7 @@ import {
   Zap,
   Tag,
   ArrowRight,
+  AlertCircle,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useApp } from '../../context/AppContext';
@@ -603,6 +604,61 @@ export const BroadcastTemplateModal = ({ onClose }) => {
                   <span className="text-base font-extrabold text-rose-600">{broadcastSummary.failed || 0}</span>
                 </div>
               </div>
+
+              {/* Per-Contact Delivery Breakdown */}
+              {broadcastSummary.results && broadcastSummary.results.length > 0 && (
+                <div className="mt-3 space-y-1.5 max-h-48 overflow-y-auto pt-2 border-t border-emerald-200/60">
+                  <span className="text-[11px] font-bold text-gray-700 block">Recipient Delivery Status:</span>
+                  {broadcastSummary.results.map((r, i) => (
+                    <div
+                      key={i}
+                      className={`px-3 py-2 rounded-xl text-xs flex items-center justify-between border ${
+                        r.success
+                          ? 'bg-white border-emerald-100 text-emerald-900'
+                          : 'bg-rose-50/70 border-rose-200 text-rose-900'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {r.success ? (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        ) : (
+                          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                        )}
+                        <div>
+                          <span className="font-bold">{r.name}</span>
+                          <span className="text-[10px] text-gray-500 font-mono ml-1.5">+{r.phone}</span>
+                        </div>
+                      </div>
+                      <div className="text-[11px] font-medium text-right">
+                        {r.success ? (
+                          <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                            Delivered to WhatsApp ✓✓
+                          </span>
+                        ) : (
+                          <div className="flex flex-col items-end">
+                            <span className="text-rose-700 font-bold bg-rose-100/70 px-2 py-0.5 rounded-md border border-rose-200">
+                              {r.error?.includes('131030') || r.error?.includes('allowed list')
+                                ? 'Not in Meta Test Allowed List'
+                                : 'Failed to deliver'}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  {broadcastSummary.failed > 0 && (
+                    <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-800 space-y-1">
+                      <div className="font-bold flex items-center gap-1.5">
+                        <span>💡 Why did some numbers fail?</span>
+                      </div>
+                      <p className="text-[10px] leading-relaxed text-amber-700">
+                        Your WhatsApp credentials are currently using Meta's <strong>Test Cloud API Number</strong> (+1 555-200-3734). In Meta Developer mode, WhatsApp only delivers to verified numbers added to the <em>"To" Allowed Recipients</em> list in your Meta Developer Portal. Once connected to a live business WhatsApp number, all valid contacts will receive messages without restrictions.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
