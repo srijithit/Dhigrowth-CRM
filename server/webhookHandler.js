@@ -299,6 +299,12 @@ async function processIncomingChatMessage({
       console.warn('[WebhookHandler] Could not load message history:', histErr.message);
     }
 
+    // 3.9 Check if conversation is in Human / Manual Agent mode
+    if (existingConv && (existingConv.status === 'human_agent' || existingConv.status === 'manual' || existingConv.status === 'agent')) {
+      console.log(`👤 [WebhookHandler] Conversation ${conversationId} is assigned to Manual Agent (${existingConv.status}). AI auto-reply is disabled.`);
+      return;
+    }
+
     // 4. Generate AI Concierge Response
     console.log('🤖 Dhigrowth AI Concierge is generating response with history context...');
     const aiResult = await generateAIResponse({

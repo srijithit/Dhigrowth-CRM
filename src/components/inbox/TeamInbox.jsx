@@ -53,6 +53,7 @@ export const TeamInbox = () => {
     requestNotificationPermission,
     sendMessage,
     toggleAiForChat,
+    setAiForChat,
     addInternalNote,
     updateLeadTag,
     createLead,
@@ -444,7 +445,8 @@ export const TeamInbox = () => {
     .sort((a, b) => (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0));
 
   const [isSendingLive, setIsSendingLive] = useState(false);
-  const [agentMode, setAgentMode] = useState('manual'); // 'manual' | 'ai'
+  const isAiAutoPilot = Boolean(activeChat?.aiHandled);
+  const agentMode = isAiAutoPilot ? 'ai' : 'manual';
 
   const handleSend = async (e) => {
     e?.preventDefault();
@@ -1029,8 +1031,9 @@ export const TeamInbox = () => {
                   <div className="text-[11px] text-[#98A2B3] flex items-center gap-2 mt-0.5">
                     <span>{activeChat.city}</span>
                     <span>·</span>
-                    <span className="text-[#16A34A] font-mono font-semibold">
-                      {activeChat.aiHandled ? '● Dhigrowth AI Auto-Pilot' : '● Human Agent Active'}
+                    <span className={`font-mono font-semibold flex items-center gap-1.5 ${isAiAutoPilot ? 'text-[#7C3AED]' : 'text-[#16A34A]'}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${isAiAutoPilot ? 'bg-[#7C3AED] animate-pulse' : 'bg-[#16A34A]'}`} />
+                      <span>{isAiAutoPilot ? 'Dhigrowth AI Auto-Pilot' : 'Manual Agent Active (AI Paused)'}</span>
                     </span>
                   </div>
                 </div>
@@ -1041,13 +1044,14 @@ export const TeamInbox = () => {
                 <button
                   onClick={() => toggleAiForChat(activeChat.id)}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer ${
-                    activeChat.aiHandled
+                    isAiAutoPilot
                       ? 'bg-[#F4F0FD] text-[#7C3AED] border border-[#E9D8FD] hover:bg-[#EDE5FA]'
                       : 'bg-[#DCFCE7] text-[#16A34A] border border-[#BBF7D0] hover:bg-[#D1FAE5]'
                   }`}
+                  title={isAiAutoPilot ? "Click to switch to Manual Agent (Turn off AI auto-reply)" : "Click to switch to AI Auto-Pilot (Turn on AI auto-reply)"}
                 >
-                  {activeChat.aiHandled ? <Bot className="w-3.5 h-3.5 text-[#7C3AED]" /> : <User className="w-3.5 h-3.5 text-[#16A34A]" />}
-                  <span>{activeChat.aiHandled ? 'AI Auto-Pilot ON' : 'Human Takeover'}</span>
+                  {isAiAutoPilot ? <Bot className="w-3.5 h-3.5 text-[#7C3AED]" /> : <User className="w-3.5 h-3.5 text-[#16A34A]" />}
+                  <span>{isAiAutoPilot ? 'AI Auto-Pilot ON' : 'Manual Agent Active'}</span>
                 </button>
 
                 {/* Toggle Lead Intelligence Panel */}
@@ -1241,27 +1245,31 @@ export const TeamInbox = () => {
               <div className="inline-flex p-0.5 bg-[#F2F4F7] rounded-lg border border-[#EAECF0] shrink-0">
                 <button
                   type="button"
-                  onClick={() => setAgentMode('manual')}
+                  onClick={() => setAiForChat(activeChat.id, false)}
                   className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                    agentMode === 'manual'
-                      ? 'bg-white text-[#101828] shadow-xs'
+                    !isAiAutoPilot
+                      ? 'bg-white text-[#16A34A] border border-[#BBF7D0] shadow-xs'
                       : 'text-[#667085] hover:text-[#101828]'
                   }`}
+                  title="Manual Agent: You reply manually. AI auto-reply is turned OFF."
                 >
                   <User className="w-3 h-3 text-[#16A34A]" />
                   <span>Manual Agent</span>
+                  {!isAiAutoPilot && <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A]" />}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setAgentMode('ai')}
+                  onClick={() => setAiForChat(activeChat.id, true)}
                   className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                    agentMode === 'ai'
-                      ? 'bg-white text-[#7C3AED] shadow-xs'
+                    isAiAutoPilot
+                      ? 'bg-white text-[#7C3AED] border border-[#E9D8FD] shadow-xs'
                       : 'text-[#667085] hover:text-[#101828]'
                   }`}
+                  title="AI Auto-Pilot: AI automatically answers incoming questions."
                 >
                   <Bot className="w-3 h-3 text-[#7C3AED]" />
                   <span>AI Auto-Pilot</span>
+                  {isAiAutoPilot && <span className="w-1.5 h-1.5 rounded-full bg-[#7C3AED] animate-pulse" />}
                 </button>
               </div>
 
@@ -1319,9 +1327,9 @@ export const TeamInbox = () => {
             <textarea
               rows={2}
               placeholder={
-                agentMode === 'manual'
-                  ? `Type message to send directly to WhatsApp (${activeChat.phone})... (Press Enter to send)`
-                  : `Type message as customer or agent (AI Auto-Pilot active)...`
+                !isAiAutoPilot
+                  ? `👤 Manual Agent Active: Type message to send directly to WhatsApp (${activeChat.phone})... (AI reply is paused)`
+                  : `🤖 AI Auto-Pilot Active: Type message as agent, or test inbound inquiry...`
               }
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}

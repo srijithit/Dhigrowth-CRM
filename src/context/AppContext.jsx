@@ -17,6 +17,7 @@ import {
   subscribeToWorkspaceRealtime,
   DEFAULT_WORKSPACE_ID,
   ensureWorkspaceExists,
+  updateConversationStatus,
 } from '../services/supabaseClient';
 import { BACKEND_URL } from '../services/apiConfig';
 import {
@@ -1434,6 +1435,9 @@ export const AppProvider = ({ children }) => {
             const lastMsg = contactMsgs[contactMsgs.length - 1];
             const lastMessageTimestamp = lastMsg?.timestamp || new Date(c.updated_at || c.created_at || Date.now()).getTime();
 
+            const convObj = (convsResult || []).find((cv) => cv.contact_id === c.id || cv.id === conversationId);
+            const isAiHandled = convObj?.status ? (convObj.status === 'bot_active' || convObj.status === 'ai') : true;
+
             return {
               id: c.id,
               conversationId,
@@ -1447,7 +1451,7 @@ export const AppProvider = ({ children }) => {
               lastSeen: lastMsg?.time || 'Active',
               lastMessageTimestamp,
               unreadCount: 0,
-              aiHandled: true,
+              aiHandled: isAiHandled,
               dealValue: c.custom_attributes?.dealValue || '₹2,499',
               attributes: {
                 budget: '₹2,000 - ₹5,000',
@@ -1692,6 +1696,14 @@ export const AppProvider = ({ children }) => {
 
     if (sender === 'user') {
       const activeChatObj = chats.find((c) => c.id === activeChatId);
+
+      // CRITICAL: If Manual Agent is turned on (aiHandled === false), AI reply MUST NOT WORK!
+      if (!activeChatObj || activeChatObj.aiHandled === false) {
+        console.log(`👤 [AppContext] Chat "${activeChatObj?.contactName || activeChatId}" is in Manual Agent mode. AI auto-reply is disabled.`);
+        showToast(`📩 Inbound message received. Manual Agent active (AI auto-reply paused).`, 'info');
+        return;
+      }
+
       (async () => {
         let reply = '';
         let imageUrl = null;
@@ -1777,17 +1789,42 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  const toggleAiForChat = (chatId) => {
-    setChats((prev) =>
-      prev.map((c) => {
+  const setAiForChat = (chatId, isAiEnabled) => {
+    let targetConvId = null;
+    let targetContactName = '';
+    setChats((prev) => {
+      const updated = prev.map((c) => {
         if (c.id === chatId) {
-          const next = !c.aiHandled;
-          showToast(next ? '🤖 AI Auto-Pilot Enabled for this conversation' : '👤 Human Agent Takeover Active', 'info');
-          return { ...c, aiHandled: next };
+          targetConvId = c.conversationId;
+          targetContactName = c.contactName;
+          return { ...c, aiHandled: Boolean(isAiEnabled) };
         }
         return c;
-      })
+      });
+      try {
+        localStorage.setItem(`dhigrowth_chats_${currentWorkspaceId}`, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    if (isSupabaseConfigured && targetConvId) {
+      updateConversationStatus(targetConvId, isAiEnabled ? 'bot_active' : 'human_agent').catch((e) => {
+        console.warn('Could not sync conversation status to DB:', e.message);
+      });
+    }
+
+    showToast(
+      isAiEnabled
+        ? `🤖 AI Auto-Pilot ON — AI will auto-reply to ${targetContactName || 'this contact'}`
+        : `👤 Manual Agent Active — AI auto-reply is disabled for ${targetContactName || 'this contact'}`,
+      isAiEnabled ? 'success' : 'info'
     );
+  };
+
+  const toggleAiForChat = (chatId) => {
+    const targetChat = chats.find((c) => c.id === chatId);
+    const next = !targetChat?.aiHandled;
+    setAiForChat(chatId, next);
   };
 
   const addInternalNote = (chatId, text) => {
@@ -2045,6 +2082,7 @@ export const AppProvider = ({ children }) => {
         requestNotificationPermission,
         sendMessage,
         toggleAiForChat,
+        setAiForChat,
         addInternalNote,
         updateLeadTag,
         createLead,

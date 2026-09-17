@@ -41,6 +41,7 @@ import { AdminTopBar } from './components/layout/AdminTopBar';
 import { SuperAdminTenantsPage } from './components/admin/SuperAdminTenantsPage';
 import { CheckoutModal } from './components/billing/CheckoutModal';
 import { FeaturePaywall } from './components/common/FeaturePaywall';
+import { BroadcastDueModal } from './components/inbox/BroadcastDueModal';
 
 const AppContent = () => {
   const {

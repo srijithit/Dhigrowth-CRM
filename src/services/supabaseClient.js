@@ -240,6 +240,28 @@ export const getConversations = async (workspaceId = DEFAULT_WORKSPACE_ID) => {
   return data || [];
 };
 
+// 3b. Update Conversation Agent Status ('bot_active' | 'human_agent')
+export const updateConversationStatus = async (conversationId, status = 'bot_active') => {
+  if (!supabase || !conversationId) return null;
+  try {
+    const { data, error } = await supabase
+      .from('conversations')
+      .update({ status })
+      .eq('id', conversationId)
+      .select()
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Could not update conversation status in Supabase:', error.message);
+      return null;
+    }
+    return data;
+  } catch (err) {
+    console.warn('Supabase update conversation status error:', err.message);
+    return null;
+  }
+};
+
 // 4. Fetch Messages for a specific conversation
 export const getMessages = async (conversationId) => {
   if (!supabase) return null;
