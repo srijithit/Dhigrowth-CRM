@@ -12,6 +12,21 @@ const GRAPH_BASE_URL = `https://graph.facebook.com/${META_GRAPH_VERSION}`;
 // Default initial starter templates approved by Meta
 export const STARTER_TEMPLATES = [
   {
+    id: 'tpl_hi',
+    name: 'hi',
+    category: 'UTILITY',
+    language: 'en_US',
+    status: 'APPROVED',
+    header_type: 'NONE',
+    header_content: null,
+    body_text: `👋 *Hello {{1}}!*\n\nWelcome to *DhiGrowth IT Services* 🚀\n\nWe help businesses grow with powerful digital solutions:\n\n💻 *App & Website Development*\n🤖 *AI Solutions & Automation*\n📈 *Business Development Solutions*\n💬 *WhatsApp CRM & Automation*\n\n🎯 Looking to take your business to the next level?\n\n👉 *Explore our services:* {{3}}\n\n📩 *Custom Requirement:* {{2}}\n\n*DhiGrowth IT Services* — Building Technology. Growing Businesses. 🚀`,
+    footer_text: 'hi, hello',
+    buttons: [],
+    variables: ['var_1', 'var_2', 'var_3'],
+    syncedWithMeta: true,
+    updatedAt: new Date().toISOString(),
+  },
+  {
     id: 'tpl_welcome_greeting',
     name: 'welcome_greeting_v2',
     category: 'UTILITY',

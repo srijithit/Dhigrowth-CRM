@@ -45,6 +45,33 @@ export const PRESET_HEADER_IMAGES = [
 
 const DEFAULT_TEMPLATES = [
   {
+    id: 'tpl_hi_1789625763989',
+    name: 'hi',
+    category: 'utility',
+    status: 'approved',
+    header_type: 'NONE',
+    header_content: null,
+    footer_text: 'hi, hello',
+    body_text: `👋 *Hello {{1}}!*
+
+Welcome to *DhiGrowth IT Services* 🚀
+
+We help businesses grow with powerful digital solutions:
+
+💻 *App & Website Development*
+🤖 *AI Solutions & Automation*
+📈 *Business Development Solutions*
+💬 *WhatsApp CRM & Automation*
+
+🎯 Looking to take your business to the next level?
+
+👉 *Explore our services:* {{3}}
+
+📩 *Custom Requirement:* {{2}}
+
+*DhiGrowth IT Services* — Building Technology. Growing Businesses. 🚀`,
+  },
+  {
     id: 't-welcome',
     name: 'Welcome Greeting (Hi / Hello)',
     category: 'utility',

@@ -28,6 +28,17 @@ import { useApp } from '../../context/AppContext';
 
 export const FALLBACK_BROADCAST_TEMPLATES = [
   {
+    id: 'tpl_hi_1789625763989',
+    name: 'hi',
+    category: 'UTILITY',
+    language: 'en_US',
+    status: 'APPROVED',
+    header_type: 'NONE',
+    header_content: null,
+    body_text: '👋 *Hello {{1}}!*\n\nWelcome to *DhiGrowth IT Services* 🚀\n\nWe help businesses grow with powerful digital solutions:\n\n💻 *App & Website Development*\n🤖 *AI Solutions & Automation*\n📈 *Business Development Solutions*\n💬 *WhatsApp CRM & Automation*\n\n🎯 Looking to take your business to the next level?\n\n👉 *Explore our services:* {{3}}\n\n📩 *Custom Requirement:* {{2}}\n\n*DhiGrowth IT Services* — Building Technology. Growing Businesses. 🚀',
+    footer_text: 'hi, hello',
+  },
+  {
     id: 'tpl_welcome_greeting',
     name: 'welcome_greeting_v2',
     category: 'UTILITY',
