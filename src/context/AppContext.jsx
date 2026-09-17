@@ -1486,6 +1486,7 @@ export const AppProvider = ({ children }) => {
               if (!oldChat) return newChat;
               return {
                 ...newChat,
+                aiHandled: oldChat.aiHandled !== undefined ? oldChat.aiHandled : newChat.aiHandled,
                 unreadCount: oldChat.unreadCount !== undefined ? oldChat.unreadCount : newChat.unreadCount,
                 notes: oldChat.notes?.length > 0 ? oldChat.notes : newChat.notes,
                 tag: oldChat.tag || newChat.tag,
@@ -1695,12 +1696,36 @@ export const AppProvider = ({ children }) => {
     }));
 
     if (sender === 'user') {
-      const activeChatObj = chats.find((c) => c.id === activeChatId);
+      let isAiEnabled = true;
+      let targetContactName = 'Valued Client';
+      let targetChannel = 'whatsapp';
 
-      // CRITICAL: If Manual Agent is turned on (aiHandled === false), AI reply MUST NOT WORK!
-      if (!activeChatObj || activeChatObj.aiHandled === false) {
-        console.log(`👤 [AppContext] Chat "${activeChatObj?.contactName || activeChatId}" is in Manual Agent mode. AI auto-reply is disabled.`);
-        showToast(`📩 Inbound message received. Manual Agent active (AI auto-reply paused).`, 'info');
+      // 1. Check local storage for the most up-to-date chat state
+      try {
+        const saved = localStorage.getItem(`dhigrowth_chats_${currentWorkspaceId}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          const matched = parsed.find((c) => c.id === activeChatId);
+          if (matched) {
+            isAiEnabled = matched.aiHandled !== false;
+            targetContactName = matched.contactName || targetContactName;
+            targetChannel = matched.channel || targetChannel;
+          }
+        }
+      } catch {}
+
+      // 2. Also check current React state
+      const activeChatObj = chats.find((c) => c.id === activeChatId);
+      if (activeChatObj) {
+        if (activeChatObj.aiHandled === false) isAiEnabled = false;
+        targetContactName = activeChatObj.contactName || targetContactName;
+        targetChannel = activeChatObj.channel || targetChannel;
+      }
+
+      // CRITICAL: If Manual Agent is turned on, AI auto-reply MUST NOT WORK!
+      if (!isAiEnabled) {
+        console.log(`👤 [AppContext] Chat "${targetContactName}" (${activeChatId}) is in Manual Agent mode. AI auto-reply is disabled.`);
+        showToast(`👤 Manual Agent active for ${targetContactName}. AI auto-reply is paused.`, 'info');
         return;
       }
 
@@ -1792,11 +1817,14 @@ export const AppProvider = ({ children }) => {
   const setAiForChat = (chatId, isAiEnabled) => {
     let targetConvId = null;
     let targetContactName = '';
+    let targetPhone = '';
+
     setChats((prev) => {
       const updated = prev.map((c) => {
         if (c.id === chatId) {
-          targetConvId = c.conversationId;
+          targetConvId = c.conversationId || c.id;
           targetContactName = c.contactName;
+          targetPhone = c.phone;
           return { ...c, aiHandled: Boolean(isAiEnabled) };
         }
         return c;
@@ -1806,6 +1834,28 @@ export const AppProvider = ({ children }) => {
       } catch {}
       return updated;
     });
+
+    // Notify backend server so Meta incoming webhooks immediately respect Manual Agent mode!
+    try {
+      const modePayload = {
+        phone: targetPhone,
+        conversationId: targetConvId,
+        isAiEnabled: Boolean(isAiEnabled),
+        workspaceId: currentWorkspaceId,
+      };
+
+      fetch(`${BACKEND_URL}/api/conversations/set-agent-mode`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(modePayload),
+      }).catch(() => {
+        fetch('http://localhost:4000/api/conversations/set-agent-mode', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(modePayload),
+        }).catch(() => {});
+      });
+    } catch {}
 
     if (isSupabaseConfigured && targetConvId) {
       updateConversationStatus(targetConvId, isAiEnabled ? 'bot_active' : 'human_agent').catch((e) => {

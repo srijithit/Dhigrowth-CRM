@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { sendWhatsAppMessage, sendInstagramMessage, sendMessengerMessage } from './metaService.js';
 import { generateAIResponse } from './aiService.js';
 import { getTenantByPhoneNumberId } from './tenantMetaManager.js';
+import { isManualMode } from './manualAgentStore.js';
 
 import dotenv from 'dotenv';
 import path from 'path';
@@ -299,9 +300,12 @@ async function processIncomingChatMessage({
       console.warn('[WebhookHandler] Could not load message history:', histErr.message);
     }
 
-    // 3.9 Check if conversation is in Human / Manual Agent mode
-    if (existingConv && (existingConv.status === 'human_agent' || existingConv.status === 'manual' || existingConv.status === 'agent')) {
-      console.log(`👤 [WebhookHandler] Conversation ${conversationId} is assigned to Manual Agent (${existingConv.status}). AI auto-reply is disabled.`);
+    // 3.9 Check if conversation or contact phone is in Human / Manual Agent mode
+    const isManualByStore = isManualMode({ phone: senderIdentifier, conversationId });
+    const isManualByConvStatus = existingConv && (existingConv.status === 'human_agent' || existingConv.status === 'manual' || existingConv.status === 'agent');
+
+    if (isManualByStore || isManualByConvStatus) {
+      console.log(`👤 [WebhookHandler] Conversation ${conversationId} / Contact ${senderIdentifier} is assigned to Manual Agent (store=${isManualByStore}, status=${existingConv?.status}). AI auto-reply is COMPLETELY DISABLED.`);
       return;
     }
 

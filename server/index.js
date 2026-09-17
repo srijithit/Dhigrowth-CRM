@@ -48,6 +48,7 @@ import {
   sendTestBroadcast,
   cancelScheduledCampaign,
 } from './broadcastService.js';
+import { setManualMode, isManualMode } from './manualAgentStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -296,6 +297,76 @@ app.post('/api/send-manual-message', async (req, res) => {
     console.error('Error dispatching manual message:', err);
     res.status(500).json({ error: err.message });
   }
+});
+
+// 5b. Set Agent Mode (Manual Agent vs AI Auto-Pilot)
+app.post('/api/conversations/set-agent-mode', async (req, res) => {
+  try {
+    const { phone, conversationId, isAiEnabled, workspaceId } = req.body;
+    const isManual = !Boolean(isAiEnabled);
+
+    // 1. Persist in file-backed / in-memory store
+    setManualMode({ phone, conversationId, isManual });
+
+    // 2. Also synchronize Supabase status if configured
+    const effectiveWorkspaceId = workspaceId || process.env.VITE_DEFAULT_WORKSPACE_ID || 'b0000000-0000-0000-0000-000000000001';
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+    if (supabaseUrl && supabaseAnonKey) {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+      const newStatus = isManual ? 'human_agent' : 'bot_active';
+
+      if (conversationId) {
+        await supabase
+          .from('conversations')
+          .update({ status: newStatus })
+          .eq('id', conversationId);
+      }
+
+      if (phone) {
+        const cleanDigits = phone.replace(/[^0-9]/g, '').slice(-10);
+        if (cleanDigits.length >= 7) {
+          const { data: contacts } = await supabase
+            .from('contacts')
+            .select('id')
+            .ilike('phone_number', `%${cleanDigits}%`);
+
+          if (contacts && contacts.length > 0) {
+            const contactIds = contacts.map((c) => c.id);
+            await supabase
+              .from('conversations')
+              .update({ status: newStatus })
+              .in('contact_id', contactIds);
+          }
+        }
+      }
+    }
+
+    console.log(`👤 [AgentMode API] Updated mode -> ${isManual ? 'MANUAL' : 'AI_AUTO_PILOT'} for Phone: "${phone || '-'}" Conv: "${conversationId || '-'}"`);
+    res.json({
+      success: true,
+      isAiEnabled: !isManual,
+      mode: isManual ? 'manual' : 'ai',
+      phone,
+      conversationId,
+    });
+  } catch (err) {
+    console.error('Error updating agent mode:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 5c. Query current Agent Mode
+app.get('/api/conversations/agent-mode', (req, res) => {
+  const { phone, conversationId } = req.query;
+  const isManual = isManualMode({ phone, conversationId });
+  res.json({
+    phone,
+    conversationId,
+    mode: isManual ? 'manual' : 'ai',
+    isAiEnabled: !isManual,
+  });
 });
 
 // 6. Real-Time Translation Endpoint (Google Translate API)
