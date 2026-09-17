@@ -30,7 +30,8 @@ export const sendWhatsAppMessage = async ({
   }
 
   // Sanitize phone number (strip + and spaces)
-  const cleanPhone = recipientPhone.replace(/[^0-9]/g, '');
+  let cleanPhone = recipientPhone.replace(/[^0-9]/g, '');
+  if (cleanPhone.length === 10) cleanPhone = '91' + cleanPhone;
 
   const payload = imageUrl
     ? {
@@ -102,7 +103,8 @@ export const sendWhatsAppInteractiveButtons = async ({
     };
   }
 
-  const cleanPhone = recipientPhone.replace(/[^0-9]/g, '');
+  let cleanPhone = recipientPhone.replace(/[^0-9]/g, '');
+  if (cleanPhone.length === 10) cleanPhone = '91' + cleanPhone;
 
   const payload = {
     messaging_product: 'whatsapp',

@@ -602,7 +602,8 @@ export async function broadcastTemplateToAll({
   const validContacts = [];
   for (const c of targetContacts) {
     const raw = c.phone || c.phone_number || '';
-    const clean = raw.replace(/[^0-9]/g, '');
+    let clean = raw.replace(/[^0-9]/g, '');
+    if (clean.length === 10) clean = '91' + clean;
     if (clean && !seenPhones.has(clean)) {
       seenPhones.add(clean);
       validContacts.push({
