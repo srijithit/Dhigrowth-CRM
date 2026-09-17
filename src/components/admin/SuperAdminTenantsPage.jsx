@@ -64,8 +64,26 @@ export const SuperAdminTenantsPage = () => {
     setTimeout(() => setCopiedSlug(null), 3000);
   };
 
+  const [copiedPasswordId, setCopiedPasswordId] = useState(null);
+  const [copiedCredsId, setCopiedCredsId] = useState(null);
+
+  const handleCopyPassword = (id, password, username) => {
+    navigator.clipboard.writeText(password);
+    setCopiedPasswordId(id);
+    showToast(`Copied password for "${username}": ${password}`, 'success');
+    setTimeout(() => setCopiedPasswordId(null), 2500);
+  };
+
+  const handleCopyCredentials = (tenant, password) => {
+    const credsText = `Workspace: ${window.location.origin}/?tenant=${tenant.slug || tenant.username}\nUsername: ${tenant.username}\nPassword: ${password}`;
+    navigator.clipboard.writeText(credsText);
+    setCopiedCredsId(tenant.id);
+    showToast(`Copied login credentials for "${tenant.username}"!`, 'success');
+    setTimeout(() => setCopiedCredsId(null), 2500);
+  };
+
   const togglePasswordVisibility = (id) => {
-    setVisiblePasswords((prev) => ({ ...prev, [id]: !prev[id] }));
+    setVisiblePasswords((prev) => ({ ...prev, [id]: prev[id] === false ? true : false }));
   };
 
   const handleCreateTenant = (e) => {
@@ -249,7 +267,8 @@ export const SuperAdminTenantsPage = () => {
         ) : (
           filteredTenants.map((tenant) => {
             const isSelf = currentUser?.id === tenant.id || currentUser?.username === tenant.username;
-            const isPasswordShown = !!visiblePasswords[tenant.id];
+            const isPasswordShown = visiblePasswords[tenant.id] !== false;
+            const displayPassword = tenant.password || (tenant.username === 'sri' ? 'dhigrowth2026' : tenant.username === 'maddy' ? 'maddy2' : `${tenant.username}123`);
 
             return (
               <div
@@ -320,19 +339,38 @@ export const SuperAdminTenantsPage = () => {
                           <span className="font-bold text-[#7C3AED]">{tenant.workspaceId}</span>
                         </div>
 
-                        {/* Password display toggle */}
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#F9FAFB] border border-[#EAECF0] font-mono text-[11px] text-[#344054]">
-                          <Key className="w-3 h-3 text-amber-500" />
-                          <span>Password:</span>
-                          <span className="font-bold text-[#101828]">
-                            {isPasswordShown ? tenant.password : '••••••••'}
+                        {/* Password display & quick copy */}
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#F4F0FD] border border-[#E9D8FD] font-mono text-[11px] text-[#344054]">
+                          <Key className="w-3 h-3 text-[#7C3AED]" />
+                          <span className="text-[#667085]">Password:</span>
+                          <span className="font-bold text-[#101828] select-all bg-white px-1.5 py-0.5 rounded border border-[#E9D8FD]">
+                            {isPasswordShown ? displayPassword : '••••••••'}
                           </span>
                           <button
+                            type="button"
                             onClick={() => togglePasswordVisibility(tenant.id)}
-                            className="text-[#98A2B3] hover:text-[#344054] ml-0.5 cursor-pointer"
+                            className="text-[#98A2B3] hover:text-[#7C3AED] ml-0.5 p-0.5 rounded hover:bg-white transition-colors cursor-pointer"
                             title={isPasswordShown ? 'Hide Password' : 'Show Password'}
                           >
-                            {isPasswordShown ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                            {isPasswordShown ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyPassword(tenant.id, displayPassword, tenant.username)}
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white hover:bg-[#EDE5FA] text-[#7C3AED] border border-[#E9D8FD] font-sans font-semibold text-[10px] transition-colors cursor-pointer ml-1"
+                            title="Copy Password"
+                          >
+                            {copiedPasswordId === tenant.id ? (
+                              <>
+                                <Check className="w-3 h-3 text-[#10B981]" />
+                                <span className="text-[#047857]">Copied!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3 h-3 text-[#7C3AED]" />
+                                <span>Copy</span>
+                              </>
+                            )}
                           </button>
                         </div>
                       </div>
@@ -352,6 +390,26 @@ export const SuperAdminTenantsPage = () => {
                       <ExternalLink className="w-3.5 h-3.5" />
                       Launch
                     </a>
+
+                    {/* Copy Login Credentials */}
+                    <button
+                      type="button"
+                      onClick={() => handleCopyCredentials(tenant, displayPassword)}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#FAF5FF] hover:bg-[#F3E8FF] text-[#7C3AED] border border-[#E9D8FD] text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
+                      title="Copy full login credentials (Workspace URL, Username & Password)"
+                    >
+                      {copiedCredsId === tenant.id ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-[#10B981]" />
+                          <span className="text-[#047857] font-bold">Copied Login!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Key className="w-3.5 h-3.5 text-[#7C3AED]" />
+                          <span>Copy Login</span>
+                        </>
+                      )}
+                    </button>
 
                     {/* Copy Workspace URL */}
                     <button

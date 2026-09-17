@@ -39,6 +39,7 @@ export const SEED_TENANTS = [
     plan: 'Business',
     isAdmin: false,
     isExternalClient: false,
+    password: 'dhigrowth2026',
     passwordHash: '$2a$10$954hF52aM/UfxY8c3Y7fse9fL4k9nU2r8/xRSm2sT.k2k9e9nL8zK', // sri123
     permissions: {
       sendDueToAll: true,
