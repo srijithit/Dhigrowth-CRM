@@ -1056,37 +1056,39 @@ export const TeamInbox = () => {
                 {chats.length}
               </span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => {
-                  setBroadcastSummary(null);
-                  setIsBroadcastDueModalOpen(true);
-                }}
-                className="flex items-center gap-1 text-[11px] font-bold text-[#7C3AED] bg-[#F4F0FD] hover:bg-[#EDE5FA] border border-[#E9D8FD] px-2.5 py-1 rounded-lg transition-all cursor-pointer shadow-2xs group"
-                title="Send Payment Due PDF with payment link to all WhatsApp contacts"
-              >
-                <Zap className="w-3.5 h-3.5 text-[#7C3AED] group-hover:scale-110 transition-transform" />
-                <span>Send Due to All</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsBroadcastTemplateModalOpen(true)}
-                className="flex items-center gap-1 text-[11px] font-bold text-[#0284C7] bg-[#F0F9FF] hover:bg-[#E0F2FE] border border-[#BAE6FD] px-2.5 py-1 rounded-lg transition-all cursor-pointer shadow-2xs group"
-                title="Send interactive template with Yes reply button to all WhatsApp contacts"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-[#0284C7] group-hover:scale-110 transition-transform" />
-                <span>Send Template to All</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsAddContactModalOpen(true)}
-                className="flex items-center gap-1 text-[11px] font-bold text-white bg-[#7C3AED] hover:bg-[#6D28D9] px-2.5 py-1 rounded-lg transition-all cursor-pointer shadow-2xs"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>New Contact</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setIsAddContactModalOpen(true)}
+              className="flex items-center gap-1 text-[11px] font-bold text-white bg-[#7C3AED] hover:bg-[#6D28D9] px-2.5 py-1 rounded-lg transition-all cursor-pointer shadow-2xs shrink-0 active:scale-95"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>New Contact</span>
+            </button>
+          </div>
+
+          {/* Quick Broadcast Actions (2-column responsive pills) */}
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                setBroadcastSummary(null);
+                setIsBroadcastDueModalOpen(true);
+              }}
+              className="flex items-center justify-center gap-1 text-[11px] font-bold text-[#7C3AED] bg-[#F4F0FD] hover:bg-[#EDE5FA] border border-[#E9D8FD] px-2 py-1.5 rounded-lg transition-all cursor-pointer shadow-2xs group min-w-0"
+              title="Send Payment Due PDF with payment link to all WhatsApp contacts"
+            >
+              <Zap className="w-3.5 h-3.5 text-[#7C3AED] group-hover:scale-110 transition-transform shrink-0" />
+              <span className="truncate">Send Due to All</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsBroadcastTemplateModalOpen(true)}
+              className="flex items-center justify-center gap-1 text-[11px] font-bold text-[#0284C7] bg-[#F0F9FF] hover:bg-[#E0F2FE] border border-[#BAE6FD] px-2 py-1.5 rounded-lg transition-all cursor-pointer shadow-2xs group min-w-0"
+              title="Send interactive template with Yes reply button to all WhatsApp contacts"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-[#0284C7] group-hover:scale-110 transition-transform shrink-0" />
+              <span className="truncate">Send Template (Yes)</span>
+            </button>
           </div>
 
           <div className="relative">
