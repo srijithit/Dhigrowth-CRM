@@ -94,32 +94,112 @@ const AppContent = () => {
       case 'inbox':
         return <TeamInbox />;
       case 'channels':
-        return <ConnectedChannelsPage />;
+        return isPaidActive ? (
+          <ConnectedChannelsPage />
+        ) : (
+          <FeaturePaywall
+            featureTitle="Omnichannel Hub & Connected Channels"
+            featureDescription="Connect and manage multi-channel customer communications across WhatsApp, Instagram Direct, Facebook Messenger, and LINE."
+            requiredPlan="Growth"
+          />
+        );
       case 'channel-whatsapp':
       case 'whatsapp':
-        return <WhatsAppBusinessPage />;
+        return isPaidActive ? (
+          <WhatsAppBusinessPage />
+        ) : (
+          <FeaturePaywall
+            featureTitle="Official WhatsApp Business Cloud Channel"
+            featureDescription="Connect and operate your official Meta WhatsApp Business number, webhook sync, live chat routing, and business profile."
+            requiredPlan="Growth"
+          />
+        );
       case 'channel-instagram':
       case 'instagram':
-        return <InstagramChannelPage />;
+        return isPaidActive ? (
+          <InstagramChannelPage />
+        ) : (
+          <FeaturePaywall
+            featureTitle="Instagram Direct & Story Automation"
+            featureDescription="Engage Instagram followers, handle story mentions, and capture leads directly within your team inbox."
+            requiredPlan="Growth"
+          />
+        );
       case 'channel-messenger':
       case 'messenger':
-        return <MessengerChannelPage />;
+        return isPaidActive ? (
+          <MessengerChannelPage />
+        ) : (
+          <FeaturePaywall
+            featureTitle="Facebook Messenger Channel"
+            featureDescription="Unify Facebook Page Messenger chats with automated responses, lead qualification, and agent handoff."
+            requiredPlan="Growth"
+          />
+        );
       case 'channel-line':
       case 'line':
-        return <LineChannelPage />;
+        return isPaidActive ? (
+          <LineChannelPage />
+        ) : (
+          <FeaturePaywall
+            featureTitle="LINE Official Account Integration"
+            featureDescription="Connect your verified LINE Official Account to automate messaging, rich menus, and broadcasts."
+            requiredPlan="Pro"
+          />
+        );
       case 'shopify':
-        return <ShopifyIntegrationPage />;
+        return isPaidActive ? (
+          <ShopifyIntegrationPage />
+        ) : (
+          <FeaturePaywall
+            featureTitle="Shopify E-Commerce Integration"
+            featureDescription="Automate WhatsApp order confirmations, abandoned cart recovery, shipping updates, and cash-on-delivery confirmations."
+            requiredPlan="Growth"
+          />
+        );
       case 'zoho':
-        return <ZohoIntegrationPage />;
+        return isPaidActive ? (
+          <ZohoIntegrationPage />
+        ) : (
+          <FeaturePaywall
+            featureTitle="Zoho CRM Integration"
+            featureDescription="Sync WhatsApp conversation leads, create contacts, and manage deal stages directly with Zoho CRM."
+            requiredPlan="Growth"
+          />
+        );
       case 'api':
-        return <ApiWebhooksPage />;
+        return isPaidActive ? (
+          <ApiWebhooksPage />
+        ) : (
+          <FeaturePaywall
+            featureTitle="Developer API & Custom Webhooks"
+            featureDescription="Full REST API access and inbound webhook triggers for programmatic message dispatch and CRM synchronization."
+            requiredPlan="Pro"
+          />
+        );
       case 'meta-api':
       case 'meta_api':
       case 'meta-settings':
-        return <MetaApiSettings />;
+        return isPaidActive ? (
+          <MetaApiSettings />
+        ) : (
+          <FeaturePaywall
+            featureTitle="Meta WhatsApp Cloud API Credentials"
+            featureDescription="Configure Phone Number IDs, Meta Access Tokens, and Webhook verification for live production messaging."
+            requiredPlan="Growth"
+          />
+        );
       case 'apps':
       case 'integrations':
-        return <IntegrationsHubPage />;
+        return isPaidActive ? (
+          <IntegrationsHubPage />
+        ) : (
+          <FeaturePaywall
+            featureTitle="App Integrations Hub"
+            featureDescription="Connect 100+ native apps, CRMs, payment gateways, and tools to your Dhigrowth workspace."
+            requiredPlan="Growth"
+          />
+        );
       case 'wallet':
         return <WalletPage />;
       case 'plans':
@@ -204,7 +284,15 @@ const AppContent = () => {
           />
         );
       case 'templates':
-        return <TemplatesPage />;
+        return isPaidActive ? (
+          <TemplatesPage />
+        ) : (
+          <FeaturePaywall
+            featureTitle="Official Meta Message Templates"
+            featureDescription="Draft, sync, and submit rich WhatsApp message templates with dynamic variables and interactive quick-reply buttons directly to Meta."
+            requiredPlan="Growth"
+          />
+        );
       case 'files':
         return <FileManagerPage />;
       case 'leads':

@@ -45,7 +45,26 @@ export const Sidebar = () => {
   } = useApp();
 
   const isPaidActive = subscription?.status === 'active';
-  const GATED_FEATURE_IDS = ['ai-assistants', 'tools', 'lead-studio', 'segmentation', 'campaigns', 'drip-campaigns', 'automations'];
+  const GATED_FEATURE_IDS = [
+    'ai-assistants',
+    'tools',
+    'lead-studio',
+    'segmentation',
+    'campaigns',
+    'drip-campaigns',
+    'automations',
+    'templates',
+    'channel-whatsapp',
+    'channel-instagram',
+    'channel-messenger',
+    'channel-line',
+    'channels',
+    'meta-api',
+    'shopify',
+    'zoho',
+    'api',
+    'apps',
+  ];
 
   const NAV_SECTIONS = [
     {
