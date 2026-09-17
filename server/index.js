@@ -48,6 +48,7 @@ import {
   executeBroadcast,
   sendTestBroadcast,
   cancelScheduledCampaign,
+  broadcastTemplateToAll,
 } from './broadcastService.js';
 import { setManualMode, isManualMode } from './manualAgentStore.js';
 
@@ -640,6 +641,39 @@ app.post('/api/invoices/broadcast-due-to-all', async (req, res) => {
     });
   } catch (err) {
     console.error('[Broadcast Invoices Route Error]:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 7.1.2 Broadcast Interactive Template with "Yes" Reply Button to All Contacts
+app.post('/api/templates/broadcast-to-all', async (req, res) => {
+  try {
+    const {
+      contacts,
+      headerText,
+      bodyText,
+      footerText,
+      buttons,
+      workspaceId = 'b0000000-0000-0000-0000-000000000001',
+    } = req.body || {};
+
+    console.log(`📡 [Broadcast Template API Request] Workspace: ${workspaceId} | Contacts: ${contacts?.length || 'all'}`);
+
+    const summary = await broadcastTemplateToAll({
+      contacts,
+      headerText,
+      bodyText,
+      footerText,
+      buttons,
+      workspaceId,
+    });
+
+    res.json({
+      success: true,
+      summary,
+    });
+  } catch (err) {
+    console.error('[Broadcast Template Route Error]:', err);
     res.status(500).json({ error: err.message });
   }
 });

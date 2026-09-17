@@ -88,7 +88,11 @@ export const handleInboundWebhook = async (req, res) => {
             const senderPhone = message.from; // e.g. "919791471277"
             const customerName = contactInfo?.profile?.name || `Customer (+${senderPhone})`;
             const messageText =
-              message.text?.body || (message.type !== 'text' ? `[${message.type} attachment]` : '');
+              message.text?.body ||
+              message.interactive?.button_reply?.title ||
+              message.interactive?.list_reply?.title ||
+              message.button?.text ||
+              (message.type !== 'text' ? `[${message.type} attachment]` : '');
 
             console.log(
               `\n📥 [Inbound WhatsApp] From: ${customerName} (+${senderPhone}) | Phone ID: ${phoneNumberId} | Workspace: ${tenantWorkspaceId}`

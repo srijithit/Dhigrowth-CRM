@@ -74,6 +74,78 @@ export const sendWhatsAppMessage = async ({
 };
 
 /**
+ * Send an outbound WhatsApp interactive message with quick-reply buttons (e.g. "Yes, I'm interested")
+ */
+export const sendWhatsAppInteractiveButtons = async ({
+  phoneNumberId,
+  accessToken,
+  recipientPhone,
+  headerText = 'DhiGrowth IT Services',
+  bodyText,
+  footerText = 'Tap an option to respond:',
+  buttons = [
+    { id: 'btn_yes', title: "Yes, I'm interested" },
+    { id: 'btn_more', title: 'Tell me more' },
+  ],
+}) => {
+  const token = accessToken || process.env.META_WHATSAPP_ACCESS_TOKEN;
+  const phoneId = phoneNumberId || process.env.META_WHATSAPP_PHONE_NUMBER_ID;
+
+  if (!token || !phoneId) {
+    console.warn('[MetaService] WhatsApp API credentials missing. Running in simulation mode.');
+    return {
+      simulated: true,
+      recipient: recipientPhone,
+      bodyText,
+      buttons,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  const cleanPhone = recipientPhone.replace(/[^0-9]/g, '');
+
+  const payload = {
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to: cleanPhone,
+    type: 'interactive',
+    interactive: {
+      type: 'button',
+      header: headerText ? { type: 'text', text: headerText } : undefined,
+      body: { text: bodyText },
+      footer: footerText ? { text: footerText } : undefined,
+      action: {
+        buttons: (buttons || []).slice(0, 3).map((btn, idx) => ({
+          type: 'reply',
+          reply: {
+            id: btn.id || `btn_${idx}_${Date.now()}`,
+            title: String(btn.title || btn.text || 'Yes').slice(0, 20),
+          },
+        })),
+      },
+    },
+  };
+
+  const response = await fetch(`${GRAPH_BASE_URL}/${phoneId}/messages`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    console.error('[MetaService] WhatsApp interactive button send error:', data);
+    throw new Error(data.error?.message || 'Failed to send WhatsApp interactive message');
+  }
+
+  return data;
+};
+
+/**
  * Send an outbound Instagram Direct Message
  */
 export const sendInstagramMessage = async ({

@@ -42,6 +42,7 @@ import { SuperAdminTenantsPage } from './components/admin/SuperAdminTenantsPage'
 import { CheckoutModal } from './components/billing/CheckoutModal';
 import { FeaturePaywall } from './components/common/FeaturePaywall';
 import { BroadcastDueModal } from './components/inbox/BroadcastDueModal';
+import { BroadcastTemplateModal } from './components/inbox/BroadcastTemplateModal';
 
 const AppContent = () => {
   const {
@@ -81,6 +82,7 @@ const AppContent = () => {
         <ClientPortal />
         <Toast />
         <BroadcastDueModal />
+        <BroadcastTemplateModal />
       </div>
     );
   }
@@ -346,6 +348,7 @@ const AppContent = () => {
       <SendieeWidgetModal />
       <Toast />
       <BroadcastDueModal />
+      <BroadcastTemplateModal />
     </div>
   );
 };

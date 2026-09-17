@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { sendWhatsAppMessage } from './metaService.js';
+import { sendWhatsAppMessage, sendWhatsAppInteractiveButtons } from './metaService.js';
 import { getWorkspaceTemplates, STARTER_TEMPLATES } from './templateService.js';
 import { getWorkspaceSubscription } from './billingService.js';
 import { getTenantMetaConfig } from './tenantMetaManager.js';
@@ -549,4 +549,188 @@ function startSchedulerLoop() {
       });
     });
   }, 10000); // check every 10s
+}
+
+/**
+ * Broadcast an interactive template message with "Yes" reply buttons to all contacts
+ */
+export async function broadcastTemplateToAll({
+  contacts = [],
+  headerText = 'DhiGrowth IT Services',
+  bodyText = 'Hello {{name}}! 👋 Welcome to DhiGrowth IT Services.\n\nAre you looking to scale your business with custom App Development, AI Auto-Pilot Bots, or WhatsApp CRM Automation?\n\nTap below to connect with our team! 🚀',
+  footerText = 'Click below to reply:',
+  buttons = [
+    { id: 'btn_yes_interested', title: "Yes, I'm interested" },
+    { id: 'btn_tell_more', title: 'Tell me more' },
+  ],
+  workspaceId = 'b0000000-0000-0000-0000-000000000001',
+} = {}) {
+  let targetContacts = [...(contacts || [])];
+
+  const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+  let supabase = null;
+  if (supabaseUrl && supabaseAnonKey) {
+    try {
+      const { createClient } = await import('@supabase/supabase-js');
+      supabase = createClient(supabaseUrl, supabaseAnonKey);
+    } catch {}
+  }
+
+  // If no contacts passed from frontend, query all contacts from Supabase
+  if (targetContacts.length === 0 && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('*')
+        .eq('workspace_id', workspaceId);
+      if (!error && data && data.length > 0) {
+        targetContacts = data.map((c) => ({
+          id: c.id,
+          name: c.full_name || 'Valued Client',
+          phone: c.phone_number,
+          email: c.email || '',
+        }));
+      }
+    } catch (e) {
+      console.warn('[BroadcastTemplate] Error querying Supabase contacts:', e.message);
+    }
+  }
+
+  // Deduplicate and filter contacts with phone numbers
+  const seenPhones = new Set();
+  const validContacts = [];
+  for (const c of targetContacts) {
+    const raw = c.phone || c.phone_number || '';
+    const clean = raw.replace(/[^0-9]/g, '');
+    if (clean && !seenPhones.has(clean)) {
+      seenPhones.add(clean);
+      validContacts.push({
+        ...c,
+        phone: clean,
+      });
+    }
+  }
+
+  console.log(`📢 [Broadcast Template] Starting broadcast to ${validContacts.length} contacts with Yes reply button...`);
+  const results = [];
+
+  const tenantMeta = getTenantMetaConfig({ workspaceId });
+  const phoneId = tenantMeta?.phoneNumberId || process.env.META_WHATSAPP_PHONE_NUMBER_ID;
+  const token = tenantMeta?.accessToken || process.env.META_WHATSAPP_ACCESS_TOKEN;
+
+  for (const contact of validContacts) {
+    const contactName = contact.name || contact.full_name || 'Valued Client';
+    const personalizedBody = (bodyText || '')
+      .replace(/\{\{name\}\}/gi, contactName)
+      .replace(/\{\{first_name\}\}/gi, contactName.split(' ')[0] || contactName)
+      .replace(/\{\{phone\}\}/gi, contact.phone);
+
+    try {
+      // 1. Dispatch via Meta Cloud API Interactive Buttons
+      let metaResult = null;
+      if (token && phoneId && !token.includes('placeholder')) {
+        metaResult = await sendWhatsAppInteractiveButtons({
+          phoneNumberId: phoneId,
+          accessToken: token,
+          recipientPhone: contact.phone,
+          headerText,
+          bodyText: personalizedBody,
+          footerText,
+          buttons,
+        });
+      }
+
+      // 2. Find or create conversation in Supabase so it shows in Team Inbox
+      if (supabase) {
+        try {
+          const cleanDigits = contact.phone.slice(-10);
+          const { data: cList } = await supabase
+            .from('contacts')
+            .select('id')
+            .ilike('phone_number', `%${cleanDigits}%`)
+            .limit(1);
+
+          const contactId = cList?.[0]?.id || contact.id;
+
+          if (contactId) {
+            const { data: convList } = await supabase
+              .from('conversations')
+              .select('id')
+              .eq('contact_id', contactId)
+              .limit(1);
+
+            let convId = convList?.[0]?.id;
+            if (!convId) {
+              const { data: newConv } = await supabase
+                .from('conversations')
+                .insert([
+                  {
+                    workspace_id: workspaceId,
+                    contact_id: contactId,
+                    channel_type: 'whatsapp',
+                    status: 'bot_active',
+                    last_message_text: personalizedBody,
+                    last_message_at: new Date().toISOString(),
+                  },
+                ])
+                .select()
+                .single();
+              convId = newConv?.id;
+            }
+
+            if (convId) {
+              const buttonSummary = (buttons || []).map((b) => `[🔘 ${b.title}]`).join(' ');
+              await supabase.from('messages').insert([
+                {
+                  workspace_id: workspaceId,
+                  conversation_id: convId,
+                  direction: 'outbound',
+                  ai_generated: false,
+                  type: 'interactive',
+                  content: `${personalizedBody}\n\n${buttonSummary}`,
+                  status: 'delivered',
+                  external_message_id: metaResult?.messages?.[0]?.id || null,
+                },
+              ]);
+
+              await supabase
+                .from('conversations')
+                .update({
+                  last_message_text: personalizedBody,
+                  last_message_at: new Date().toISOString(),
+                })
+                .eq('id', convId);
+            }
+          }
+        } catch (dbErr) {
+          console.warn('[BroadcastTemplate] Note logging message to Supabase:', dbErr.message);
+        }
+      }
+
+      results.push({
+        name: contactName,
+        phone: contact.phone,
+        success: true,
+        metaDelivered: Boolean(metaResult?.messages?.[0]?.id),
+      });
+    } catch (err) {
+      console.error(`❌ [Broadcast Template] Error for ${contact.phone}:`, err.message);
+      results.push({
+        name: contactName,
+        phone: contact.phone,
+        success: false,
+        error: err.message,
+      });
+    }
+  }
+
+  console.log(`✅ [Broadcast Template] Completed: ${results.filter((r) => r.success).length}/${validContacts.length} sent.`);
+
+  return {
+    total: validContacts.length,
+    dispatched: results.filter((r) => r.success).length,
+    failed: results.filter((r) => !r.success).length,
+    results,
+  };
 }

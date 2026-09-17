@@ -1,0 +1,652 @@
+import React, { useState, useRef } from 'react';
+import {
+  X,
+  Sparkles,
+  Check,
+  CheckCircle2,
+  Loader2,
+  Eye,
+  EyeOff,
+  MessageSquare,
+  Users,
+  Bot,
+  Zap,
+  Tag,
+  ArrowRight,
+} from 'lucide-react';
+import confetti from 'canvas-confetti';
+import { useApp } from '../../context/AppContext';
+import { ContactAvatar } from '../common/ContactAvatar';
+import { BACKEND_URL } from '../../services/apiConfig';
+
+const TEMPLATE_PRESETS = [
+  {
+    id: 'discovery',
+    name: 'AI & IT Discovery',
+    badge: 'Recommended',
+    header: 'DhiGrowth IT Services',
+    body: `Hello {{name}}! 👋 Welcome to DhiGrowth IT Services.
+
+Are you looking to scale your business with custom App Development, AI Auto-Pilot Bots, or WhatsApp CRM Automation?
+
+Tap below to connect with our team! 🚀`,
+    footer: 'Tap an option to respond:',
+    buttons: [
+      { id: 'btn_yes_interested', title: "Yes, I'm interested" },
+      { id: 'btn_tell_more', title: 'Tell me more' },
+    ],
+  },
+  {
+    id: 'consultation',
+    name: 'Free 15-Min Call',
+    badge: 'Popular',
+    header: 'Special Tech Invitation',
+    body: `Hi {{name}}! 🚀 We're offering complimentary 15-minute technology consultation sessions this week for ambitious founders.
+
+Would you like us to schedule a quick call with our lead tech architect?`,
+    footer: 'Select your choice below:',
+    buttons: [
+      { id: 'btn_yes_schedule', title: 'Yes, Schedule Call' },
+      { id: 'btn_available_times', title: 'Share Times' },
+    ],
+  },
+  {
+    id: 'crm_demo',
+    name: 'WhatsApp CRM Demo',
+    badge: 'High Conversion',
+    header: 'WhatsApp Automation',
+    body: `Hello {{name}}! Want to see a live 2-minute demo of 24/7 AI lead capture, broadcast marketing, and automated team inboxes on WhatsApp?`,
+    footer: 'Tap below to see it live:',
+    buttons: [
+      { id: 'btn_yes_demo', title: 'Yes, Send Demo' },
+      { id: 'btn_chat_agent', title: 'Chat with Agent' },
+    ],
+  },
+  {
+    id: 'custom',
+    name: 'Custom Template',
+    badge: 'Freeform',
+    header: 'DhiGrowth IT Services',
+    body: `Hi {{name}}! We would love to share our latest updates with you. Would you like more details?`,
+    footer: 'Tap below to reply:',
+    buttons: [
+      { id: 'btn_yes', title: 'Yes, please' },
+      { id: 'btn_no', title: 'Not right now' },
+    ],
+  },
+];
+
+const DYNAMIC_TAGS = [
+  { tag: '{{name}}', label: 'Full Name', sample: 'Sri' },
+  { tag: '{{first_name}}', label: 'First Name', sample: 'Sri' },
+  { tag: '{{phone}}', label: 'Phone', sample: '+919791471277' },
+];
+
+export const BroadcastTemplateModal = ({ onClose }) => {
+  const {
+    chats = [],
+    isBroadcastTemplateModalOpen,
+    setIsBroadcastTemplateModalOpen,
+    currentWorkspaceId,
+    showToast,
+  } = useApp();
+
+  const [selectedPresetId, setSelectedPresetId] = useState('discovery');
+  const [headerText, setHeaderText] = useState(TEMPLATE_PRESETS[0].header);
+  const [bodyText, setBodyText] = useState(TEMPLATE_PRESETS[0].body);
+  const [footerText, setFooterText] = useState(TEMPLATE_PRESETS[0].footer);
+  const [button1Text, setButton1Text] = useState(TEMPLATE_PRESETS[0].buttons[0].title);
+  const [button2Text, setButton2Text] = useState(TEMPLATE_PRESETS[0].buttons[1].title);
+  const [showPreview, setShowPreview] = useState(true);
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
+  const [broadcastSummary, setBroadcastSummary] = useState(null);
+
+  // Extract unique contacts from chats
+  const [selectedContacts, setSelectedContacts] = useState(() => {
+    const seen = new Set();
+    const list = [];
+    chats.forEach((c) => {
+      const rawPhone = c.phone || c.phone_number || '';
+      const clean = rawPhone.replace(/[^0-9]/g, '');
+      if (clean && !seen.has(clean)) {
+        seen.add(clean);
+        list.push({
+          id: c.id,
+          name: c.contactName || c.name || 'Valued Client',
+          phone: clean,
+          avatar: c.avatar,
+        });
+      }
+    });
+    return list;
+  });
+
+  const textareaRef = useRef(null);
+
+  if (!isBroadcastTemplateModalOpen) return null;
+
+  const handleSelectPreset = (preset) => {
+    setSelectedPresetId(preset.id);
+    setHeaderText(preset.header);
+    setBodyText(preset.body);
+    setFooterText(preset.footer);
+    setButton1Text(preset.buttons[0]?.title || 'Yes');
+    setButton2Text(preset.buttons[1]?.title || 'Tell me more');
+  };
+
+  const handleInsertTag = (tag) => {
+    if (!textareaRef.current) {
+      setBodyText((prev) => prev + ' ' + tag);
+      return;
+    }
+    const start = textareaRef.current.selectionStart;
+    const end = textareaRef.current.selectionEnd;
+    const next = bodyText.substring(0, start) + tag + bodyText.substring(end);
+    setBodyText(next);
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(start + tag.length, start + tag.length);
+      }
+    }, 50);
+  };
+
+  const toggleContact = (phone) => {
+    setSelectedContacts((prev) => {
+      const exists = prev.some((c) => c.phone === phone);
+      if (exists) {
+        return prev.filter((c) => c.phone !== phone);
+      } else {
+        const found = chats.find((c) => (c.phone || '').replace(/[^0-9]/g, '') === phone);
+        return [
+          ...prev,
+          {
+            id: found?.id || phone,
+            name: found?.contactName || 'Valued Client',
+            phone,
+            avatar: found?.avatar,
+          },
+        ];
+      }
+    });
+  };
+
+  const handleSelectAll = () => {
+    const seen = new Set();
+    const all = [];
+    chats.forEach((c) => {
+      const raw = c.phone || c.phone_number || '';
+      const clean = raw.replace(/[^0-9]/g, '');
+      if (clean && !seen.has(clean)) {
+        seen.add(clean);
+        all.push({
+          id: c.id,
+          name: c.contactName || 'Valued Client',
+          phone: clean,
+          avatar: c.avatar,
+        });
+      }
+    });
+    setSelectedContacts(all);
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedContacts([]);
+  };
+
+  // Live preview text with resolved {{name}}
+  const previewSampleName = selectedContacts[0]?.name || 'Sri';
+  const resolvedPreviewText = bodyText
+    .replaceAll('{{name}}', previewSampleName)
+    .replaceAll('{{first_name}}', previewSampleName.split(' ')[0] || previewSampleName)
+    .replaceAll('{{phone}}', selectedContacts[0]?.phone ? `+${selectedContacts[0].phone}` : '+919791471277');
+
+  const handleBroadcast = async () => {
+    if (!bodyText.trim()) {
+      showToast('Please enter message text for the template', 'error');
+      return;
+    }
+
+    if (selectedContacts.length === 0) {
+      showToast('Please select at least one contact to receive the broadcast', 'error');
+      return;
+    }
+
+    setIsBroadcasting(true);
+    setBroadcastSummary(null);
+
+    const buttons = [
+      { id: 'btn_yes', title: button1Text.trim() || 'Yes' },
+    ];
+    if (button2Text.trim()) {
+      buttons.push({ id: 'btn_more', title: button2Text.trim() });
+    }
+
+    const payload = {
+      contacts: selectedContacts.map((c) => ({
+        name: c.name,
+        phone: c.phone,
+      })),
+      headerText: headerText.trim() || undefined,
+      bodyText: bodyText.trim(),
+      footerText: footerText.trim() || undefined,
+      buttons,
+      workspaceId: currentWorkspaceId || 'b0000000-0000-0000-0000-000000000001',
+    };
+
+    try {
+      let res;
+      try {
+        res = await fetch(`${BACKEND_URL}/api/templates/broadcast-to-all`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } catch {}
+
+      if (!res || !res.ok) {
+        try {
+          res = await fetch('http://localhost:4000/api/templates/broadcast-to-all', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+        } catch {}
+      }
+
+      if (res && res.ok) {
+        const data = await res.json();
+        setBroadcastSummary(data.summary);
+        confetti({
+          particleCount: 80,
+          spread: 70,
+          origin: { y: 0.6 },
+        });
+        showToast(
+          `🚀 Dispatched interactive template to ${data.summary?.dispatched || selectedContacts.length} contacts!`,
+          'success'
+        );
+      } else {
+        throw new Error('Server returned an error');
+      }
+    } catch (err) {
+      console.error('Broadcast template error:', err);
+      showToast('Could not complete broadcast: ' + err.message, 'error');
+    } finally {
+      setIsBroadcasting(false);
+    }
+  };
+
+  const handleClose = () => {
+    setIsBroadcastTemplateModalOpen(false);
+    if (onClose) onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+      <div className="bg-white rounded-2xl shadow-2xl border border-[#EAECF0] w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-[#EAECF0] flex items-center justify-between bg-linear-to-r from-[#F0F9FF] to-white shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#0284C7]/10 flex items-center justify-center text-[#0284C7] border border-[#BAE6FD]">
+              <Sparkles className="w-5 h-5 text-[#0284C7]" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-[#101828]">Broadcast Template with "Yes" Reply Button</h3>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E0F2FE] text-[#0369A1] border border-[#BAE6FD]">
+                  Interactive Quick Reply
+                </span>
+              </div>
+              <p className="text-xs text-[#475467]">
+                Send WhatsApp messages with 1-click interactive response buttons. When contacts tap "Yes", AI Auto-Pilot replies automatically!
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleClose}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-[#667085] hover:text-[#101828] hover:bg-[#F2F4F7] transition-all cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Content Body */}
+        <div className="p-6 overflow-y-auto space-y-6 flex-1 custom-scrollbar">
+          {/* Preset Selector */}
+          <div>
+            <label className="block text-xs font-bold text-[#344054] mb-2 uppercase tracking-wide">
+              1. Choose Template Preset
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              {TEMPLATE_PRESETS.map((preset) => {
+                const isSelected = selectedPresetId === preset.id;
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => handleSelectPreset(preset)}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer relative flex flex-col justify-between ${
+                      isSelected
+                        ? 'border-[#0284C7] bg-[#F0F9FF] shadow-xs ring-2 ring-[#0284C7]/20'
+                        : 'border-[#EAECF0] hover:border-[#D0D5DD] bg-white'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <span className="text-xs font-bold text-[#101828] line-clamp-1">{preset.name}</span>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-[#0284C7] shrink-0" />}
+                      </div>
+                      <span className="text-[10px] text-[#0284C7] font-semibold bg-[#E0F2FE] px-1.5 py-0.5 rounded-sm">
+                        {preset.badge}
+                      </span>
+                    </div>
+                    <div className="mt-2 text-[10px] text-[#475467] line-clamp-2">
+                      {preset.buttons[0]?.title} • {preset.buttons[1]?.title}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Main Grid: Left Form & Right WhatsApp Live Preview */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            {/* Left: Message Customizer */}
+            <div className="lg:col-span-7 space-y-4">
+              {/* Header Text Input */}
+              <div>
+                <label className="block text-xs font-bold text-[#344054] mb-1">
+                  Header Title <span className="text-[11px] font-normal text-[#667085]">(Optional, displayed in bold)</span>
+                </label>
+                <input
+                  type="text"
+                  value={headerText}
+                  onChange={(e) => setHeaderText(e.target.value)}
+                  placeholder="e.g. DhiGrowth IT Services"
+                  className="w-full bg-[#F9FAFB] border border-[#EAECF0] px-3 py-2 rounded-xl text-xs text-[#101828] focus:outline-none focus:border-[#0284C7] focus:bg-white transition-all font-medium"
+                />
+              </div>
+
+              {/* Message Body & Dynamic Tags */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-[#344054]">
+                    Message Body <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-[#667085] font-medium">Insert tag:</span>
+                    {DYNAMIC_TAGS.map((t) => (
+                      <button
+                        key={t.tag}
+                        type="button"
+                        onClick={() => handleInsertTag(t.tag)}
+                        className="text-[10px] font-mono font-bold text-[#0284C7] bg-[#F0F9FF] hover:bg-[#E0F2FE] border border-[#BAE6FD] px-1.5 py-0.5 rounded cursor-pointer transition-all"
+                        title={`Click to insert ${t.label}`}
+                      >
+                        {t.tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <textarea
+                  ref={textareaRef}
+                  rows={6}
+                  value={bodyText}
+                  onChange={(e) => setBodyText(e.target.value)}
+                  placeholder="Type your WhatsApp message..."
+                  className="w-full bg-[#F9FAFB] border border-[#EAECF0] p-3 rounded-xl text-xs text-[#101828] focus:outline-none focus:border-[#0284C7] focus:bg-white transition-all font-mono leading-relaxed"
+                />
+              </div>
+
+              {/* Interactive Quick Reply Buttons */}
+              <div className="p-3.5 bg-[#F8FAFC] border border-[#EAECF0] rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <MessageSquare className="w-3.5 h-3.5 text-[#0284C7]" />
+                    <span className="text-xs font-bold text-[#101828]">Quick-Reply Buttons</span>
+                  </div>
+                  <span className="text-[10px] text-[#667085]">1-tap reply in WhatsApp (max 20 chars)</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-[#16A34A] mb-1 flex items-center gap-1">
+                      <span>Button 1: Positive Reply</span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800">Primary</span>
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={20}
+                      value={button1Text}
+                      onChange={(e) => setButton1Text(e.target.value)}
+                      placeholder="e.g. Yes, I'm interested"
+                      className="w-full bg-white border border-[#EAECF0] px-3 py-1.5 rounded-lg text-xs font-bold text-[#15803D] focus:outline-none focus:border-[#16A34A]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-[#64748B] mb-1 flex items-center gap-1">
+                      <span>Button 2: Secondary Option</span>
+                      <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-700">Optional</span>
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={20}
+                      value={button2Text}
+                      onChange={(e) => setButton2Text(e.target.value)}
+                      placeholder="e.g. Tell me more"
+                      className="w-full bg-white border border-[#EAECF0] px-3 py-1.5 rounded-lg text-xs font-semibold text-[#475467] focus:outline-none focus:border-[#0284C7]"
+                    />
+                  </div>
+                </div>
+
+                {/* Footer Text */}
+                <div>
+                  <label className="block text-[11px] font-medium text-[#64748B] mb-1">
+                    Footer Note <span className="text-[10px] text-[#98A2B3]">(Small helper text)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={footerText}
+                    onChange={(e) => setFooterText(e.target.value)}
+                    placeholder="e.g. Tap an option to respond:"
+                    className="w-full bg-white border border-[#EAECF0] px-3 py-1 rounded-lg text-xs text-[#64748B] focus:outline-none focus:border-[#0284C7]"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Right: WhatsApp Live Chat Simulation Preview */}
+            <div className="lg:col-span-5 flex flex-col">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-[#344054] flex items-center gap-1.5">
+                  <Eye className="w-3.5 h-3.5 text-[#0284C7]" />
+                  <span>WhatsApp Live Preview</span>
+                </span>
+                <span className="text-[10px] text-[#0284C7] bg-[#F0F9FF] px-2 py-0.5 rounded-full font-bold">
+                  Simulating: {previewSampleName}
+                </span>
+              </div>
+
+              {/* Phone Mockup Window */}
+              <div className="bg-[#EFEAE2] border border-[#CBD5E1] rounded-2xl p-3.5 flex-1 flex flex-col justify-between shadow-inner relative overflow-hidden min-h-[300px]">
+                {/* Subtle WhatsApp chat pattern overlay */}
+                <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none" />
+
+                {/* WhatsApp Chat Bubble */}
+                <div className="max-w-[95%] bg-white rounded-2xl rounded-tl-xs shadow-xs border border-black/5 overflow-hidden z-10">
+                  {/* Bubble Content */}
+                  <div className="p-3.5 space-y-2">
+                    {headerText && (
+                      <div className="font-bold text-[13px] text-[#111B21] border-b border-gray-100 pb-1.5 flex items-center gap-1.5">
+                        <Zap className="w-3.5 h-3.5 text-[#0284C7]" />
+                        <span>{headerText}</span>
+                      </div>
+                    )}
+                    <div className="text-[12px] text-[#111B21] whitespace-pre-wrap leading-relaxed">
+                      {resolvedPreviewText || 'Your message preview will appear here...'}
+                    </div>
+                    {footerText && (
+                      <div className="text-[10px] text-[#667781] pt-1">
+                        {footerText}
+                      </div>
+                    )}
+                    <div className="text-[9px] text-[#667781] text-right">
+                      {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ✓✓
+                    </div>
+                  </div>
+
+                  {/* Interactive Quick Reply Buttons in Preview */}
+                  <div className="border-t border-[#E9EDEF] bg-[#F8FAFC]/50 divide-y divide-[#E9EDEF]">
+                    {button1Text.trim() && (
+                      <div className="py-2.5 px-3 text-center text-xs font-bold text-[#00A884] hover:bg-[#F0FDF4] transition-colors flex items-center justify-center gap-1.5 select-none cursor-pointer">
+                        <Check className="w-3.5 h-3.5 text-[#00A884]" />
+                        <span>{button1Text}</span>
+                      </div>
+                    )}
+                    {button2Text.trim() && (
+                      <div className="py-2.5 px-3 text-center text-xs font-medium text-[#00A884] hover:bg-[#F0FDF4] transition-colors flex items-center justify-center gap-1.5 select-none cursor-pointer">
+                        <span>{button2Text}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* AI Concierge Intelligence Hint */}
+                <div className="mt-3 p-2.5 bg-white/90 backdrop-blur-xs rounded-xl border border-[#CBD5E1] text-[11px] text-[#475467] flex items-start gap-2 z-10">
+                  <Bot className="w-4 h-4 text-[#7C3AED] shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold text-[#7C3AED]">Automated AI Follow-up: </span>
+                    When contacts tap <span className="font-semibold text-emerald-700">"{button1Text}"</span>, Dhigrowth AI Concierge immediately acknowledges their interest and guides them to book a call or share details!
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Recipient Audience Section */}
+          <div className="p-4 bg-[#F8FAFC] border border-[#EAECF0] rounded-xl space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-[#0284C7]" />
+                <span className="text-xs font-bold text-[#101828]">
+                  Recipient Audience ({selectedContacts.length} Selected)
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleSelectAll}
+                  className="text-[11px] font-bold text-[#0284C7] hover:underline cursor-pointer"
+                >
+                  Select All ({chats.length})
+                </button>
+                <span className="text-gray-300">|</span>
+                <button
+                  type="button"
+                  onClick={handleDeselectAll}
+                  className="text-[11px] font-medium text-[#667085] hover:underline cursor-pointer"
+                >
+                  Deselect All
+                </button>
+              </div>
+            </div>
+
+            {/* Contacts Chips */}
+            <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-1">
+              {chats.map((c) => {
+                const raw = c.phone || c.phone_number || '';
+                const clean = raw.replace(/[^0-9]/g, '');
+                if (!clean) return null;
+                const isSelected = selectedContacts.some((sc) => sc.phone === clean);
+
+                return (
+                  <button
+                    key={c.id || clean}
+                    type="button"
+                    onClick={() => toggleContact(clean)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer border ${
+                      isSelected
+                        ? 'bg-[#E0F2FE] border-[#BAE6FD] text-[#0369A1] font-bold shadow-2xs'
+                        : 'bg-white border-[#EAECF0] text-[#667085] hover:border-[#D0D5DD]'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: isSelected ? '#0284C7' : '#D0D5DD' }} />
+                    <span>{c.contactName || 'Client'}</span>
+                    <span className="text-[10px] opacity-75 font-mono">+{clean.slice(-10)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Broadcast Results Summary */}
+          {broadcastSummary && (
+            <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 animate-in fade-in space-y-2">
+              <div className="flex items-center gap-2 text-emerald-800 font-bold text-sm">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                <span>Broadcast Completed Successfully!</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center pt-2">
+                <div className="bg-white p-2.5 rounded-lg border border-emerald-100">
+                  <span className="text-[10px] text-gray-500 font-bold block">TOTAL TARGETS</span>
+                  <span className="text-base font-extrabold text-gray-900">{broadcastSummary.total}</span>
+                </div>
+                <div className="bg-white p-2.5 rounded-lg border border-emerald-100">
+                  <span className="text-[10px] text-emerald-600 font-bold block">DELIVERED</span>
+                  <span className="text-base font-extrabold text-emerald-700">{broadcastSummary.dispatched}</span>
+                </div>
+                <div className="bg-white p-2.5 rounded-lg border border-emerald-100">
+                  <span className="text-[10px] text-rose-500 font-bold block">FAILED</span>
+                  <span className="text-base font-extrabold text-rose-600">{broadcastSummary.failed || 0}</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer Actions */}
+        <div className="px-6 py-4 border-t border-[#EAECF0] bg-[#F9FAFB] flex items-center justify-between shrink-0">
+          <div className="text-xs text-[#667085]">
+            Targeting <strong className="text-[#101828]">{selectedContacts.length}</strong> contacts on official WhatsApp Cloud API
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={handleClose}
+              disabled={isBroadcasting}
+              className="px-4 py-2 rounded-xl text-xs font-bold text-[#344054] hover:bg-[#EAECF0] transition-all cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleBroadcast}
+              disabled={isBroadcasting || selectedContacts.length === 0}
+              className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 text-white shadow-md transition-all cursor-pointer ${
+                isBroadcasting || selectedContacts.length === 0
+                  ? 'bg-gray-300 cursor-not-allowed shadow-none'
+                  : 'bg-[#0284C7] hover:bg-[#0369A1] shadow-sky-500/20 active:scale-95'
+              }`}
+            >
+              {isBroadcasting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Dispatching to WhatsApp...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  <span>Send Template to All ({selectedContacts.length})</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

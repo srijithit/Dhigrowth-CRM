@@ -68,6 +68,7 @@ export const AppProvider = ({ children }) => {
   const [isWidgetOpen, setIsWidgetOpen] = useState(false);
   const [isWorkspaceDropdownOpen, setIsWorkspaceDropdownOpen] = useState(false);
   const [isBroadcastDueModalOpen, setIsBroadcastDueModalOpen] = useState(false);
+  const [isBroadcastTemplateModalOpen, setIsBroadcastTemplateModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
 
   // Multi-Tenant Directory State
@@ -2213,6 +2214,8 @@ export const AppProvider = ({ children }) => {
         setIsWorkspaceDropdownOpen,
         isBroadcastDueModalOpen,
         setIsBroadcastDueModalOpen,
+        isBroadcastTemplateModalOpen,
+        setIsBroadcastTemplateModalOpen,
         toastMessage,
         showToast,
         currentUser,
