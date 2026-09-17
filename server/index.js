@@ -370,22 +370,64 @@ app.post('/api/send-template-message', async (req, res) => {
       metaResult = await metaRes.json();
 
       if (!metaRes.ok) {
-        console.warn('[Send Template] Template dispatch note:', metaResult?.error?.message, 'Attempting direct text delivery fallback...');
-        const fallbackRes = await fetch(`https://graph.facebook.com/v20.0/${phoneId}/messages`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            messaging_product: 'whatsapp',
-            recipient_type: 'individual',
-            to: cleanPhone,
-            type: 'text',
-            text: { preview_url: false, body: resolvedText },
-          }),
-        });
-        metaResult = await fallbackRes.json();
+        console.warn('[Send Template] Template dispatch note:', metaResult?.error?.message);
+
+        // If custom template is pending or unapproved on Meta (code 132001), fallback to official pre-approved hello_world template
+        if (metaResult?.error?.code === 132001 || metaResult?.error?.message?.includes('does not exist')) {
+          console.log('🔄 [Send Template] Template is pending Meta approval. Delivering pre-approved "hello_world" template...');
+          try {
+            const hwRes = await fetch(`https://graph.facebook.com/v20.0/${phoneId}/messages`, {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                messaging_product: 'whatsapp',
+                recipient_type: 'individual',
+                to: cleanPhone,
+                type: 'template',
+                template: {
+                  name: 'hello_world',
+                  language: { code: 'en_US' },
+                },
+              }),
+            });
+            const hwData = await hwRes.json();
+            if (hwRes.ok && hwData?.messages?.[0]?.id) {
+              metaResult = hwData;
+              console.log('✅ [Send Template] Delivered approved Meta template to WhatsApp phone:', hwData.messages[0].id);
+            }
+          } catch (hwErr) {
+            console.warn('[Send Template] hello_world attempt:', hwErr.message);
+          }
+        }
+
+        // Direct text fallback if contact has replied in 24h window
+        if (!metaResult?.messages?.[0]?.id) {
+          try {
+            const fallbackRes = await fetch(`https://graph.facebook.com/v20.0/${phoneId}/messages`, {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                messaging_product: 'whatsapp',
+                recipient_type: 'individual',
+                to: cleanPhone,
+                type: 'text',
+                text: { preview_url: false, body: resolvedText },
+              }),
+            });
+            const fbData = await fallbackRes.json();
+            if (fallbackRes.ok && fbData?.messages?.[0]?.id) {
+              metaResult = fbData;
+            }
+          } catch (fbErr) {
+            console.warn('[Send Template] Direct text fallback attempt:', fbErr.message);
+          }
+        }
       }
     } else {
       metaResult = { simulated: true, messages: [{ id: `wamid.sim_${Date.now()}` }] };
