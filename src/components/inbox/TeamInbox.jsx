@@ -38,6 +38,7 @@ import {
   PanelRightClose,
   PanelRightOpen,
   CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useApp } from '../../context/AppContext';
@@ -1521,7 +1522,20 @@ export const TeamInbox = () => {
 
                 <div className="flex items-center gap-1.5 mt-1 text-[10px] text-[#98A2B3] font-mono">
                   <span>{msg.time}</span>
-                  {!isUser && <CheckCheck className="w-3.5 h-3.5 text-[#16A34A]" />}
+                  {!isUser && (
+                    msg.status === 'failed' ? (
+                      <span className="flex items-center gap-0.5 text-[#DC2626] font-bold" title={msg.error || 'Failed to deliver'}>
+                        <AlertCircle className="w-3 h-3 text-[#DC2626]" />
+                        <span>Failed</span>
+                      </span>
+                    ) : msg.status === 'read' ? (
+                      <CheckCheck className="w-3.5 h-3.5 text-[#0284C7]" title="Read by recipient" />
+                    ) : msg.status === 'delivered' || msg.status === 'received' ? (
+                      <CheckCheck className="w-3.5 h-3.5 text-[#16A34A]" title="Delivered / Received" />
+                    ) : (
+                      <Check className="w-3.5 h-3.5 text-[#98A2B3]" title="Sent to WhatsApp" />
+                    )
+                  )}
                 </div>
               </div>
             );

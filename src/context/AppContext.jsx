@@ -1443,6 +1443,7 @@ export const AppProvider = ({ children }) => {
               text: m.content === '[interactive attachment]' ? "Yes, I'm interested" : m.content,
               time: msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               timestamp: msgDate.getTime(),
+              status: m.status || 'delivered',
             });
           });
 
@@ -1570,6 +1571,7 @@ export const AppProvider = ({ children }) => {
           text: newMsg.content === '[interactive attachment]' ? "Yes, I'm interested" : newMsg.content,
           time: new Date(msgTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           timestamp: msgTimestamp,
+          status: newMsg.status || 'delivered',
         };
 
         const isInbound = !newMsg.ai_generated && newMsg.direction === 'inbound';

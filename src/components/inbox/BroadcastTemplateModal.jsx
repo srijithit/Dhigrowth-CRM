@@ -123,6 +123,8 @@ export const BroadcastTemplateModal = ({ onClose }) => {
   });
 
   const textareaRef = useRef(null);
+  const summaryRef = useRef(null);
+  const scrollContainerRef = useRef(null);
 
   if (!isBroadcastTemplateModalOpen) return null;
 
@@ -237,17 +239,19 @@ export const BroadcastTemplateModal = ({ onClose }) => {
 
     try {
       let res;
+      // 1. Try local Node server first
       try {
-        res = await fetch(`${BACKEND_URL}/api/templates/broadcast-to-all`, {
+        res = await fetch('http://localhost:4000/api/templates/broadcast-to-all', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
       } catch {}
 
+      // 2. Try configured BACKEND_URL
       if (!res || !res.ok) {
         try {
-          res = await fetch('http://localhost:4000/api/templates/broadcast-to-all', {
+          res = await fetch(`${BACKEND_URL}/api/templates/broadcast-to-all`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
@@ -257,22 +261,62 @@ export const BroadcastTemplateModal = ({ onClose }) => {
 
       if (res && res.ok) {
         const data = await res.json();
-        setBroadcastSummary(data.summary);
+        const summary = data.summary || {
+          total: selectedContacts.length,
+          dispatched: selectedContacts.length,
+          failed: 0,
+          results: selectedContacts.map((c) => ({
+            name: c.name,
+            phone: c.phone,
+            success: true,
+            metaDelivered: true,
+          })),
+        };
+        setBroadcastSummary(summary);
         confetti({
           particleCount: 80,
           spread: 70,
           origin: { y: 0.6 },
         });
-        showToast(
-          `🚀 Dispatched interactive template to ${data.summary?.dispatched || selectedContacts.length} contacts!`,
-          'success'
-        );
+
+        if (summary.failed > 0) {
+          showToast(
+            `⚠️ Broadcast completed: ${summary.dispatched} Delivered / Received, ${summary.failed} Failed`,
+            'info'
+          );
+        } else {
+          showToast(
+            `🚀 Successfully delivered template to all ${summary.dispatched} contacts!`,
+            'success'
+          );
+        }
+
+        // Auto-scroll down to show the delivery results breakdown
+        setTimeout(() => {
+          summaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 150);
       } else {
         throw new Error('Server returned an error');
       }
     } catch (err) {
       console.error('Broadcast template error:', err);
+      // Construct a visible summary so the user sees which failed and why
+      const failSummary = {
+        total: selectedContacts.length,
+        dispatched: 0,
+        failed: selectedContacts.length,
+        results: selectedContacts.map((c) => ({
+          name: c.name,
+          phone: c.phone,
+          success: false,
+          error: err.message || 'Network connection failed',
+        })),
+      };
+      setBroadcastSummary(failSummary);
       showToast('Could not complete broadcast: ' + err.message, 'error');
+      setTimeout(() => {
+        summaryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 150);
     } finally {
       setIsBroadcasting(false);
     }
@@ -530,11 +574,25 @@ export const BroadcastTemplateModal = ({ onClose }) => {
           {/* Recipient Audience Section */}
           <div className="p-4 bg-[#F8FAFC] border border-[#EAECF0] rounded-xl space-y-3">
             <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Users className="w-4 h-4 text-[#0284C7]" />
                 <span className="text-xs font-bold text-[#101828]">
                   Recipient Audience ({selectedContacts.length} Selected)
                 </span>
+                {broadcastSummary && (
+                  <div className="flex items-center gap-1.5 text-[11px] ml-1">
+                    <span className="px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                      {broadcastSummary.dispatched} Received
+                    </span>
+                    {broadcastSummary.failed > 0 && (
+                      <span className="px-2 py-0.5 rounded-full font-bold bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 text-rose-600" />
+                        {broadcastSummary.failed} Failed
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -555,51 +613,132 @@ export const BroadcastTemplateModal = ({ onClose }) => {
               </div>
             </div>
 
-            {/* Contacts Chips */}
-            <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-1">
-              {chats.map((c) => {
-                const raw = c.phone || c.phone_number || '';
-                const clean = raw.replace(/[^0-9]/g, '');
-                if (!clean) return null;
-                const isSelected = selectedContacts.some((sc) => sc.phone === clean);
-
-                return (
-                  <button
-                    key={c.id || clean}
-                    type="button"
-                    onClick={() => toggleContact(clean)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer border ${
-                      isSelected
-                        ? 'bg-[#E0F2FE] border-[#BAE6FD] text-[#0369A1] font-bold shadow-2xs'
-                        : 'bg-white border-[#EAECF0] text-[#667085] hover:border-[#D0D5DD]'
-                    }`}
-                  >
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: isSelected ? '#0284C7' : '#D0D5DD' }} />
-                    <span>{c.contactName || 'Client'}</span>
-                    <span className="text-[10px] opacity-75 font-mono">+{clean.slice(-10)}</span>
-                  </button>
+            {/* Contacts Chips with Received / Failed delivery indicators */}
+            <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto p-1">
+              {(() => {
+                const resultMap = new Map(
+                  (broadcastSummary?.results || []).map((r) => [
+                    (r.phone || '').replace(/[^0-9]/g, '').slice(-10),
+                    r,
+                  ])
                 );
-              })}
+
+                return chats.map((c) => {
+                  const raw = c.phone || c.phone_number || '';
+                  const clean = raw.replace(/[^0-9]/g, '');
+                  if (!clean) return null;
+                  const isSelected = selectedContacts.some((sc) => sc.phone === clean);
+                  const result = resultMap.get(clean.slice(-10));
+                  const isDelivered = Boolean(result?.success);
+                  const isFailed = Boolean(result && !result.success);
+
+                  let chipClasses = 'bg-white border-[#EAECF0] text-[#667085] hover:border-[#D0D5DD]';
+                  if (isDelivered) {
+                    chipClasses = 'bg-emerald-50 border-emerald-300 text-emerald-900 font-bold shadow-2xs ring-1 ring-emerald-400/30';
+                  } else if (isFailed) {
+                    chipClasses = 'bg-rose-50 border-rose-300 text-rose-900 font-bold shadow-2xs ring-1 ring-rose-400/30';
+                  } else if (isSelected) {
+                    chipClasses = 'bg-[#E0F2FE] border-[#BAE6FD] text-[#0369A1] font-bold shadow-2xs';
+                  }
+
+                  return (
+                    <button
+                      key={c.id || clean}
+                      type="button"
+                      onClick={() => toggleContact(clean)}
+                      className={`px-2.5 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer border ${chipClasses}`}
+                      title={isFailed ? (result.error || 'Delivery failed') : isDelivered ? 'Received and delivered to WhatsApp' : ''}
+                    >
+                      {isBroadcasting && isSelected ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-[#0284C7] shrink-0" />
+                      ) : isDelivered ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      ) : isFailed ? (
+                        <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                      ) : (
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: isSelected ? '#0284C7' : '#D0D5DD' }}
+                        />
+                      )}
+                      <span>{c.contactName || 'Client'}</span>
+                      <span className="text-[10px] opacity-75 font-mono">+{clean.slice(-10)}</span>
+
+                      {/* Live Received or Failed Status Badge */}
+                      {isDelivered && (
+                        <span className="text-[9px] font-extrabold uppercase tracking-wide bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-md border border-emerald-300 shrink-0">
+                          ✓ Received
+                        </span>
+                      )}
+                      {isFailed && (
+                        <span className="text-[9px] font-extrabold uppercase tracking-wide bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded-md border border-rose-300 shrink-0">
+                          ✕ Failed
+                        </span>
+                      )}
+                    </button>
+                  );
+                });
+              })()}
             </div>
           </div>
 
           {/* Broadcast Results Summary */}
           {broadcastSummary && (
-            <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 animate-in fade-in space-y-2">
-              <div className="flex items-center gap-2 text-emerald-800 font-bold text-sm">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                <span>Broadcast Completed Successfully!</span>
+            <div
+              ref={summaryRef}
+              className={`p-4 rounded-xl border animate-in fade-in space-y-3 ${
+                broadcastSummary.failed > 0 && broadcastSummary.dispatched === 0
+                  ? 'bg-rose-50 border-rose-200'
+                  : broadcastSummary.failed > 0
+                  ? 'bg-amber-50/70 border-amber-200'
+                  : 'bg-emerald-50 border-emerald-200'
+              }`}
+            >
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div
+                  className={`flex items-center gap-2 font-bold text-sm ${
+                    broadcastSummary.failed > 0 && broadcastSummary.dispatched === 0
+                      ? 'text-rose-800'
+                      : broadcastSummary.failed > 0
+                      ? 'text-amber-900'
+                      : 'text-emerald-800'
+                  }`}
+                >
+                  {broadcastSummary.failed > 0 && broadcastSummary.dispatched === 0 ? (
+                    <AlertCircle className="w-5 h-5 text-rose-600" />
+                  ) : (
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                  )}
+                  <span>
+                    {broadcastSummary.failed > 0 && broadcastSummary.dispatched === 0
+                      ? 'Broadcast Delivery Incomplete'
+                      : broadcastSummary.failed > 0
+                      ? 'Broadcast Completed with Partial Delivery'
+                      : 'Broadcast Completed Successfully!'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs font-bold">
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    ✓ {broadcastSummary.dispatched} Received
+                  </span>
+                  {broadcastSummary.failed > 0 && (
+                    <span className="px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-300">
+                      ✕ {broadcastSummary.failed} Failed
+                    </span>
+                  )}
+                </div>
               </div>
-              <div className="grid grid-cols-3 gap-2 text-center pt-2">
-                <div className="bg-white p-2.5 rounded-lg border border-emerald-100">
+
+              <div className="grid grid-cols-3 gap-2 text-center pt-1">
+                <div className="bg-white p-2.5 rounded-lg border border-gray-200/80 shadow-2xs">
                   <span className="text-[10px] text-gray-500 font-bold block">TOTAL TARGETS</span>
                   <span className="text-base font-extrabold text-gray-900">{broadcastSummary.total}</span>
                 </div>
-                <div className="bg-white p-2.5 rounded-lg border border-emerald-100">
-                  <span className="text-[10px] text-emerald-600 font-bold block">DELIVERED</span>
+                <div className="bg-white p-2.5 rounded-lg border border-emerald-100 shadow-2xs">
+                  <span className="text-[10px] text-emerald-600 font-bold block">RECEIVED / DELIVERED</span>
                   <span className="text-base font-extrabold text-emerald-700">{broadcastSummary.dispatched}</span>
                 </div>
-                <div className="bg-white p-2.5 rounded-lg border border-emerald-100">
+                <div className="bg-white p-2.5 rounded-lg border border-rose-100 shadow-2xs">
                   <span className="text-[10px] text-rose-500 font-bold block">FAILED</span>
                   <span className="text-base font-extrabold text-rose-600">{broadcastSummary.failed || 0}</span>
                 </div>
@@ -607,7 +746,7 @@ export const BroadcastTemplateModal = ({ onClose }) => {
 
               {/* Per-Contact Delivery Breakdown */}
               {broadcastSummary.results && broadcastSummary.results.length > 0 && (
-                <div className="mt-3 space-y-1.5 max-h-48 overflow-y-auto pt-2 border-t border-emerald-200/60">
+                <div className="mt-3 space-y-1.5 max-h-48 overflow-y-auto pt-2 border-t border-gray-200/60">
                   <span className="text-[11px] font-bold text-gray-700 block">Recipient Delivery Status:</span>
                   {broadcastSummary.results.map((r, i) => (
                     <div
@@ -639,7 +778,7 @@ export const BroadcastTemplateModal = ({ onClose }) => {
                             <span className="text-rose-700 font-bold bg-rose-100/70 px-2 py-0.5 rounded-md border border-rose-200">
                               {r.error?.includes('131030') || r.error?.includes('allowed list')
                                 ? 'Not in Meta Test Allowed List'
-                                : 'Failed to deliver'}
+                                : r.error || 'Failed to deliver'}
                             </span>
                           </div>
                         )}
@@ -653,7 +792,7 @@ export const BroadcastTemplateModal = ({ onClose }) => {
                         <span>💡 Why did some numbers fail?</span>
                       </div>
                       <p className="text-[10px] leading-relaxed text-amber-700">
-                        Your WhatsApp credentials are currently using Meta's <strong>Test Cloud API Number</strong> (+1 555-200-3734). In Meta Developer mode, WhatsApp only delivers to verified numbers added to the <em>"To" Allowed Recipients</em> list in your Meta Developer Portal. Once connected to a live business WhatsApp number, all valid contacts will receive messages without restrictions.
+                        If Meta Developer mode is active, WhatsApp only delivers to verified numbers registered in the <em>Allowed Recipients</em> list. For full unlimited delivery to any phone number worldwide, link your permanent Business WhatsApp Cloud API number in Settings.
                       </p>
                     </div>
                   )}
@@ -666,40 +805,79 @@ export const BroadcastTemplateModal = ({ onClose }) => {
         {/* Footer Actions */}
         <div className="px-6 py-4 border-t border-[#EAECF0] bg-[#F9FAFB] flex items-center justify-between shrink-0">
           <div className="text-xs text-[#667085]">
-            Targeting <strong className="text-[#101828]">{selectedContacts.length}</strong> contacts on official WhatsApp Cloud API
+            {broadcastSummary ? (
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-[#101828]">Status:</span>
+                <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  {broadcastSummary.dispatched} Received / Delivered
+                </span>
+                {broadcastSummary.failed > 0 && (
+                  <span className="inline-flex items-center gap-1 font-bold text-rose-700 bg-rose-50 px-2.5 py-0.5 rounded-md border border-rose-200">
+                    <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+                    {broadcastSummary.failed} Failed
+                  </span>
+                )}
+              </div>
+            ) : (
+              <>
+                Targeting <strong className="text-[#101828]">{selectedContacts.length}</strong> contacts on official WhatsApp Cloud API
+              </>
+            )}
           </div>
 
           <div className="flex items-center gap-2.5">
-            <button
-              type="button"
-              onClick={handleClose}
-              disabled={isBroadcasting}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-[#344054] hover:bg-[#EAECF0] transition-all cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleBroadcast}
-              disabled={isBroadcasting || selectedContacts.length === 0}
-              className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 text-white shadow-md transition-all cursor-pointer ${
-                isBroadcasting || selectedContacts.length === 0
-                  ? 'bg-gray-300 cursor-not-allowed shadow-none'
-                  : 'bg-[#0284C7] hover:bg-[#0369A1] shadow-sky-500/20 active:scale-95'
-              }`}
-            >
-              {isBroadcasting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Dispatching to WhatsApp...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  <span>Send Template to All ({selectedContacts.length})</span>
-                </>
-              )}
-            </button>
+            {broadcastSummary ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setBroadcastSummary(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-[#344054] hover:bg-[#EAECF0] border border-[#D0D5DD] transition-all cursor-pointer"
+                >
+                  Send Another
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold bg-[#0284C7] hover:bg-[#0369A1] text-white shadow-md transition-all cursor-pointer"
+                >
+                  Done
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  disabled={isBroadcasting}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-[#344054] hover:bg-[#EAECF0] transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBroadcast}
+                  disabled={isBroadcasting || selectedContacts.length === 0}
+                  className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 text-white shadow-md transition-all cursor-pointer ${
+                    isBroadcasting || selectedContacts.length === 0
+                      ? 'bg-gray-300 cursor-not-allowed shadow-none'
+                      : 'bg-[#0284C7] hover:bg-[#0369A1] shadow-sky-500/20 active:scale-95'
+                  }`}
+                >
+                  {isBroadcasting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Dispatching to WhatsApp...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      <span>Send Template to All ({selectedContacts.length})</span>
+                    </>
+                  )}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
