@@ -194,7 +194,8 @@ async function processIncomingChatMessage({
   workspaceId = DEFAULT_WORKSPACE_ID,
   sendReply,
 }) {
-  const effectiveWorkspaceId = workspaceId || DEFAULT_WORKSPACE_ID;
+  const isValidUuid = (id) => typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  const effectiveWorkspaceId = isValidUuid(workspaceId) ? workspaceId : DEFAULT_WORKSPACE_ID;
   const supabase = getSupabase();
   if (!supabase) {
     console.warn('[WebhookHandler] Supabase not connected. Skipping database write.');
