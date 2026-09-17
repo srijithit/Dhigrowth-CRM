@@ -118,8 +118,8 @@ function saveTemplatesToDisk() {
  * Get all templates for a workspace (cached or merged with starter templates)
  */
 export function getWorkspaceTemplates(workspaceId = 'b0000000-0000-0000-0000-000000000001') {
-  if (!templatesStore.workspaces[workspaceId] || templatesStore.workspaces[workspaceId].length === 0) {
-    templatesStore.workspaces[workspaceId] = [...STARTER_TEMPLATES];
+  if (!Array.isArray(templatesStore.workspaces[workspaceId])) {
+    templatesStore.workspaces[workspaceId] = workspaceId === 'b0000000-0000-0000-0000-000000000001' ? [...STARTER_TEMPLATES] : [];
     saveTemplatesToDisk();
   }
   return templatesStore.workspaces[workspaceId];
@@ -382,8 +382,8 @@ export async function createMetaTemplate({
   }
 
   // Save to workspace store
-  if (!templatesStore.workspaces[workspaceId]) {
-    templatesStore.workspaces[workspaceId] = [...STARTER_TEMPLATES];
+  if (!Array.isArray(templatesStore.workspaces[workspaceId])) {
+    templatesStore.workspaces[workspaceId] = [];
   }
 
   templatesStore.workspaces[workspaceId].unshift(newTemplate);
@@ -396,8 +396,8 @@ export async function createMetaTemplate({
  * Delete a template
  */
 export async function deleteMetaTemplate({ workspaceId, name, templateId, wabaId, accessToken }) {
-  if (!templatesStore.workspaces[workspaceId]) {
-    templatesStore.workspaces[workspaceId] = [...STARTER_TEMPLATES];
+  if (!Array.isArray(templatesStore.workspaces[workspaceId])) {
+    templatesStore.workspaces[workspaceId] = [];
   }
 
   const initialLen = templatesStore.workspaces[workspaceId].length;

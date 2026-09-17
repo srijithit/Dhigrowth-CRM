@@ -211,7 +211,19 @@ export const TemplatesPage = () => {
   const loadTemplates = async () => {
     setIsLoading(true);
     try {
-      // 1. First try loading official templates from backend Meta templates API
+      // 1. First check if this user already has a saved template list (including empty if deleted)
+      const localSaved = localStorage.getItem(`dhigrowth_templates_${currentWorkspaceId}`);
+      let parsedLocal = null;
+      if (localSaved !== null) {
+        try {
+          parsedLocal = JSON.parse(localSaved);
+          if (Array.isArray(parsedLocal)) {
+            setTemplates(parsedLocal);
+          }
+        } catch {}
+      }
+
+      // 2. Fetch official templates from backend Meta templates API for this workspace
       let metaData;
       try {
         const res = await fetch(`/api/meta/templates?workspaceId=${encodeURIComponent(currentWorkspaceId)}`);
@@ -225,7 +237,11 @@ export const TemplatesPage = () => {
         } catch {}
       }
 
-      if (metaData && metaData.templates && metaData.templates.length > 0) {
+      if (metaData && Array.isArray(metaData.templates)) {
+        // If user explicitly deleted all templates locally, keep it empty and don't resurrect
+        if (parsedLocal && parsedLocal.length === 0 && metaData.templates.length > 0) {
+          return;
+        }
         setTemplates(metaData.templates);
         try {
           localStorage.setItem(`dhigrowth_templates_${currentWorkspaceId}`, JSON.stringify(metaData.templates));
@@ -233,13 +249,15 @@ export const TemplatesPage = () => {
         return;
       }
 
-      // 2. Fallback to Supabase
+      // 3. Fallback to Supabase
       const data = await getTemplates(currentWorkspaceId);
       if (data && data.length > 0) {
         setTemplates(data);
         try {
           localStorage.setItem(`dhigrowth_templates_${currentWorkspaceId}`, JSON.stringify(data));
         } catch {}
+      } else if (parsedLocal !== null) {
+        setTemplates(parsedLocal);
       } else if (currentWorkspaceId === DEFAULT_WORKSPACE_ID) {
         setTemplates(DEFAULT_TEMPLATES);
         try {
@@ -253,6 +271,13 @@ export const TemplatesPage = () => {
       }
     } catch (err) {
       console.warn('Load templates note:', err);
+      const localSaved = localStorage.getItem(`dhigrowth_templates_${currentWorkspaceId}`);
+      if (localSaved !== null) {
+        try {
+          setTemplates(JSON.parse(localSaved));
+          return;
+        } catch {}
+      }
       if (currentWorkspaceId === DEFAULT_WORKSPACE_ID) {
         setTemplates(DEFAULT_TEMPLATES);
       } else {
@@ -523,29 +548,50 @@ export const TemplatesPage = () => {
 
   const handleDelete = async () => {
     if (!deletingTemplate) return;
+    const targetId = deletingTemplate.id;
+    const targetName = deletingTemplate.name;
+
+    // 1. Immediately update UI state and workspace-isolated localStorage
+    setTemplates((prev) => {
+      const updated = prev.filter((t) => t.id !== targetId);
+      try {
+        localStorage.setItem(`dhigrowth_templates_${currentWorkspaceId}`, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+    setDeletingTemplate(null);
+
+    // 2. Delete from server store for this specific workspace
     try {
-      await deleteTemplate(deletingTemplate.id);
-      setTemplates((prev) => {
-        const updated = prev.filter((t) => t.id !== deletingTemplate.id);
-        try {
-          localStorage.setItem(`dhigrowth_templates_${currentWorkspaceId}`, JSON.stringify(updated));
-        } catch {}
-        return updated;
+      await fetch(`/api/meta/templates/${encodeURIComponent(targetId)}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspaceId: currentWorkspaceId,
+          name: targetName,
+        }),
       });
-      setDeletingTemplate(null);
-      showToast(`Template deleted successfully`, 'info');
-    } catch (err) {
-      console.error('Error deleting template:', err);
-      setTemplates((prev) => {
-        const updated = prev.filter((t) => t.id !== deletingTemplate.id);
-        try {
-          localStorage.setItem(`dhigrowth_templates_${currentWorkspaceId}`, JSON.stringify(updated));
-        } catch {}
-        return updated;
-      });
-      setDeletingTemplate(null);
-      showToast(`Template deleted`, 'info');
+    } catch (e) {
+      try {
+        await fetch(`http://localhost:4000/api/meta/templates/${encodeURIComponent(targetId)}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            workspaceId: currentWorkspaceId,
+            name: targetName,
+          }),
+        });
+      } catch {}
     }
+
+    // 3. Delete from Supabase for this specific workspace
+    try {
+      await deleteTemplate(targetId, currentWorkspaceId);
+    } catch (err) {
+      console.warn('Supabase delete template note:', err);
+    }
+
+    showToast(`Template permanently deleted for this user workspace`, 'info');
   };
 
   const handleCopy = (text, id) => {

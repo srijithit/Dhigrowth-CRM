@@ -530,12 +530,13 @@ export const updateTemplate = async (templateId, updates) => {
   return data;
 };
 
-export const deleteTemplate = async (templateId) => {
+export const deleteTemplate = async (templateId, workspaceId = null) => {
   if (!supabase) return false;
-  const { error } = await supabase
-    .from('templates')
-    .delete()
-    .eq('id', templateId);
+  let query = supabase.from('templates').delete().eq('id', templateId);
+  if (workspaceId) {
+    query = query.eq('workspace_id', workspaceId);
+  }
+  const { error } = await query;
 
   if (error) {
     console.error('Error deleting template:', error);
