@@ -1504,7 +1504,16 @@ export const TeamInbox = () => {
                       </div>
                     )}
 
-                    <p className="whitespace-pre-line">{text}</p>
+                    {text === '[interactive attachment]' || text === "Yes, I'm interested" ? (
+                      <div className="flex items-center gap-2 py-0.5">
+                        <span className="whitespace-pre-line font-medium text-xs">Yes, I'm interested</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold border border-emerald-200 shrink-0">
+                          🔘 Button Tap
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="whitespace-pre-line">{text}</p>
+                    )}
                   </div>
                 )}
 

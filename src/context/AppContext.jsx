@@ -1440,7 +1440,7 @@ export const AppProvider = ({ children }) => {
             convMessagesMap[m.conversation_id].push({
               id: m.id,
               sender: m.ai_generated ? 'ai' : m.direction === 'inbound' ? 'user' : 'agent',
-              text: m.content,
+              text: m.content === '[interactive attachment]' ? "Yes, I'm interested" : m.content,
               time: msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               timestamp: msgDate.getTime(),
             });
@@ -1567,7 +1567,7 @@ export const AppProvider = ({ children }) => {
         const formatted = {
           id: newMsg.id,
           sender: newMsg.ai_generated ? 'ai' : newMsg.direction === 'inbound' ? 'user' : 'agent',
-          text: newMsg.content,
+          text: newMsg.content === '[interactive attachment]' ? "Yes, I'm interested" : newMsg.content,
           time: new Date(msgTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           timestamp: msgTimestamp,
         };

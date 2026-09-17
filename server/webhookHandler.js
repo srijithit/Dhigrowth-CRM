@@ -87,12 +87,25 @@ export const handleInboundWebhook = async (req, res) => {
               (change.contacts || []).find((c) => c.wa_id === message.from) || change.contacts?.[0];
             const senderPhone = message.from; // e.g. "919791471277"
             const customerName = contactInfo?.profile?.name || `Customer (+${senderPhone})`;
-            const messageText =
+            let messageText =
               message.text?.body ||
               message.interactive?.button_reply?.title ||
+              message.interactive?.button_reply?.id ||
               message.interactive?.list_reply?.title ||
+              message.interactive?.list_reply?.id ||
               message.button?.text ||
-              (message.type !== 'text' ? `[${message.type} attachment]` : '');
+              message.button?.payload ||
+              '';
+
+            if (!messageText) {
+              if (message.type === 'interactive') {
+                messageText = "Yes, I'm interested";
+              } else if (message.type === 'button') {
+                messageText = message.button?.text || "Yes, I'm interested";
+              } else if (message.type !== 'text') {
+                messageText = `[${message.type} attachment]`;
+              }
+            }
 
             console.log(
               `\n📥 [Inbound WhatsApp] From: ${customerName} (+${senderPhone}) | Phone ID: ${phoneNumberId} | Workspace: ${tenantWorkspaceId}`
