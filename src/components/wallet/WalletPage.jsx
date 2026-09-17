@@ -243,6 +243,74 @@ export const WalletPage = () => {
         </div>
       </div>
 
+      {/* Transparent SaaS 3-Pillar Billing Breakdown */}
+      <div className="bg-white border border-[#EAECF0] rounded-3xl p-6 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#F2F4F7] pb-3">
+          <div>
+            <h3 className="text-sm font-extrabold text-[#101828] flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-[#7C3AED]" />
+              <span>Transparent Billing Model: How Your Charges Work</span>
+            </h3>
+            <p className="text-xs text-[#667085]">
+              You only pay Dhigrowth CRM a flat monthly platform subscription. Infrastructure costs (Meta WhatsApp fees &amp; AI tokens) are billed directly to providers with zero markup.
+            </p>
+          </div>
+          <span className="text-[10px] font-mono font-bold px-2.5 py-1 bg-[#F4F0FD] text-[#7C3AED] rounded-full self-start sm:self-auto border border-[#E9D8FD]">
+            0% MARKUP ON META &amp; AI
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          {/* Pillar 1: Platform Subscription */}
+          <div className="p-4 rounded-2xl bg-[#FAF8FF] border border-[#E9D8FD] space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-[#7C3AED] text-white flex items-center justify-center font-bold text-xs">
+                1
+              </div>
+              <div className="font-bold text-[#101828]">What You Pay Us</div>
+            </div>
+            <div className="text-[11px] font-bold text-[#7C3AED] uppercase font-mono">
+              Monthly Platform Fee
+            </div>
+            <p className="text-[11px] text-[#475467] leading-relaxed">
+              Paid monthly to Dhigrowth CRM. Unlocks our multi-agent Team Inbox, mass broadcast campaign scheduler, flow automations, analytics, CRM contacts, and team seats.
+            </p>
+          </div>
+
+          {/* Pillar 2: Meta WhatsApp Cloud API */}
+          <div className="p-4 rounded-2xl bg-[#F0FDF4] border border-[#DCFCE7] space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-[#16A34A] text-white flex items-center justify-center font-bold text-xs">
+                2
+              </div>
+              <div className="font-bold text-[#101828]">What You Pay Meta</div>
+            </div>
+            <div className="text-[11px] font-bold text-[#16A34A] uppercase font-mono">
+              Official WhatsApp Fees
+            </div>
+            <p className="text-[11px] text-[#475467] leading-relaxed">
+              Paid directly to Meta via your Meta Business Manager card. You get 1,000 free service chats/mo, and only pay wholesale Meta rates (approx ₹0.75 - ₹0.85 per marketing template). Zero markup from us.
+            </p>
+          </div>
+
+          {/* Pillar 3: AI Assistant (BYOK) */}
+          <div className="p-4 rounded-2xl bg-[#FFFDF5] border border-[#FEF0C7] space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-[#D97706] text-white flex items-center justify-center font-bold text-xs">
+                3
+              </div>
+              <div className="font-bold text-[#101828]">What You Pay AI Provider</div>
+            </div>
+            <div className="text-[11px] font-bold text-[#D97706] uppercase font-mono">
+              Direct AI Token Usage
+            </div>
+            <p className="text-[11px] text-[#475467] leading-relaxed">
+              Paid directly to OpenAI, Gemini, or Groq using your own API Key (BYOK). Generous free tiers available, with wholesale developer rates. Dhigrowth charges $0 markup on AI tokens.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* 5. Sub-Tabs Bar: Payment History | Subscription History */}
       <div className="flex items-center gap-2">
         <button

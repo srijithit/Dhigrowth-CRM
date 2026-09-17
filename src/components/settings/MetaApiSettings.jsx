@@ -184,6 +184,26 @@ export const MetaApiSettings = () => {
         </div>
       </div>
 
+      {/* Zero-Markup Meta Direct Billing Banner */}
+      <div className="p-4 rounded-2xl bg-[#F0FDF4] border border-[#DCFCE7] flex items-start justify-between gap-3 text-xs">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-xl bg-[#DCFCE7] text-[#16A34A] flex items-center justify-center shrink-0 mt-0.5">
+            <ShieldCheck className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="font-bold text-[#166534] flex items-center gap-2">
+              <span>Direct Meta Billing · 0% Markup Guarantee</span>
+              <span className="text-[10px] font-mono px-2 py-0.5 bg-[#DCFCE7] text-[#15803D] rounded-full border border-[#BBF7D0]">
+                WHOLESALE RATES
+              </span>
+            </div>
+            <p className="text-[11px] text-[#166534]/90 mt-0.5 leading-relaxed">
+              You pay Meta directly via your Meta Business Manager payment card for WhatsApp conversation fees (marketing, utility, service). Dhigrowth CRM adds <strong>$0 markup</strong> on all messages. You only pay Dhigrowth CRM a flat monthly platform subscription.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Test Result Live Banner (if tested) */}
       {testResult && (
         <div

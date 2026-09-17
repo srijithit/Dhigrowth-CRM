@@ -92,6 +92,11 @@ export const FeaturePaywall = ({
           </button>
         </div>
 
+        {/* Transparent billing notice */}
+        <div className="relative z-10 text-[11px] text-[#475467] bg-[#F9FAFB] rounded-xl py-2 px-3 border border-[#EAECF0] max-w-md mx-auto">
+          💡 <strong>0% Markup Guarantee:</strong> Your subscription covers Dhigrowth platform software. WhatsApp fees and AI tokens are paid directly to Meta and your AI provider at raw cost.
+        </div>
+
         <div className="relative z-10 flex items-center justify-center gap-4 text-[11px] text-[#667085] pt-1">
           <div className="flex items-center gap-1">
             <ShieldCheck className="w-3.5 h-3.5 text-[#16A34A]" />

@@ -457,6 +457,17 @@ export const CheckoutModal = () => {
               </div>
             </div>
 
+            {/* Platform Subscription vs Direct Meta/AI Note */}
+            <div className="p-3 bg-[#FAF8FF] border border-[#E9D8FD] rounded-2xl text-[11px] text-[#5B21B6] space-y-1">
+              <div className="font-bold flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#7C3AED] shrink-0" />
+                <span>Monthly Platform Subscription (Zero Markup Guarantee)</span>
+              </div>
+              <p className="text-[10px] text-[#6B7280] leading-relaxed">
+                This charge covers your <strong>Dhigrowth CRM Platform Software</strong> (Team Inbox, mass broadcasts, automations, CRM). Meta WhatsApp conversation charges and AI model tokens (OpenAI/Gemini) are paid directly to their respective providers at 0% markup.
+              </p>
+            </div>
+
             {/* Action Buttons */}
             <div className="flex items-center gap-3 pt-1">
               <button
