@@ -100,7 +100,33 @@ export const AppProvider = ({ children }) => {
   });
 
   // User & Wallet State
-  const [credits, setCredits] = useState(0.00);
+  const [credits, setCreditsState] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dhigrowth_wallet_credits');
+      if (saved !== null) {
+        const num = parseFloat(saved);
+        if (!isNaN(num)) return num;
+      }
+    } catch {}
+    return 5.00; // Seed with promotional $5 launch credits
+  });
+
+  const setCredits = (valOrFn) => {
+    setCreditsState((prev) => {
+      const next = typeof valOrFn === 'function' ? valOrFn(prev) : valOrFn;
+      try {
+        localStorage.setItem('dhigrowth_wallet_credits', String(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const rechargeAiCredits = (amountUsd, description = 'AI Assistant Credits Recharge') => {
+    const amt = parseFloat(amountUsd) || 0;
+    if (amt <= 0) return;
+    setCredits((prev) => +(prev + amt).toFixed(2));
+    showToast(`⚡ Successfully recharged $${amt.toFixed(2)} AI Credits! AI Assistants ready.`, 'success');
+  };
   const [phoneNumber, setPhoneNumber] = useState('9791471277');
   const [countryCode, setCountryCode] = useState('IN +91');
   const [hasClaimedBonus, setHasClaimedBonus] = useState(false);
@@ -2109,6 +2135,7 @@ export const AppProvider = ({ children }) => {
         setTheme,
         credits,
         setCredits,
+        rechargeAiCredits,
         phoneNumber,
         setPhoneNumber,
         countryCode,

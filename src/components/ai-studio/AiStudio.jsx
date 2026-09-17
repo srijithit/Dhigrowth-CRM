@@ -23,6 +23,7 @@ import {
   Database,
   Layers,
   Save,
+  X,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -93,6 +94,10 @@ export const AiStudio = () => {
     knowledgeBase,
     setKnowledgeBase,
     showToast,
+    credits,
+    setCredits,
+    rechargeAiCredits,
+    setActiveTab,
   } = useApp();
 
   // Local form state for AI API Key & Provider
@@ -103,6 +108,8 @@ export const AiStudio = () => {
   const [showApiKey, setShowApiKey] = useState(false);
   const [isTestingKey, setIsTestingKey] = useState(false);
   const [testResult, setTestResult] = useState(null);
+  const [isRechargeModalOpen, setIsRechargeModalOpen] = useState(false);
+  const [rechargeAmt, setRechargeAmt] = useState('25');
 
   // Sync state if aiConfig updates from server
   useEffect(() => {
@@ -326,6 +333,50 @@ export const AiStudio = () => {
           )}
           <span>Save & Activate on WhatsApp</span>
         </button>
+      </div>
+
+      {/* AI Assistant Credits & Power Status Banner */}
+      <div className="rounded-3xl bg-gradient-to-r from-[#8B5CF6] via-[#7C3AED] to-[#6D28D9] p-6 text-white shadow-md shadow-purple-600/15 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shrink-0 border border-white/20 shadow-xs">
+            <Zap className="w-6 h-6 text-yellow-300" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono font-bold uppercase tracking-wider text-white/80">
+                AI Assistants Wallet Credits
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 font-mono flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Ready &amp; Funded</span>
+              </span>
+            </div>
+            <div className="text-3xl font-black tracking-tight mt-0.5">
+              ${credits.toFixed(2)}
+              <span className="text-xs font-medium text-white/80 ml-2">
+                (~{Math.floor(credits / 0.002).toLocaleString()} AI replies remaining at ~$0.002/reply)
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsRechargeModalOpen(true)}
+            className="px-5 py-2.5 bg-white text-[#7C3AED] hover:bg-[#F4F0FD] rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer flex items-center gap-1.5 hover:scale-105 active:scale-95"
+          >
+            <Zap className="w-4 h-4 text-[#7C3AED]" />
+            <span>Recharge AI Credits</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('wallet')}
+            className="px-4 py-2.5 bg-white/15 hover:bg-white/25 text-white rounded-xl text-xs font-semibold transition-all cursor-pointer border border-white/20 backdrop-blur-md"
+          >
+            Manage in Wallet
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -675,6 +726,84 @@ export const AiStudio = () => {
           </form>
         </div>
       </div>
+
+      {/* AI Assistant Quick Recharge Modal */}
+      {isRechargeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in font-sans">
+          <div className="bg-white border border-[#EAECF0] rounded-3xl max-w-md w-full p-6 shadow-2xl relative space-y-4">
+            <button
+              onClick={() => setIsRechargeModalOpen(false)}
+              className="absolute top-5 right-5 text-[#98A2B3] hover:text-[#101828]"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-[#F4F0FD] border border-[#E9D8FD] flex items-center justify-center text-[#7C3AED]">
+                <Zap className="w-5 h-5 text-[#7C3AED]" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-[#101828]">Recharge AI Assistants</h3>
+                <p className="text-xs text-[#667085]">Instant credits to power 24/7 autonomous replies on WhatsApp</p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-[#FAF8FF] border border-[#E9D8FD] rounded-2xl flex items-center justify-between text-xs">
+              <span className="text-[#475467]">Current Balance</span>
+              <span className="font-mono font-bold text-[#7C3AED] text-sm">${credits.toFixed(2)}</span>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="font-semibold text-[#344054]">Select Recharge Package</label>
+                <div className="grid grid-cols-2 gap-2.5 mt-1.5">
+                  {[
+                    { amt: '10', replies: '5,000 replies', popular: false },
+                    { amt: '25', replies: '12,500 replies', popular: true },
+                    { amt: '50', replies: '25,000 replies', popular: false },
+                    { amt: '100', replies: '50,000 replies', popular: false },
+                  ].map((pkg) => (
+                    <button
+                      key={pkg.amt}
+                      type="button"
+                      onClick={() => setRechargeAmt(pkg.amt)}
+                      className={`p-3 rounded-2xl text-left border transition-all cursor-pointer relative flex flex-col justify-between ${
+                        rechargeAmt === pkg.amt
+                          ? 'border-[#7C3AED] bg-[#F4F0FD] text-[#101828] ring-2 ring-[#7C3AED]/20 shadow-2xs'
+                          : 'bg-[#F9FAFB] border-[#EAECF0] text-[#344054] hover:bg-white hover:border-[#D0D5DD]'
+                      }`}
+                    >
+                      {pkg.popular && (
+                        <span className="absolute -top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#7C3AED] text-white uppercase font-mono shadow-2xs">
+                          Popular
+                        </span>
+                      )}
+                      <div className="font-extrabold text-sm font-mono text-[#101828]">${pkg.amt} USD</div>
+                      <div className="text-[11px] text-[#667085] mt-1 font-medium">{pkg.replies}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="text-[11px] text-[#475467] bg-[#F9FAFB] p-2.5 rounded-xl border border-[#EAECF0]">
+                💡 <strong>Zero Markup:</strong> ~$0.002 per message. Direct credit usage with zero recurring commitments.
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  rechargeAiCredits(rechargeAmt);
+                  setIsRechargeModalOpen(false);
+                }}
+                className="w-full py-3 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-2xl text-xs font-bold transition-all shadow-md shadow-purple-600/20 mt-3 cursor-pointer flex items-center justify-center gap-2"
+              >
+                <Zap className="w-4 h-4" />
+                <span>Recharge ${rechargeAmt} AI Credits Now</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

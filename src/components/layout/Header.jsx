@@ -110,7 +110,7 @@ export const Header = () => {
 
         {/* Credits Badge */}
         <button
-          onClick={() => setIsUpgradeModalOpen(true)}
+          onClick={() => setActiveTab('wallet')}
           className="flex items-center gap-1.5 bg-[#F9F5FF] hover:bg-[#F4F0FD] border border-[#E9D8FD] px-3 py-1.5 rounded-xl text-xs font-bold text-[#6941C6] cursor-pointer transition-colors"
           title="Click to manage credits and wallet"
         >

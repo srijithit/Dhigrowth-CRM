@@ -116,23 +116,26 @@ export const WalletPage = () => {
       </div>
 
       {/* 2. Purple Top AI Credits Banner */}
-      <div className="rounded-3xl bg-gradient-to-r from-[#8B5CF6] via-[#7C3AED] to-[#6D28D9] p-8 text-white flex items-center justify-between shadow-md shadow-purple-600/15">
+      <div className="rounded-3xl bg-gradient-to-r from-[#8B5CF6] via-[#7C3AED] to-[#6D28D9] p-8 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md shadow-purple-600/15">
         <div className="space-y-1">
           <div className="flex items-center gap-1.5 text-xs font-bold text-white/80 uppercase tracking-wider font-mono">
             <DollarSign className="w-3.5 h-3.5" />
-            <span>AI CREDITS</span>
+            <span>AI CREDITS FOR ASSISTANTS</span>
           </div>
           <div className="text-4xl lg:text-5xl font-extrabold tracking-tight">
-            ${credits.toFixed(0)}
+            ${credits.toFixed(2)}
           </div>
+          <p className="text-xs text-white/80 font-medium">
+            Powers ~{Math.floor(credits / 0.002).toLocaleString()} AI Assistant replies on WhatsApp, Instagram &amp; Messenger (~$0.002 / reply)
+          </p>
         </div>
 
         <button
           onClick={() => setIsAddFundsModalOpen(true)}
-          className="px-5 py-2.5 bg-white/20 hover:bg-white/30 text-white backdrop-blur-md rounded-2xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border border-white/20 shadow-sm"
+          className="px-5 py-2.5 bg-white/20 hover:bg-white/30 text-white backdrop-blur-md rounded-2xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border border-white/20 shadow-sm shrink-0 w-fit hover:scale-105 active:scale-95"
         >
           <Plus className="w-4 h-4" />
-          <span>Add Funds</span>
+          <span>Recharge AI Credits</span>
         </button>
       </div>
 
@@ -518,40 +521,61 @@ export const WalletPage = () => {
 
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-[#F4F0FD] border border-[#E9D8FD] flex items-center justify-center text-[#7C3AED]">
-                <Plus className="w-5 h-5 text-[#7C3AED]" />
+                <Zap className="w-5 h-5 text-[#7C3AED]" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-[#101828]">Top Up AI Credits</h3>
-                <p className="text-xs text-[#667085]">Instant credit balance for bot executions & templates</p>
+                <h3 className="text-base font-bold text-[#101828]">Recharge AI Assistants</h3>
+                <p className="text-xs text-[#667085]">Powers 24/7 AI concierge replies on WhatsApp &amp; Instagram</p>
               </div>
+            </div>
+
+            <div className="p-3 bg-[#FAF8FF] border border-[#E9D8FD] rounded-2xl flex items-center justify-between text-xs">
+              <span className="text-[#475467]">Current Available Balance</span>
+              <span className="font-mono font-bold text-[#7C3AED] text-sm">${credits.toFixed(2)}</span>
             </div>
 
             <form onSubmit={handleAddFundsSubmit} className="space-y-3 text-xs">
               <div>
-                <label className="font-semibold text-[#344054]">Select Credit Amount ($ USD)</label>
-                <div className="grid grid-cols-3 gap-2 mt-1">
-                  {['10', '25', '50', '100', '250', '500'].map((amt) => (
+                <label className="font-semibold text-[#344054]">Select AI Credit Package</label>
+                <div className="grid grid-cols-2 gap-2.5 mt-1.5">
+                  {[
+                    { amt: '10', replies: '5,000 replies', popular: false },
+                    { amt: '25', replies: '12,500 replies', popular: true },
+                    { amt: '50', replies: '25,000 replies', popular: false },
+                    { amt: '100', replies: '50,000 replies', popular: false },
+                  ].map((pkg) => (
                     <button
-                      key={amt}
+                      key={pkg.amt}
                       type="button"
-                      onClick={() => setFundsAmount(amt)}
-                      className={`p-2.5 rounded-xl font-bold font-mono text-xs border transition-all cursor-pointer ${
-                        fundsAmount === amt
-                          ? 'bg-[#7C3AED] text-white border-[#7C3AED]'
-                          : 'bg-[#F9FAFB] border-[#EAECF0] text-[#344054] hover:bg-[#F2F4F7]'
+                      onClick={() => setFundsAmount(pkg.amt)}
+                      className={`p-3 rounded-2xl text-left border transition-all cursor-pointer relative flex flex-col justify-between ${
+                        fundsAmount === pkg.amt
+                          ? 'border-[#7C3AED] bg-[#F4F0FD] text-[#101828] ring-2 ring-[#7C3AED]/20 shadow-2xs'
+                          : 'bg-[#F9FAFB] border-[#EAECF0] text-[#344054] hover:bg-white hover:border-[#D0D5DD]'
                       }`}
                     >
-                      ${amt}
+                      {pkg.popular && (
+                        <span className="absolute -top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-[#7C3AED] text-white uppercase font-mono shadow-2xs">
+                          Popular
+                        </span>
+                      )}
+                      <div className="font-extrabold text-sm font-mono text-[#101828]">${pkg.amt} USD</div>
+                      <div className="text-[11px] text-[#667085] mt-1 font-medium">{pkg.replies}</div>
                     </button>
                   ))}
                 </div>
               </div>
 
+              <div className="text-[11px] text-[#475467] bg-[#F9FAFB] p-2.5 rounded-xl border border-[#EAECF0]">
+                💡 <strong>Zero-Markup AI Usage:</strong> AI responses cost ~$0.002 per message. Credits do not expire as long as your workspace account is active.
+              </div>
+
               <button
                 type="submit"
-                className="w-full py-2.5 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-xl text-xs font-bold transition-all shadow-xs mt-3 cursor-pointer"
+                className="w-full py-3 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-2xl text-xs font-bold transition-all shadow-md shadow-purple-600/20 mt-3 cursor-pointer flex items-center justify-center gap-2"
               >
-                Proceed to Checkout (${fundsAmount})
+                <Zap className="w-4 h-4" />
+                <span>Recharge ${fundsAmount} AI Credits Now</span>
               </button>
             </form>
           </div>
