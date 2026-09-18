@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Percent, ChevronDown, LogOut, User } from 'lucide-react';
+import { Search, Percent, ChevronDown, LogOut, User, Menu } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const Header = () => {
@@ -19,6 +19,8 @@ export const Header = () => {
     switchAdminProfile,
     clientViewMode,
     toggleClientViewMode,
+    isMobileMenuOpen,
+    setIsMobileMenuOpen,
   } = useApp();
 
   const getTitle = () => {
@@ -75,21 +77,31 @@ export const Header = () => {
   const isAdmin = currentUser?.isAdmin || currentUser?.username?.toLowerCase() === 'admin';
 
   return (
-    <header className="h-16 bg-white border-b border-[#EAECF0] px-6 lg:px-8 flex items-center justify-between sticky top-0 z-30 font-sans">
-      {/* Left: Page Title */}
-      <h1 className="text-xl font-bold text-[#101828] font-sans">
-        {getTitle()}
-      </h1>
+    <header className="h-14 md:h-16 bg-white border-b border-[#EAECF0] px-3 md:px-8 flex items-center justify-between sticky top-0 z-30 font-sans">
+      {/* Left: Mobile Hamburger & Page Title */}
+      <div className="flex items-center gap-2.5 min-w-0">
+        <button
+          type="button"
+          onClick={() => setIsMobileMenuOpen(true)}
+          className="md:hidden w-9 h-9 rounded-xl flex items-center justify-center text-[#475467] hover:bg-[#F2F4F7] active:scale-95 transition-all cursor-pointer shrink-0"
+          aria-label="Open Mobile Menu"
+        >
+          <Menu className="w-5 h-5 text-[#101828]" />
+        </button>
+
+        <h1 className="text-base sm:text-lg md:text-xl font-bold text-[#101828] font-sans truncate">
+          {getTitle()}
+        </h1>
+      </div>
 
       {/* Right Controls */}
-      <div className="flex items-center gap-3">
-
+      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
         {/* BYOK Client Suite Switcher Pill (For Kiki or Admin viewing Kiki) */}
         {(isKiki || (isAdmin && adminViewProfile === 'kiki')) && (
           <button
             type="button"
             onClick={() => toggleClientViewMode('portal')}
-            className="px-2.5 py-1 rounded-xl bg-[#F4F0FD] hover:bg-[#EDE5FA] border border-[#E9D8FD] text-[#7C3AED] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+            className="hidden sm:flex px-2.5 py-1 rounded-xl bg-[#F4F0FD] hover:bg-[#EDE5FA] border border-[#E9D8FD] text-[#7C3AED] text-xs font-bold items-center gap-1.5 transition-colors cursor-pointer"
             title="Switch to BYOK Client Suite (Own Meta API Keys & Rules)"
           >
             <span>⚡ BYOK Suite</span>
@@ -99,11 +111,12 @@ export const Header = () => {
         {/* Search Bar with Ctrl+K trigger */}
         <button
           onClick={() => setIsSearchOpen(true)}
-          className="flex items-center bg-[#F9FAFB] hover:bg-[#F2F4F7] border border-[#EAECF0] rounded-xl px-3.5 py-1.5 w-48 sm:w-60 lg:w-72 text-left cursor-pointer transition-colors"
+          className="flex items-center justify-center sm:justify-start bg-[#F9FAFB] hover:bg-[#F2F4F7] border border-[#EAECF0] rounded-xl px-2 sm:px-3.5 py-1.5 w-9 sm:w-48 md:w-60 text-left cursor-pointer transition-colors"
+          title="Search dashboard"
         >
-          <Search className="w-4 h-4 text-[#98A2B3] mr-2 shrink-0" />
-          <span className="w-full text-xs text-[#98A2B3] truncate">Search...</span>
-          <span className="text-[11px] font-mono text-[#98A2B3] bg-white border border-[#EAECF0] px-1.5 py-0.5 rounded shadow-2xs shrink-0 hidden sm:inline">
+          <Search className="w-4 h-4 text-[#98A2B3] sm:mr-2 shrink-0" />
+          <span className="hidden sm:inline w-full text-xs text-[#98A2B3] truncate">Search...</span>
+          <span className="text-[11px] font-mono text-[#98A2B3] bg-white border border-[#EAECF0] px-1.5 py-0.5 rounded shadow-2xs shrink-0 hidden md:inline">
             ctrl K
           </span>
         </button>
@@ -111,14 +124,14 @@ export const Header = () => {
         {/* Credits Badge */}
         <button
           onClick={() => setActiveTab('wallet')}
-          className="flex items-center gap-1.5 bg-[#F9F5FF] hover:bg-[#F4F0FD] border border-[#E9D8FD] px-3 py-1.5 rounded-xl text-xs font-bold text-[#6941C6] cursor-pointer transition-colors"
+          className="flex items-center gap-1 sm:gap-1.5 bg-[#F9F5FF] hover:bg-[#F4F0FD] border border-[#E9D8FD] px-2 sm:px-3 py-1.5 rounded-xl text-xs font-bold text-[#6941C6] cursor-pointer transition-colors shrink-0"
           title="Click to manage credits and wallet"
         >
-          <div className="w-4 h-4 rounded-full bg-[#7C3AED] text-white flex items-center justify-center text-[10px]">
-            %
+          <div className="w-4 h-4 rounded-full bg-[#7C3AED] text-white flex items-center justify-center text-[10px] shrink-0 font-bold">
+            $
           </div>
-          <span className="font-mono tracking-tight font-bold">
-            ${credits.toFixed(2)} CREDITS
+          <span className="font-mono tracking-tight font-bold text-[11px] sm:text-xs">
+            ${credits.toFixed(2)}<span className="hidden sm:inline"> CREDITS</span>
           </span>
         </button>
 

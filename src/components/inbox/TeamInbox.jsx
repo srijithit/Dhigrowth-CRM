@@ -16,6 +16,7 @@ import {
   Calendar,
   Layers,
   ArrowRight,
+  ArrowLeft,
   Globe,
   ChevronDown,
   Wand2,
@@ -1045,8 +1046,10 @@ export const TeamInbox = () => {
     <div className="h-full flex-1 flex overflow-hidden bg-[#F8F9FC] font-sans">
       {/* 1. Left: Conversation List */}
       <div
-        style={{ width: `${leftWidth}px` }}
-        className="border-r border-[#EAECF0] bg-white flex flex-col shrink-0 min-h-0 relative select-text"
+        style={{ width: typeof window !== 'undefined' && window.innerWidth < 768 ? '100%' : `${leftWidth}px` }}
+        className={`border-r border-[#EAECF0] bg-white flex flex-col shrink-0 min-h-0 relative select-text w-full md:w-auto ${
+          activeChat ? 'hidden md:flex' : 'flex'
+        }`}
       >
         {/* Header & New Contact & Search */}
         <div className="p-3.5 border-b border-[#EAECF0] space-y-2.5 shrink-0">
@@ -1223,7 +1226,7 @@ export const TeamInbox = () => {
         onMouseDown={handleStartResizeLeft}
         onDoubleClick={() => setLeftWidth(320)}
         title="Drag horizontally to resize Messages sidebar (Double-click to reset to 320px)"
-        className={`w-1.5 hover:w-2 transition-all cursor-col-resize select-none shrink-0 z-10 flex items-center justify-center group relative ${
+        className={`hidden md:flex w-1.5 hover:w-2 transition-all cursor-col-resize select-none shrink-0 z-10 items-center justify-center group relative ${
           isDragging === 'left' ? 'bg-[#7C3AED] w-2' : 'bg-[#EAECF0] hover:bg-[#7C3AED]/70'
         }`}
       >
@@ -1231,7 +1234,7 @@ export const TeamInbox = () => {
       </div>
 
       {/* 2. Center: Chat Conversation Window */}
-      <div className="flex-1 flex flex-col bg-[#F8F9FC] min-w-[320px] h-full min-h-0">
+      <div className={`flex-1 flex flex-col bg-[#F8F9FC] min-w-0 md:min-w-[320px] h-full min-h-0 ${!activeChat ? 'hidden md:flex' : 'flex w-full'}`}>
         {!activeChat ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#F8F9FC] space-y-3 min-h-0">
             <div className="w-16 h-16 rounded-full bg-[#F2F4F7] flex items-center justify-center text-[#98A2B3]">
@@ -1254,8 +1257,18 @@ export const TeamInbox = () => {
         ) : (
           <>
             {/* Chat Top Header */}
-            <div className="h-16 border-b border-[#EAECF0] bg-white px-5 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3 min-w-0">
+            <div className="h-16 border-b border-[#EAECF0] bg-white px-3 sm:px-5 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                {/* Mobile Back to Contacts Button */}
+                <button
+                  type="button"
+                  onClick={() => setActiveChatId(null)}
+                  className="md:hidden p-2 -ml-1 text-[#475467] hover:text-[#101828] hover:bg-[#F2F4F7] rounded-xl transition-colors cursor-pointer shrink-0"
+                  title="Back to conversations"
+                  aria-label="Back to conversations"
+                >
+                  <ArrowLeft className="w-5 h-5 text-[#344054]" />
+                </button>
                 <ContactAvatar name={activeChat.contactName} size="lg" />
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
@@ -1286,18 +1299,19 @@ export const TeamInbox = () => {
                   <button
                     type="button"
                     onClick={() => setIsTemplateSendModalOpen(true)}
-                    className="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer bg-[#7C3AED] hover:bg-[#6D28D9] text-white animate-pulse"
+                    className="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer bg-[#7C3AED] hover:bg-[#6D28D9] text-white animate-pulse shrink-0"
                     title="Sri Exclusive: Send approved Meta template to new contact to get their first reply and open 24h window"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span>Send First Template</span>
+                    <span className="hidden sm:inline">Send First Template</span>
+                    <span className="sm:hidden">Template</span>
                   </button>
                 )}
 
                 {/* AI Auto-Pilot Switch */}
                 <button
                   onClick={() => toggleAiForChat(activeChat.id)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer ${
+                  className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer shrink-0 ${
                     isAiAutoPilot
                       ? 'bg-[#F4F0FD] text-[#7C3AED] border border-[#E9D8FD] hover:bg-[#EDE5FA]'
                       : 'bg-[#DCFCE7] text-[#16A34A] border border-[#BBF7D0] hover:bg-[#D1FAE5]'
@@ -1305,13 +1319,13 @@ export const TeamInbox = () => {
                   title={isAiAutoPilot ? "Click to switch to Manual Agent (Turn off AI auto-reply)" : "Click to switch to AI Auto-Pilot (Turn on AI auto-reply)"}
                 >
                   {isAiAutoPilot ? <Bot className="w-3.5 h-3.5 text-[#7C3AED]" /> : <User className="w-3.5 h-3.5 text-[#16A34A]" />}
-                  <span>{isAiAutoPilot ? 'AI Auto-Pilot ON' : 'Manual Agent Active'}</span>
+                  <span className="hidden sm:inline">{isAiAutoPilot ? 'AI Auto-Pilot ON' : 'Manual Agent Active'}</span>
                 </button>
 
                 {/* Toggle Lead Intelligence Panel */}
                 <button
                   onClick={() => setIsRightCollapsed(!isRightCollapsed)}
-                  className="p-2 rounded-xl border border-[#EAECF0] bg-white text-[#667085] hover:text-[#7C3AED] hover:border-[#7C3AED] hover:bg-[#F4F0FD] transition-all cursor-pointer shadow-2xs"
+                  className="hidden xl:flex p-2 rounded-xl border border-[#EAECF0] bg-white text-[#667085] hover:text-[#7C3AED] hover:border-[#7C3AED] hover:bg-[#F4F0FD] transition-all cursor-pointer shadow-2xs items-center justify-center shrink-0"
                   title={isRightCollapsed ? 'Expand Lead Intelligence Panel' : 'Collapse Lead Intelligence Panel'}
                 >
                   {isRightCollapsed ? <PanelRightOpen className="w-4 h-4" /> : <PanelRightClose className="w-4 h-4" />}
@@ -1814,7 +1828,7 @@ export const TeamInbox = () => {
           onMouseDown={handleStartResizeRight}
           onDoubleClick={() => setRightWidth(340)}
           title="Drag horizontally to resize Lead Intelligence panel (Double-click to reset to 340px)"
-          className={`w-1.5 hover:w-2 transition-all cursor-col-resize select-none shrink-0 z-10 flex items-center justify-center group relative ${
+          className={`hidden xl:flex w-1.5 hover:w-2 transition-all cursor-col-resize select-none shrink-0 z-10 items-center justify-center group relative ${
             isDragging === 'right' ? 'bg-[#7C3AED] w-2' : 'bg-[#EAECF0] hover:bg-[#7C3AED]/70'
           }`}
         >
@@ -1826,7 +1840,7 @@ export const TeamInbox = () => {
       {!isRightCollapsed && (
         <div
           style={{ width: `${rightWidth}px` }}
-          className="border-l border-[#EAECF0] bg-white flex flex-col shrink-0 min-h-0 select-text"
+          className="hidden xl:flex border-l border-[#EAECF0] bg-white flex-col shrink-0 min-h-0 select-text"
         >
         <div className="flex border-b border-[#EAECF0] shrink-0 bg-white">
           <button

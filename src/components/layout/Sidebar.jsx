@@ -175,7 +175,7 @@ export const Sidebar = () => {
 
   return (
     <aside
-      className={`bg-white border-r border-[#EAECF0] flex flex-col justify-between h-screen shrink-0 sticky top-0 font-sans transition-all duration-300 ease-in-out z-20 ${
+      className={`bg-white border-r border-[#EAECF0] hidden md:flex flex-col justify-between h-screen shrink-0 sticky top-0 font-sans transition-all duration-300 ease-in-out z-20 ${
         isSidebarCollapsed ? 'w-[76px]' : 'w-60'
       }`}
     >

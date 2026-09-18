@@ -260,6 +260,7 @@ export const AppProvider = ({ children }) => {
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
   const [checkoutData, setCheckoutData] = useState({ planId: 'Growth', billingCycle: 'monthly', provider: 'razorpay' });
   const [subscription, setSubscription] = useState(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const openCheckout = (planId = 'Growth', billingCycle = 'monthly', provider = 'razorpay') => {
     setCheckoutData({ planId, billingCycle, provider });
@@ -2317,6 +2318,8 @@ export const AppProvider = ({ children }) => {
         setIsBroadcastDueModalOpen,
         isBroadcastTemplateModalOpen,
         setIsBroadcastTemplateModalOpen,
+        isMobileMenuOpen,
+        setIsMobileMenuOpen,
         toastMessage,
         showToast,
         currentUser,

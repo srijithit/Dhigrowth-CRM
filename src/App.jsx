@@ -43,6 +43,8 @@ import { CheckoutModal } from './components/billing/CheckoutModal';
 import { FeaturePaywall } from './components/common/FeaturePaywall';
 import { BroadcastDueModal } from './components/inbox/BroadcastDueModal';
 import { BroadcastTemplateModal } from './components/inbox/BroadcastTemplateModal';
+import { MobileBottomNav } from './components/layout/MobileBottomNav';
+import { MobileDrawer } from './components/layout/MobileDrawer';
 
 const AppContent = () => {
   const {
@@ -332,13 +334,18 @@ const AppContent = () => {
         <Sidebar />
 
         {/* Main App Container */}
-        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
           <Header />
-          <main className={`flex-1 min-w-0 ${activeTab === 'inbox' ? 'overflow-hidden flex flex-col' : 'overflow-y-auto'}`}>
+          <main className={`flex-1 min-w-0 pb-16 md:pb-0 ${activeTab === 'inbox' ? 'overflow-hidden flex flex-col' : 'overflow-y-auto'}`}>
             {renderActiveView()}
           </main>
+          {/* Mobile Bottom Thumb Navigation */}
+          <MobileBottomNav />
         </div>
       </div>
+
+      {/* Mobile Navigation Drawer Sheet */}
+      <MobileDrawer />
 
       {/* Interactive Global Modals */}
       <CheckoutModal />
