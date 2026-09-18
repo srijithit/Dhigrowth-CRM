@@ -291,17 +291,25 @@ app.post('/api/send-manual-message', async (req, res) => {
         .eq('id', conversationId);
     }
 
+    if (metaResult?.error) {
+      console.warn('⚠️ [Manual Send] Meta API rejected dispatch:', metaResult.error.message);
+      return res.status(400).json({
+        success: false,
+        deliveredToWhatsApp: false,
+        error: metaResult.error.message,
+        errorDetails: {
+          message: metaResult.error.message,
+          code: metaResult.error.code,
+          details: metaResult.error.error_data?.details || metaResult.error.message,
+        },
+      });
+    }
+
     res.json({
       success: true,
       metaResult,
       deliveredToWhatsApp: Boolean(metaResult?.messages?.[0]?.id),
-      errorDetails: metaResult?.error
-        ? {
-            message: metaResult.error.message,
-            code: metaResult.error.code,
-            details: metaResult.error.error_data?.details || metaResult.error.message,
-          }
-        : null,
+      errorDetails: null,
     });
   } catch (err) {
     console.error('Error dispatching manual message:', err);
@@ -477,6 +485,16 @@ app.post('/api/send-template-message', async (req, res) => {
       } catch (dbErr) {
         console.warn('[Send Template] Supabase log note:', dbErr.message);
       }
+    }
+
+    if (metaResult?.error) {
+      console.warn('⚠️ [Send Template] Meta rejected template dispatch:', metaResult.error.message);
+      return res.status(400).json({
+        success: false,
+        deliveredToWhatsApp: false,
+        error: metaResult.error.message,
+        errorDetails: metaResult.error,
+      });
     }
 
     res.json({

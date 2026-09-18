@@ -783,10 +783,14 @@ export const TeamInbox = () => {
       if (data.deliveredToWhatsApp) {
         showToast(`🚀 Delivered to ${recipient} on WhatsApp!`, 'success');
       } else if (data.errorDetails) {
-        if (data.errorDetails.code === 131030) {
-          showToast(`⚠️ Meta Error: ${recipient} is not in your Meta Allowed Recipients list. Add it in Meta Developers -> WhatsApp -> API Setup.`, 'error');
+        if (data.errorDetails.code === 190) {
+          showToast(`⚠️ Meta Token Expired: Your 24-hour temporary access token has expired on Meta. Please generate a renewed or Permanent System User Token in Profile Settings.`, 'error');
+        } else if (data.errorDetails.code === 131047) {
+          showToast(`⚠️ 24-Hour Window Closed: Customer hasn't replied in 24 hours. Please send an Approved Template (e.g. hello_world) to re-engage.`, 'error');
+        } else if (data.errorDetails.code === 131030) {
+          showToast(`⚠️ Meta Sandbox Recipient: ${recipient} is not in your Meta Allowed Recipients list. Add it in Meta Developers -> WhatsApp -> API Setup.`, 'error');
         } else {
-          showToast(`⚠️ Meta API: ${data.errorDetails.details || data.errorDetails.message}`, 'error');
+          showToast(`⚠️ Meta API (${data.errorDetails.code || 'Error'}): ${data.errorDetails.details || data.errorDetails.message}`, 'error');
         }
       } else {
         showToast(`Sent manually as Support Agent`, 'success');
