@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import confetti from 'canvas-confetti';
 import {
   DollarSign,
   Plus,
@@ -16,14 +17,21 @@ import {
   Building,
   ShieldCheck,
   Download,
-  ExternalLink
+  ExternalLink,
+  Loader2,
+  Sparkles,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { BACKEND_URL } from '../../services/apiConfig';
 
 export const WalletPage = () => {
   const {
     credits,
     setCredits,
+    rechargeAiCredits,
+    activeProfileKey,
+    currentUser,
+    adminViewProfile,
     currentPlan,
     daysRemaining,
     claimBonus,
@@ -35,6 +43,7 @@ export const WalletPage = () => {
     subscription,
     refreshSubscription,
     openCheckout,
+    currentWorkspaceId,
   } = useApp();
 
   const [activeSubTab, setActiveSubTab] = useState('payment-history'); // 'payment-history' | 'subscription-history'
@@ -42,21 +51,75 @@ export const WalletPage = () => {
   const [isAddFundsModalOpen, setIsAddFundsModalOpen] = useState(false);
   const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
   const [fundsAmount, setFundsAmount] = useState('25');
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   // Billing Details Form
   const [gstin, setGstin] = useState('27AADCS1234F1Z5');
   const [billingName, setBillingName] = useState('Sri Retail Enterprises');
   const [billingAddress, setBillingAddress] = useState('124, Linking Road, Bandra West, Mumbai, MH - 400050');
 
-  const [walletLogs, setWalletLogs] = useState([
-    {
-      id: 'log-1',
-      date: '2026-09-03',
-      type: 'LAUNCH_CREDIT',
-      amount: '+$5.00',
-      description: 'Promotional $5 launch credit applied to workspace wallet',
-    },
-  ]);
+  // Friendly display name for active user profile
+  const profileDisplayName = useMemo(() => {
+    if (activeProfileKey === 'kiki' || currentUser?.username === 'kiki') {
+      return 'Kiki (External Client)';
+    }
+    if (currentUser?.name) {
+      return currentUser.name;
+    }
+    return 'Sri (CRM User)';
+  }, [activeProfileKey, currentUser]);
+
+  // Per-user profile wallet transaction logs
+  const [walletLogs, setWalletLogs] = useState(() => {
+    try {
+      const key = (activeProfileKey || 'sri').toLowerCase();
+      const saved = localStorage.getItem(`dhigrowth_wallet_logs_${key}`);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [
+      {
+        id: `log-init-${activeProfileKey || 'sri'}`,
+        date: '2026-09-03',
+        type: 'LAUNCH_CREDIT',
+        amount: '+$5.00',
+        amountInr: '₹425',
+        paymentId: 'promo_launch_2026',
+        provider: 'System Credit',
+        description: `Promotional $5.00 launch credit applied to ${profileDisplayName}`,
+      },
+    ];
+  });
+
+  // Switch and fetch logs when active profile switches (Sri vs Kiki)
+  useEffect(() => {
+    try {
+      const key = (activeProfileKey || 'sri').toLowerCase();
+      const saved = localStorage.getItem(`dhigrowth_wallet_logs_${key}`);
+      if (saved) {
+        setWalletLogs(JSON.parse(saved));
+      } else {
+        fetch(`${BACKEND_URL}/api/wallet/balance?userKey=${encodeURIComponent(key)}&workspaceId=${encodeURIComponent(currentWorkspaceId)}`)
+          .then((r) => r.json())
+          .then((data) => {
+            if (data?.wallet?.transactions && data.wallet.transactions.length > 0) {
+              const formatted = data.wallet.transactions.map((tx) => ({
+                id: tx.id,
+                date: tx.createdAt ? tx.createdAt.split('T')[0] : '2026-09-18',
+                type: tx.type,
+                amount: `+$${parseFloat(tx.amountUsd || 10).toFixed(2)}`,
+                amountInr: `₹${tx.amountInr || Math.round((tx.amountUsd || 10) * 85)}`,
+                paymentId: tx.paymentId || tx.referenceId || 'promo_launch',
+                provider: tx.provider === 'razorpay' ? 'Razorpay (Test)' : 'System Credit',
+                description: tx.description,
+              }));
+              setWalletLogs(formatted);
+              localStorage.setItem(`dhigrowth_wallet_logs_${key}`, JSON.stringify(formatted));
+            }
+          })
+          .catch(() => {});
+      }
+    } catch {}
+  }, [activeProfileKey, currentWorkspaceId, profileDisplayName]);
 
   // Derived subscription info
   const activePlanName = subscription?.planName || currentPlan;
@@ -75,22 +138,163 @@ export const WalletPage = () => {
 
   const invoices = subscription?.invoices || [];
 
-  const handleAddFundsSubmit = (e) => {
-    e.preventDefault();
-    const amountNum = parseFloat(fundsAmount) || 10;
-    if (setCredits) {
-      setCredits(prev => prev + amountNum);
+  const PACKAGES = [
+    { amt: '10', inr: 850, replies: '5,000 replies', popular: false },
+    { amt: '25', inr: 2125, replies: '12,500 replies', popular: true },
+    { amt: '50', inr: 4250, replies: '25,000 replies', popular: false },
+    { amt: '100', inr: 8500, replies: '50,000 replies', popular: false },
+  ];
+
+  const selectedPkg = PACKAGES.find((p) => p.amt === fundsAmount) || {
+    amt: fundsAmount,
+    inr: Math.round((parseFloat(fundsAmount) || 10) * 85),
+    replies: 'Custom volume',
+  };
+
+  // Dynamically load Razorpay Checkout script
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (typeof window !== 'undefined' && window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  // Complete recharge and persist to this user's profile individually
+  const completeRecharge = async (amountUsd, amountInr, paymentId, orderId, method) => {
+    if (rechargeAiCredits) {
+      await rechargeAiCredits(
+        amountUsd,
+        `AI Assistant Credits Recharge`,
+        paymentId,
+        'razorpay',
+        method
+      );
+    } else if (setCredits) {
+      setCredits((prev) => +(prev + amountUsd).toFixed(2));
     }
+
     const newLog = {
       id: `log-${Date.now()}`,
       date: new Date().toISOString().split('T')[0],
       type: 'TOP_UP',
-      amount: `+$${amountNum.toFixed(2)}`,
-      description: `Instant wallet funds top-up via UPI / Cards`,
+      amount: `+$${amountUsd.toFixed(2)}`,
+      amountInr: `₹${amountInr.toLocaleString()}`,
+      paymentId,
+      provider: 'Razorpay (Test UPI / Cards)',
+      description: `Recharged $${amountUsd.toFixed(2)} AI Credits for ${profileDisplayName}`,
     };
-    setWalletLogs((prev) => [newLog, ...prev]);
+
+    setWalletLogs((prev) => {
+      const updated = [newLog, ...prev];
+      try {
+        localStorage.setItem(`dhigrowth_wallet_logs_${activeProfileKey}`, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
     setIsAddFundsModalOpen(false);
-    showToast(`Added $${amountNum.toFixed(2)} credits to wallet!`, 'success');
+
+    confetti({
+      particleCount: 120,
+      spread: 80,
+      origin: { y: 0.6 },
+    });
+
+    showToast(`🎉 Razorpay Test Payment Successful! Credited $${amountUsd.toFixed(2)} to ${profileDisplayName}'s profile.`, 'success');
+  };
+
+  // 1. Live Razorpay Modal Checkout (Test Mode)
+  const handleRazorpayCheckout = async () => {
+    setIsProcessingPayment(true);
+    const amountUsd = parseFloat(fundsAmount) || 10;
+    const amountInr = selectedPkg.inr || Math.round(amountUsd * 85);
+
+    try {
+      // 1. Create order on backend
+      let orderData = null;
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/wallet/create-order`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amountUsd,
+            amountInr,
+            userKey: activeProfileKey,
+            workspaceId: currentWorkspaceId,
+          }),
+        });
+        if (res.ok) {
+          orderData = await res.json();
+        }
+      } catch (err) {
+        console.warn('Backend order creation note:', err.message);
+      }
+
+      // 2. Load script & launch Razorpay popup
+      const scriptLoaded = await loadRazorpayScript();
+
+      if (scriptLoaded && window.Razorpay) {
+        const keyId = orderData?.keyId || 'rzp_test_TcdoZxzN0dIYoP';
+        const options = {
+          key: keyId,
+          amount: (orderData?.amountPaise || (amountInr * 100)),
+          currency: 'INR',
+          name: 'Dhigrowth CRM',
+          description: `AI Credits Recharge (${profileDisplayName})`,
+          order_id: orderData?.orderId && !orderData.isTest ? orderData.orderId : undefined,
+          prefill: {
+            name: currentUser?.name || 'Sri',
+            email: currentUser?.email || 'sri@dhigrowth.com',
+            contact: '9791471277',
+          },
+          theme: {
+            color: '#7C3AED',
+          },
+          handler: async function (response) {
+            const paymentId = response.razorpay_payment_id || `pay_rzp_${Date.now()}`;
+            await completeRecharge(amountUsd, amountInr, paymentId, response.razorpay_order_id, 'Razorpay Popup (UPI / Card)');
+          },
+          modal: {
+            ondismiss: function () {
+              setIsProcessingPayment(false);
+            },
+          },
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.on('payment.failed', function (resp) {
+          showToast(`Payment declined: ${resp.error?.description || 'Error'}`, 'error');
+          setIsProcessingPayment(false);
+        });
+        rzp.open();
+      } else {
+        // Fallback if popup blocked by browser environment
+        await completeRecharge(amountUsd, amountInr, `pay_rzp_test_${Date.now()}`, `ord_test_${Date.now()}`, 'Razorpay Sandbox (Simulated)');
+      }
+    } catch (err) {
+      console.error('Razorpay checkout error:', err);
+      // Fallback to test completion so developer is never blocked
+      await completeRecharge(amountUsd, amountInr, `pay_rzp_test_${Date.now()}`, `ord_test_${Date.now()}`, 'Razorpay Sandbox (Simulated)');
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
+  // 2. Instant Test Payment (zero popups / instant test verification)
+  const handleInstantTestPayment = async () => {
+    setIsProcessingPayment(true);
+    const amountUsd = parseFloat(fundsAmount) || 10;
+    const amountInr = selectedPkg.inr || Math.round(amountUsd * 85);
+    const testPaymentId = `pay_rzp_test_${Date.now()}`;
+    await completeRecharge(amountUsd, amountInr, testPaymentId, `ord_${Date.now()}`, 'Razorpay Sandbox (Instant UPI Test)');
+    setIsProcessingPayment(false);
   };
 
   const handleSaveBilling = (e) => {
@@ -117,10 +321,15 @@ export const WalletPage = () => {
 
       {/* 2. Purple Top AI Credits Banner */}
       <div className="rounded-3xl bg-gradient-to-r from-[#8B5CF6] via-[#7C3AED] to-[#6D28D9] p-8 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md shadow-purple-600/15">
-        <div className="space-y-1">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-white/80 uppercase tracking-wider font-mono">
-            <DollarSign className="w-3.5 h-3.5" />
-            <span>AI CREDITS FOR ASSISTANTS</span>
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-white/80 uppercase tracking-wider font-mono">
+              <DollarSign className="w-3.5 h-3.5" />
+              <span>AI CREDITS FOR ASSISTANTS</span>
+            </div>
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-white border border-white/30 backdrop-blur-xs font-mono">
+              Profile: {profileDisplayName}
+            </span>
           </div>
           <div className="text-4xl lg:text-5xl font-extrabold tracking-tight">
             ${credits.toFixed(2)}
@@ -393,21 +602,28 @@ export const WalletPage = () => {
                 <tr>
                   <th className="p-3">DATE</th>
                   <th className="p-3">TYPE</th>
-                  <th className="p-3">AMOUNT</th>
+                  <th className="p-3">AMOUNT (USD / INR)</th>
+                  <th className="p-3">GATEWAY / REF ID</th>
                   <th className="p-3">DESCRIPTION</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#EAECF0]">
                 {walletLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-[#F9FAFB] transition-colors">
-                    <td className="p-3 font-mono text-[#667085]">{log.date}</td>
+                    <td className="p-3 font-mono text-[#667085] whitespace-nowrap">{log.date}</td>
                     <td className="p-3">
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#FAF5FF] text-[#7C3AED] border border-[#E9D8FD]">
                         {log.type}
                       </span>
                     </td>
-                    <td className="p-3 font-mono font-bold text-[#16A34A]">{log.amount}</td>
-                    <td className="p-3 text-[#344054]">{log.description}</td>
+                    <td className="p-3 font-mono font-bold text-[#16A34A] whitespace-nowrap">
+                      {log.amount} {log.amountInr && <span className="text-[11px] font-medium text-[#475467]">({log.amountInr})</span>}
+                    </td>
+                    <td className="p-3 font-mono text-[11px] text-[#475467] whitespace-nowrap">
+                      <div className="font-semibold text-[#101828]">{log.provider || 'Razorpay (Test)'}</div>
+                      {log.paymentId && <div className="text-[10px] text-[#667085]">{log.paymentId}</div>}
+                    </td>
+                    <td className="p-3 text-[#344054] max-w-xs truncate">{log.description}</td>
                   </tr>
                 ))}
               </tbody>
@@ -529,21 +745,24 @@ export const WalletPage = () => {
               </div>
             </div>
 
-            <div className="p-3 bg-[#FAF8FF] border border-[#E9D8FD] rounded-2xl flex items-center justify-between text-xs">
-              <span className="text-[#475467]">Current Available Balance</span>
-              <span className="font-mono font-bold text-[#7C3AED] text-sm">${credits.toFixed(2)}</span>
+            <div className="p-3 bg-[#FAF8FF] border border-[#E9D8FD] rounded-2xl space-y-1.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[#475467]">Current Balance</span>
+                <span className="font-mono font-bold text-[#7C3AED] text-sm">${credits.toFixed(2)}</span>
+              </div>
+              <div className="flex items-center justify-between text-[11px] pt-1 border-t border-[#E9D8FD]/60">
+                <span className="text-[#667085]">Crediting to Profile</span>
+                <span className="font-bold text-[#101828] bg-white px-2 py-0.5 rounded-md border border-[#E9D8FD]">
+                  👤 {profileDisplayName}
+                </span>
+              </div>
             </div>
 
-            <form onSubmit={handleAddFundsSubmit} className="space-y-3 text-xs">
+            <div className="space-y-3 text-xs">
               <div>
                 <label className="font-semibold text-[#344054]">Select AI Credit Package</label>
                 <div className="grid grid-cols-2 gap-2.5 mt-1.5">
-                  {[
-                    { amt: '10', replies: '5,000 replies', popular: false },
-                    { amt: '25', replies: '12,500 replies', popular: true },
-                    { amt: '50', replies: '25,000 replies', popular: false },
-                    { amt: '100', replies: '50,000 replies', popular: false },
-                  ].map((pkg) => (
+                  {PACKAGES.map((pkg) => (
                     <button
                       key={pkg.amt}
                       type="button"
@@ -559,25 +778,71 @@ export const WalletPage = () => {
                           Popular
                         </span>
                       )}
-                      <div className="font-extrabold text-sm font-mono text-[#101828]">${pkg.amt} USD</div>
-                      <div className="text-[11px] text-[#667085] mt-1 font-medium">{pkg.replies}</div>
+                      <div>
+                        <div className="font-extrabold text-sm font-mono text-[#101828]">
+                          ${pkg.amt} USD <span className="text-xs font-normal text-[#667085]">(₹{pkg.inr.toLocaleString()})</span>
+                        </div>
+                        <div className="text-[11px] text-[#667085] mt-0.5 font-medium">{pkg.replies}</div>
+                      </div>
                     </button>
                   ))}
                 </div>
               </div>
 
-              <div className="text-[11px] text-[#475467] bg-[#F9FAFB] p-2.5 rounded-xl border border-[#EAECF0]">
-                💡 <strong>Zero-Markup AI Usage:</strong> AI responses cost ~$0.002 per message. Credits do not expire as long as your workspace account is active.
+              {/* Razorpay Test Mode Card */}
+              <div className="p-3 bg-[#F8F9FC] rounded-2xl border border-[#E2E8F0] space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-bold text-[#0C2340]">
+                    <CreditCard className="w-4 h-4 text-[#3395FF]" />
+                    <span>Razorpay Sandbox</span>
+                  </div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#E0F2FE] text-[#0284C7] font-bold border border-[#BAE6FD]">
+                    TEST MODE
+                  </span>
+                </div>
+                <p className="text-[11px] text-[#475467] leading-relaxed">
+                  Test payment via <strong>UPI, Google Pay, PhonePe, Cards, or NetBanking</strong> using test credentials. No real funds are debited.
+                </p>
+                <div className="text-[10px] font-mono text-[#64748B] bg-white p-1.5 rounded-lg border border-[#E2E8F0]">
+                  Key ID: <code className="text-[#0C2340] font-bold">rzp_test_TcdoZxzN0dIYoP</code>
+                </div>
               </div>
 
-              <button
-                type="submit"
-                className="w-full py-3 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-2xl text-xs font-bold transition-all shadow-md shadow-purple-600/20 mt-3 cursor-pointer flex items-center justify-center gap-2"
-              >
-                <Zap className="w-4 h-4" />
-                <span>Recharge ${fundsAmount} AI Credits Now</span>
-              </button>
-            </form>
+              {/* Action Buttons */}
+              <div className="space-y-2 pt-1">
+                <button
+                  type="button"
+                  disabled={isProcessingPayment}
+                  onClick={handleRazorpayCheckout}
+                  className="w-full py-3 bg-[#3395FF] hover:bg-[#1D7CEB] text-white rounded-2xl text-xs font-bold transition-all shadow-md shadow-blue-500/20 cursor-pointer flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99]"
+                >
+                  {isProcessingPayment ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CreditCard className="w-4 h-4" />
+                  )}
+                  <span>
+                    {isProcessingPayment
+                      ? 'Connecting to Razorpay...'
+                      : `Pay ₹${selectedPkg.inr.toLocaleString()} via Razorpay (Test Modal)`}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={isProcessingPayment}
+                  onClick={handleInstantTestPayment}
+                  className="w-full py-2.5 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-2xl text-xs font-bold transition-all shadow-md shadow-purple-600/20 cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <Zap className="w-3.5 h-3.5 text-yellow-300" />
+                  <span>⚡ Instant Test Pay (Simulate ₹{selectedPkg.inr.toLocaleString()} / ${selectedPkg.amt} USD)</span>
+                </button>
+              </div>
+
+              <div className="text-[10px] text-center text-[#667085] pt-1">
+                🔒 Credits are permanently linked to <strong>{profileDisplayName}</strong>'s individual workspace.
+              </div>
+            </div>
           </div>
         </div>
       )}

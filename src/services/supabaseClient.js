@@ -360,6 +360,47 @@ export const getWalletData = async (workspaceId = DEFAULT_WORKSPACE_ID) => {
   };
 };
 
+export const rechargeWalletSupabase = async (workspaceId = DEFAULT_WORKSPACE_ID, amountUsd = 10, paymentId = '', description = '') => {
+  if (!supabase || !workspaceId) return null;
+  try {
+    const { data: currentWallet } = await supabase
+      .from('wallet_accounts')
+      .select('*')
+      .eq('workspace_id', workspaceId)
+      .maybeSingle();
+
+    const currentBal = currentWallet ? parseFloat(currentWallet.balance_usd) || 0 : 0;
+    const newBal = +(currentBal + (parseFloat(amountUsd) || 0)).toFixed(4);
+
+    if (currentWallet) {
+      await supabase
+        .from('wallet_accounts')
+        .update({ balance_usd: newBal, updated_at: new Date().toISOString() })
+        .eq('workspace_id', workspaceId);
+    } else {
+      await supabase
+        .from('wallet_accounts')
+        .insert([{ workspace_id: workspaceId, balance_usd: newBal }]);
+    }
+
+    await supabase.from('wallet_transactions').insert([
+      {
+        workspace_id: workspaceId,
+        type: 'credit',
+        amount_usd: parseFloat(amountUsd) || 0,
+        balance_after_usd: newBal,
+        description: description || `AI Credits Recharge via Razorpay (${paymentId})`,
+        reference_id: paymentId,
+      },
+    ]);
+
+    return newBal;
+  } catch (err) {
+    console.warn('[Supabase Wallet] Note updating wallet in cloud:', err.message);
+    return null;
+  }
+};
+
 // 7. Subscribe to real-time inbound events via persistent WebSocket
 export const subscribeToWorkspaceRealtime = (workspaceId, handlers = {}) => {
   if (!supabase || !workspaceId) return null;

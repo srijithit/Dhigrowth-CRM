@@ -50,6 +50,12 @@ import {
   cancelScheduledCampaign,
   broadcastTemplateToAll,
 } from './broadcastService.js';
+import {
+  initWalletStore,
+  getUserWallet,
+  createRazorpayOrder,
+  recordWalletRecharge,
+} from './walletService.js';
 import { setManualMode, isManualMode } from './manualAgentStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -60,6 +66,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 initTemplateStore();
 initBroadcastStore();
+initWalletStore();
 
 const META_CONFIG_FILE = path.resolve(__dirname, 'metaConfig.json');
 
@@ -1182,6 +1189,59 @@ app.post('/api/billing/set-status', (req, res) => {
     const result = setWorkspaceSubscriptionStatus(workspaceId, status || 'trialing');
     res.json(result);
   } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 11.2 Wallet & AI Credits Endpoints (Razorpay test pay & per-user profile balances)
+app.get('/api/wallet/balance', (req, res) => {
+  try {
+    const { userKey, workspaceId } = req.query;
+    const wallet = getUserWallet(userKey || 'sri');
+    res.json({ success: true, wallet });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/wallet/create-order', async (req, res) => {
+  try {
+    const { amountUsd, amountInr, userKey, workspaceId } = req.body || {};
+    const order = await createRazorpayOrder({ amountUsd, amountInr, userKey, workspaceId });
+    res.json(order);
+  } catch (err) {
+    console.error('[Wallet Create Order Error]:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/wallet/recharge', async (req, res) => {
+  try {
+    const {
+      userKey = 'sri',
+      workspaceId,
+      amountUsd,
+      amountInr,
+      paymentId,
+      orderId,
+      provider = 'razorpay',
+      method = 'UPI / NetBanking',
+    } = req.body || {};
+
+    const result = await recordWalletRecharge({
+      userKey,
+      workspaceId,
+      amountUsd,
+      amountInr,
+      paymentId,
+      orderId,
+      provider,
+      method,
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error('[Wallet Recharge Error]:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });

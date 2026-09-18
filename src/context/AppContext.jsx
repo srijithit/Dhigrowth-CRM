@@ -18,6 +18,7 @@ import {
   DEFAULT_WORKSPACE_ID,
   ensureWorkspaceExists,
   updateConversationStatus,
+  rechargeWalletSupabase,
 } from '../services/supabaseClient';
 import { BACKEND_URL } from '../services/apiConfig';
 import {
@@ -101,9 +102,44 @@ export const AppProvider = ({ children }) => {
     return null;
   });
 
-  // User & Wallet State
+  // Authentication & Session State (Tenant-Isolated Session Support)
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const urlTenant = urlParams?.get('tenant') || urlParams?.get('t');
+      const storageKey = urlTenant ? `dhigrowth_auth_session_${urlTenant}` : 'dhigrowth_auth_session';
+      const saved = localStorage.getItem(storageKey) || sessionStorage.getItem(storageKey) || (!urlTenant ? localStorage.getItem('dhigrowth_auth_session') : null);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const isAuthenticated = Boolean(currentUser);
+
+  // Admin Profile Switching State: Admin can switch between 'sri' (CRM User) and 'kiki' (Separate Client)
+  const [adminViewProfile, setAdminViewProfile] = useState('sri'); // 'sri' | 'kiki'
+
+  // Active individual profile key (e.g. 'sri', 'kiki', or currentUser slug/username)
+  const activeProfileKey = useMemo(() => {
+    const rawKey = currentUser?.username || currentUser?.slug || adminViewProfile || 'sri';
+    return String(rawKey).toLowerCase().trim();
+  }, [currentUser?.username, currentUser?.slug, adminViewProfile]);
+
+  // Current active workspace ID (Strict Partitioning)
+  const currentWorkspaceId = currentUser?.workspaceId || (
+    adminViewProfile === 'kiki' ? 'b0000000-0000-0000-0000-000000000002' : DEFAULT_WORKSPACE_ID
+  );
+
+  // User & Wallet State (Individually partitioned per user profile)
   const [credits, setCreditsState] = useState(() => {
     try {
+      const initKey = (currentUser?.username || currentUser?.slug || adminViewProfile || 'sri').toLowerCase().trim();
+      const userSaved = localStorage.getItem(`dhigrowth_wallet_credits_${initKey}`);
+      if (userSaved !== null) {
+        const num = parseFloat(userSaved);
+        if (!isNaN(num)) return num;
+      }
       const saved = localStorage.getItem('dhigrowth_wallet_credits');
       if (saved !== null) {
         const num = parseFloat(saved);
@@ -113,22 +149,107 @@ export const AppProvider = ({ children }) => {
     return 5.00; // Seed with promotional $5 launch credits
   });
 
+  // Switch credits when user switches profile (Sri vs Kiki vs other users)
+  useEffect(() => {
+    try {
+      const userSaved = localStorage.getItem(`dhigrowth_wallet_credits_${activeProfileKey}`);
+      if (userSaved !== null) {
+        const num = parseFloat(userSaved);
+        if (!isNaN(num)) {
+          setCreditsState(num);
+          return;
+        }
+      }
+      // Fetch profile-specific balance from backend
+      fetch(`${BACKEND_URL}/api/wallet/balance?userKey=${encodeURIComponent(activeProfileKey)}&workspaceId=${encodeURIComponent(currentWorkspaceId)}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data?.wallet?.balanceUsd !== undefined) {
+            setCreditsState(data.wallet.balanceUsd);
+            try {
+              localStorage.setItem(`dhigrowth_wallet_credits_${activeProfileKey}`, String(data.wallet.balanceUsd));
+            } catch {}
+          } else {
+            setCreditsState(5.00);
+          }
+        })
+        .catch(() => {
+          setCreditsState(5.00);
+        });
+    } catch {
+      setCreditsState(5.00);
+    }
+  }, [activeProfileKey, currentWorkspaceId]);
+
   const setCredits = (valOrFn) => {
     setCreditsState((prev) => {
       const next = typeof valOrFn === 'function' ? valOrFn(prev) : valOrFn;
       try {
+        localStorage.setItem(`dhigrowth_wallet_credits_${activeProfileKey}`, String(next));
         localStorage.setItem('dhigrowth_wallet_credits', String(next));
       } catch {}
       return next;
     });
   };
 
-  const rechargeAiCredits = (amountUsd, description = 'AI Assistant Credits Recharge') => {
+  const rechargeAiCredits = async (
+    amountUsd,
+    description = 'AI Assistant Credits Recharge',
+    paymentId = '',
+    provider = 'razorpay',
+    method = 'UPI / NetBanking'
+  ) => {
     const amt = parseFloat(amountUsd) || 0;
     if (amt <= 0) return;
-    setCredits((prev) => +(prev + amt).toFixed(2));
-    showToast(`⚡ Successfully recharged $${amt.toFixed(2)} AI Credits! AI Assistants ready.`, 'success');
+    const newBal = +(credits + amt).toFixed(2);
+    setCredits(newBal);
+
+    const txId = paymentId || `pay_rzp_${Date.now()}`;
+    const txRecord = {
+      id: `log-${Date.now()}`,
+      date: new Date().toISOString().split('T')[0],
+      type: 'TOP_UP',
+      amount: `+$${amt.toFixed(2)}`,
+      amountInr: `₹${Math.round(amt * 85)}`,
+      description: `${description} via ${provider === 'razorpay' ? `Razorpay (${method})` : provider}`,
+      paymentId: txId,
+      provider,
+      userKey: activeProfileKey,
+    };
+
+    // Save transaction to this user's profile logs
+    try {
+      const existingLogs = JSON.parse(localStorage.getItem(`dhigrowth_wallet_logs_${activeProfileKey}`) || '[]');
+      localStorage.setItem(`dhigrowth_wallet_logs_${activeProfileKey}`, JSON.stringify([txRecord, ...existingLogs]));
+    } catch {}
+
+    // Sync to backend per-user profile
+    try {
+      const payload = {
+        userKey: activeProfileKey,
+        workspaceId: currentWorkspaceId,
+        amountUsd: amt,
+        amountInr: Math.round(amt * 85),
+        paymentId: txId,
+        orderId: `ord_${Date.now()}`,
+        provider,
+        method,
+      };
+      await fetch(`${BACKEND_URL}/api/wallet/recharge`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).catch(() => {});
+    } catch {}
+
+    // Sync to Supabase
+    try {
+      await rechargeWalletSupabase(currentWorkspaceId, amt, txId, description);
+    } catch {}
+
+    showToast(`⚡ Successfully recharged $${amt.toFixed(2)} AI Credits for ${activeProfileKey.toUpperCase()}!`, 'success');
   };
+
   const [phoneNumber, setPhoneNumber] = useState('9791471277');
   const [countryCode, setCountryCode] = useState('IN +91');
   const [hasClaimedBonus, setHasClaimedBonus] = useState(false);
@@ -148,21 +269,6 @@ export const AppProvider = ({ children }) => {
   const closeCheckout = () => {
     setIsCheckoutModalOpen(false);
   };
-
-  // Authentication & Session State (Tenant-Isolated Session Support)
-  const [currentUser, setCurrentUser] = useState(() => {
-    try {
-      const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-      const urlTenant = urlParams?.get('tenant') || urlParams?.get('t');
-      const storageKey = urlTenant ? `dhigrowth_auth_session_${urlTenant}` : 'dhigrowth_auth_session';
-      const saved = localStorage.getItem(storageKey) || sessionStorage.getItem(storageKey) || (!urlTenant ? localStorage.getItem('dhigrowth_auth_session') : null);
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
-
-  const isAuthenticated = Boolean(currentUser);
 
   // Meta Cloud API Configuration State (Per-User / Per-Tenant Isolated)
   const [metaConfig, setMetaConfig] = useState(() => {
@@ -717,14 +823,6 @@ export const AppProvider = ({ children }) => {
     showToast(`Welcome back, ${session.name}! 👋`, 'success');
     return session;
   };
-
-  // Admin Profile Switching State: Admin can switch between 'sri' (CRM User) and 'kiki' (Separate Client)
-  const [adminViewProfile, setAdminViewProfile] = useState('sri'); // 'sri' | 'kiki'
-
-  // Current active workspace ID (Strict Partitioning)
-  const currentWorkspaceId = currentUser?.workspaceId || (
-    adminViewProfile === 'kiki' ? 'b0000000-0000-0000-0000-000000000002' : DEFAULT_WORKSPACE_ID
-  );
 
   // Synchronize tenant Meta credentials whenever active user or workspace changes
   useEffect(() => {
@@ -2159,6 +2257,7 @@ export const AppProvider = ({ children }) => {
       value={{
         activeTab,
         setActiveTab,
+        activeProfileKey,
         theme,
         setTheme,
         credits,
