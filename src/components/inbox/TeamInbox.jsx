@@ -509,7 +509,7 @@ export const TeamInbox = () => {
 
   const [isTemplateSendModalOpen, setIsTemplateSendModalOpen] = useState(false);
   const [isSendingTemplate, setIsSendingTemplate] = useState(false);
-  const [selectedTemplateName, setSelectedTemplateName] = useState('hi');
+  const [selectedTemplateName, setSelectedTemplateName] = useState('hello_world');
   const [templateOptions, setTemplateOptions] = useState([
     {
       name: 'hello_world',
@@ -1493,18 +1493,35 @@ export const TeamInbox = () => {
                       </span>
                     </div>
                     <p className="text-[11px] text-[#475467] mt-1 leading-relaxed">
-                      <strong>{activeChat.contactName}</strong> has not sent an inbound reply yet. Meta policy requires an approved template to initiate contact. Send the <strong>hi</strong> template to get their first reply and open the 24-hour conversational window!
+                      <strong>{activeChat.contactName}</strong> has not sent an inbound reply yet. Meta policy requires an approved template to initiate contact. Send the <strong>hello_world</strong> approved template to get their first inbound reply and unlock the 24-hour conversational window!
                     </p>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsTemplateSendModalOpen(true)}
-                  className="px-3.5 py-2 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-bold transition-all shadow-xs shrink-0 flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Send "hi" Template</span>
-                </button>
+                <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedTemplateName('hello_world');
+                      setIsTemplateSendModalOpen(true);
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-bold transition-all shadow-xs shrink-0 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Send Approved Template</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sendMessage("Hi! I'm interested in DhiGrowth services.", 'user');
+                      showToast(`✅ Inbound reply simulated from ${activeChat.contactName}! 24h window opened.`, 'success');
+                    }}
+                    className="px-3 py-2 rounded-xl bg-white hover:bg-[#F9FAFB] border border-[#D0D5DD] text-[#344054] text-xs font-bold transition-all shadow-2xs shrink-0 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                    title="Simulate an inbound customer reply to open the 24h window and trigger AI auto-reply"
+                  >
+                    <Bot className="w-3.5 h-3.5 text-[#7C3AED]" />
+                    <span>Simulate Inbound Reply</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}
