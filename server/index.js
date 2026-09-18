@@ -353,16 +353,20 @@ app.post('/api/send-template-message', async (req, res) => {
         template: {
           name: matchedTemplate.name,
           language: { code: matchedTemplate.language || 'en_US' },
-          components: [
-            {
-              type: 'body',
-              parameters: [
-                { type: 'text', text: contactName },
-                { type: 'text', text: customRequirement },
-                { type: 'text', text: serviceLink },
-              ],
-            },
-          ],
+          ...(matchedTemplate.name === 'hello_world'
+            ? {}
+            : {
+                components: [
+                  {
+                    type: 'body',
+                    parameters: [
+                      { type: 'text', text: contactName },
+                      { type: 'text', text: customRequirement },
+                      { type: 'text', text: serviceLink },
+                    ],
+                  },
+                ],
+              }),
         },
       };
 

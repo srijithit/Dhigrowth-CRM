@@ -512,6 +512,13 @@ export const TeamInbox = () => {
   const [selectedTemplateName, setSelectedTemplateName] = useState('hi');
   const [templateOptions, setTemplateOptions] = useState([
     {
+      name: 'hello_world',
+      title: 'hello_world (Meta Verified Sample - Ready to Send)',
+      category: 'utility',
+      status: 'approved',
+      body_text: `Welcome and congratulations!! This message demonstrates your ability to send a WhatsApp message notification from the Cloud API, hosted by Meta. Thank you for taking the time to test with us.`,
+    },
+    {
       name: 'hi',
       title: 'hi (Official Starter Greeting)',
       category: 'utility',
