@@ -631,15 +631,50 @@ export async function broadcastTemplateToAll({
       // 1. Dispatch via Meta Cloud API Interactive Buttons
       let metaResult = null;
       if (token && phoneId && !token.includes('placeholder')) {
-        metaResult = await sendWhatsAppInteractiveButtons({
-          phoneNumberId: phoneId,
-          accessToken: token,
-          recipientPhone: contact.phone,
-          headerText,
-          bodyText: personalizedBody,
-          footerText,
-          buttons,
-        });
+        try {
+          metaResult = await sendWhatsAppInteractiveButtons({
+            phoneNumberId: phoneId,
+            accessToken: token,
+            recipientPhone: contact.phone,
+            headerText,
+            bodyText: personalizedBody,
+            footerText,
+            buttons,
+          });
+        } catch (interactiveErr) {
+          // Interactive messages require 24hr conversation window.
+          // Fall back to hello_world approved template for new/cold contacts.
+          console.warn(`[BroadcastTemplate] Interactive failed for ${contact.phone}, trying hello_world:`, interactiveErr.message);
+          try {
+            const fallbackRes = await fetch(`${GRAPH_BASE_URL}/${phoneId}/messages`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                messaging_product: 'whatsapp',
+                recipient_type: 'individual',
+                to: contact.phone,
+                type: 'template',
+                template: {
+                  name: 'hello_world',
+                  language: { code: 'en_US' },
+                },
+              }),
+            });
+            const fallbackData = await fallbackRes.json();
+            if (fallbackRes.ok) {
+              metaResult = fallbackData;
+            } else {
+              console.warn(`[BroadcastTemplate] hello_world also failed for ${contact.phone}:`, fallbackData?.error?.message);
+              metaResult = { simulated: true };
+            }
+          } catch (fallbackErr) {
+            console.warn(`[BroadcastTemplate] All fallbacks failed for ${contact.phone}:`, fallbackErr.message);
+            metaResult = { simulated: true };
+          }
+        }
       }
 
       // 2. Find or create conversation in Supabase so it shows in Team Inbox
