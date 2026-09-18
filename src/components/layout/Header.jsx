@@ -165,6 +165,43 @@ export const Header = () => {
                 </div>
               </div>
 
+              {/* Quick Profile / User Switcher */}
+              <div className="p-2 bg-[#FAF8FF] border border-[#E9D8FD] rounded-xl my-1">
+                <div className="text-[10px] font-bold text-[#6941C6] uppercase font-mono mb-1 px-1">
+                  Switch Workspace User:
+                </div>
+                <div className="grid grid-cols-2 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      switchAdminProfile('sri');
+                      setIsWorkspaceDropdownOpen(false);
+                    }}
+                    className={`py-1 rounded-lg text-xs font-bold transition-all text-center cursor-pointer ${
+                      adminViewProfile === 'sri'
+                        ? 'bg-[#7C3AED] text-white shadow-xs'
+                        : 'bg-white text-[#475467] border border-[#EAECF0] hover:bg-[#F2F4F7]'
+                    }`}
+                  >
+                    Sri (CRM)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      switchAdminProfile('kiki');
+                      setIsWorkspaceDropdownOpen(false);
+                    }}
+                    className={`py-1 rounded-lg text-xs font-bold transition-all text-center cursor-pointer ${
+                      adminViewProfile === 'kiki'
+                        ? 'bg-[#7C3AED] text-white shadow-xs'
+                        : 'bg-white text-[#475467] border border-[#EAECF0] hover:bg-[#F2F4F7]'
+                    }`}
+                  >
+                    Kiki (Client)
+                  </button>
+                </div>
+              </div>
+
               <button
                 onClick={() => {
                   setActiveTab('meta-api');

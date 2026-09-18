@@ -48,7 +48,7 @@ export const MobileDrawer = () => {
 
   if (!isMobileMenuOpen) return null;
 
-  const isAdmin = currentUser?.isAdmin || currentUser?.username?.toLowerCase() === 'admin';
+  const isAdmin = currentUser?.isAdmin || currentUser?.username?.toLowerCase() === 'admin' || currentUser?.username?.toLowerCase() === 'sri';
 
   const menuSections = [
     {

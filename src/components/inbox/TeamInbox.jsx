@@ -19,6 +19,8 @@ import {
   ArrowLeft,
   Globe,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Wand2,
   RefreshCw,
   MessageCircle,
@@ -414,7 +416,45 @@ export const TeamInbox = () => {
   };
 
 
-  const activeChat = chats.find((c) => c.id === activeChatId) || (chats.length > 0 ? chats[0] : null);
+  const [isMobileView, setIsMobileView] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth < 768 : false
+  );
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobileView(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const [isMobileContactPickerOpen, setIsMobileContactPickerOpen] = useState(false);
+
+  // On desktop: if activeChatId is null, default to first chat so middle pane isn't blank
+  // On mobile: if activeChatId is null, user is viewing the contact list!
+  const activeChat = isMobileView
+    ? (activeChatId ? chats.find((c) => c.id === activeChatId) : null)
+    : (chats.find((c) => c.id === activeChatId) || (chats.length > 0 ? chats[0] : null));
+
+  const currentChatIndex = chats.findIndex((c) => c.id === activeChat?.id);
+  const hasPrevChat = currentChatIndex > 0;
+  const hasNextChat = currentChatIndex >= 0 && currentChatIndex < chats.length - 1;
+
+  const handlePrevChat = () => {
+    if (hasPrevChat) {
+      const prev = chats[currentChatIndex - 1];
+      if (openChat) openChat(prev.id);
+      else setActiveChatId(prev.id);
+    }
+  };
+
+  const handleNextChat = () => {
+    if (hasNextChat) {
+      const next = chats[currentChatIndex + 1];
+      if (openChat) openChat(next.id);
+      else setActiveChatId(next.id);
+    }
+  };
 
   const messagesEndRef = useRef(null);
 
@@ -1043,14 +1083,68 @@ export const TeamInbox = () => {
   };
 
   return (
-    <div className="h-full flex-1 flex overflow-hidden bg-[#F8F9FC] font-sans">
-      {/* 1. Left: Conversation List */}
-      <div
-        style={{ width: typeof window !== 'undefined' && window.innerWidth < 768 ? '100%' : `${leftWidth}px` }}
-        className={`border-r border-[#EAECF0] bg-white flex flex-col shrink-0 min-h-0 relative select-text w-full md:w-auto ${
-          activeChat ? 'hidden md:flex' : 'flex'
-        }`}
-      >
+    <div className="h-full flex-1 flex flex-col overflow-hidden bg-[#F8F9FC] font-sans">
+      {/* Mobile Top Contact Quick Switch Bar (Thumb Carousel) */}
+      <div className="md:hidden bg-white border-b border-[#EAECF0] px-3 py-2 shrink-0 z-20 shadow-2xs">
+        <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center gap-1.5">
+            <Users className="w-3.5 h-3.5 text-[#7C3AED]" />
+            <span className="text-[11px] font-bold text-[#101828]">Switch User / Contact ({chats.length})</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsAddContactModalOpen(true)}
+            className="text-[11px] font-bold text-[#7C3AED] hover:underline cursor-pointer flex items-center gap-1"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>New</span>
+          </button>
+        </div>
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 scroll-smooth">
+          {chats.map((chat) => {
+            const isSelected = activeChat?.id === chat.id;
+            return (
+              <button
+                key={chat.id}
+                type="button"
+                onClick={() => {
+                  if (openChat) openChat(chat.id);
+                  else setActiveChatId(chat.id);
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full shrink-0 transition-all cursor-pointer border active:scale-95 text-left ${
+                  isSelected
+                    ? 'bg-[#F4F0FD] border-[#7C3AED] text-[#7C3AED] font-bold shadow-xs ring-2 ring-[#7C3AED]/20'
+                    : 'bg-[#F9FAFB] border-[#EAECF0] text-[#344054] hover:bg-[#F2F4F7]'
+                }`}
+              >
+                <div className="relative shrink-0">
+                  <ContactAvatar name={chat.contactName} size="xs" />
+                  {chat.unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#EF4444] border-2 border-white" />
+                  )}
+                </div>
+                <span className="text-xs truncate max-w-[90px]">
+                  {chat.contactName}
+                </span>
+                {chat.tag && (
+                  <span className={`text-[9px] px-1 py-0.2 rounded font-mono font-bold ${tagColors[chat.tag]}`}>
+                    {chat.tag[0]}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        {/* 1. Left: Conversation List */}
+        <div
+          style={{ width: typeof window !== 'undefined' && window.innerWidth < 768 ? '100%' : `${leftWidth}px` }}
+          className={`border-r border-[#EAECF0] bg-white flex flex-col shrink-0 min-h-0 relative select-text w-full md:w-auto ${
+            activeChat ? 'hidden md:flex' : 'flex'
+          }`}
+        >
         {/* Header & New Contact & Search */}
         <div className="p-3.5 border-b border-[#EAECF0] space-y-2.5 shrink-0">
           <div className="flex items-center justify-between">
@@ -1264,32 +1358,73 @@ export const TeamInbox = () => {
                   type="button"
                   onClick={() => setActiveChatId(null)}
                   className="md:hidden p-2 -ml-1 text-[#475467] hover:text-[#101828] hover:bg-[#F2F4F7] rounded-xl transition-colors cursor-pointer shrink-0"
-                  title="Back to conversations"
+                  title="Back to conversations list"
                   aria-label="Back to conversations"
                 >
                   <ArrowLeft className="w-5 h-5 text-[#344054]" />
                 </button>
-                <ContactAvatar name={activeChat.contactName} size="lg" />
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-sm font-bold text-[#101828] truncate">
-                      {activeChat.contactName}
-                    </h2>
-                    <span className="hidden sm:inline text-xs font-mono text-[#667085]">
-                      {activeChat.phone}
-                    </span>
-                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${tagColors[activeChat.tag]}`}>
-                      {activeChat.tag}
-                    </span>
+
+                {/* Contact Avatar & Info (Tap on mobile to open quick switch modal) */}
+                <div
+                  className="flex items-center gap-2.5 min-w-0 cursor-pointer group"
+                  onClick={() => setIsMobileContactPickerOpen(true)}
+                  title="Tap to switch user / contact"
+                >
+                  <ContactAvatar name={activeChat.contactName} size="lg" />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <h2 className="text-sm font-bold text-[#101828] truncate group-hover:text-[#7C3AED] transition-colors">
+                        {activeChat.contactName}
+                      </h2>
+                      <ChevronDown className="w-3.5 h-3.5 text-[#7C3AED] md:hidden shrink-0" />
+                      <span className="hidden sm:inline text-xs font-mono text-[#667085]">
+                        {activeChat.phone}
+                      </span>
+                      <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${tagColors[activeChat.tag]}`}>
+                        {activeChat.tag}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-[#98A2B3] flex items-center gap-2 mt-0.5">
+                      <span>{activeChat.city}</span>
+                      <span>·</span>
+                      <span className={`font-mono font-semibold flex items-center gap-1.5 ${isAiAutoPilot ? 'text-[#7C3AED]' : 'text-[#16A34A]'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${isAiAutoPilot ? 'bg-[#7C3AED] animate-pulse' : 'bg-[#16A34A]'}`} />
+                        <span className="truncate max-w-[120px] sm:max-w-none">{isAiAutoPilot ? 'AI Auto-Pilot' : 'Manual Agent'}</span>
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-[11px] text-[#98A2B3] flex items-center gap-2 mt-0.5">
-                    <span>{activeChat.city}</span>
-                    <span>·</span>
-                    <span className={`font-mono font-semibold flex items-center gap-1.5 ${isAiAutoPilot ? 'text-[#7C3AED]' : 'text-[#16A34A]'}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${isAiAutoPilot ? 'bg-[#7C3AED] animate-pulse' : 'bg-[#16A34A]'}`} />
-                      <span>{isAiAutoPilot ? 'Dhigrowth AI Auto-Pilot' : 'Manual Agent Active (AI Paused)'}</span>
-                    </span>
-                  </div>
+                </div>
+
+                {/* Mobile Next / Previous User Arrows */}
+                <div className="md:hidden flex items-center bg-[#F2F4F7] rounded-xl p-0.5 border border-[#EAECF0] shrink-0 ml-1">
+                  <button
+                    type="button"
+                    onClick={handlePrevChat}
+                    disabled={!hasPrevChat}
+                    className="p-1 rounded-lg text-[#344054] hover:bg-white disabled:opacity-25 disabled:pointer-events-none transition-all active:scale-90"
+                    title="Previous User"
+                    aria-label="Previous User"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileContactPickerOpen(true)}
+                    className="text-[10px] font-mono font-bold px-1.5 text-[#7C3AED] hover:underline"
+                    title="Tap to pick contact"
+                  >
+                    {currentChatIndex >= 0 ? `${currentChatIndex + 1}/${chats.length}` : 'Switch'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextChat}
+                    disabled={!hasNextChat}
+                    className="p-1 rounded-lg text-[#344054] hover:bg-white disabled:opacity-25 disabled:pointer-events-none transition-all active:scale-90"
+                    title="Next User"
+                    aria-label="Next User"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
 
@@ -2002,6 +2137,137 @@ export const TeamInbox = () => {
       )}
     </div>
   )}
+      {/* Close the inner 3-column flex container */}
+      </div>
+
+      {/* Mobile Contact Quick Switcher Bottom Sheet Modal */}
+      {isMobileContactPickerOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex flex-col justify-end md:hidden animate-in fade-in font-sans">
+          <div
+            className="fixed inset-0"
+            onClick={() => setIsMobileContactPickerOpen(false)}
+          />
+          <div className="relative bg-white rounded-t-3xl max-h-[82vh] flex flex-col shadow-2xl border-t border-[#EAECF0] z-10 animate-in slide-in-from-bottom duration-200">
+            {/* Grab handle */}
+            <div className="w-12 h-1.5 bg-[#D0D5DD] rounded-full mx-auto mt-3 mb-1 shrink-0" />
+
+            <div className="px-5 py-3 border-b border-[#EAECF0] flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-[#7C3AED]" />
+                <div>
+                  <h3 className="text-sm font-bold text-[#101828]">Switch Contact / User</h3>
+                  <p className="text-[11px] text-[#667085]">Tap any contact to open their chat instantly</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMobileContactPickerOpen(false)}
+                className="p-1.5 rounded-xl text-[#667085] hover:bg-[#F2F4F7] cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Search Input */}
+            <div className="px-4 py-2.5 border-b border-[#EAECF0] shrink-0 bg-[#F9FAFB]">
+              <div className="relative">
+                <Search className="w-4 h-4 text-[#98A2B3] absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Search by name, phone or tag..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-white border border-[#EAECF0] rounded-xl pl-9 pr-3 py-2 text-xs text-[#101828] placeholder-[#98A2B3] focus:outline-none focus:border-[#7C3AED]"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            {/* Contact List */}
+            <div className="flex-1 overflow-y-auto divide-y divide-[#F2F4F7] p-2 min-h-0">
+              {filteredChats.length === 0 ? (
+                <div className="p-8 text-center text-xs text-[#667085]">
+                  No contacts found matching "{searchTerm}"
+                </div>
+              ) : (
+                filteredChats.map((chat) => {
+                  const isSelected = activeChat?.id === chat.id;
+                  const messages = chat.messages || [];
+                  const lastMsg = messages[messages.length - 1];
+                  return (
+                    <div
+                      key={chat.id}
+                      onClick={() => {
+                        if (openChat) openChat(chat.id);
+                        else setActiveChatId(chat.id);
+                        setIsMobileContactPickerOpen(false);
+                      }}
+                      className={`p-3 rounded-2xl flex items-center gap-3 cursor-pointer transition-all active:scale-[0.98] ${
+                        isSelected
+                          ? 'bg-[#F4F0FD] border border-[#E9D8FD]'
+                          : 'hover:bg-[#F9FAFB]'
+                      }`}
+                    >
+                      <div className="relative shrink-0">
+                        <ContactAvatar name={chat.contactName} size="md" />
+                        {chat.unreadCount > 0 && (
+                          <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-[#EF4444] text-white font-bold text-[9px] flex items-center justify-center font-mono border-2 border-white">
+                            {chat.unreadCount}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className={`text-sm font-bold truncate ${isSelected ? 'text-[#7C3AED]' : 'text-[#101828]'}`}>
+                            {chat.contactName}
+                          </span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {chat.tag && (
+                              <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full border ${tagColors[chat.tag]}`}>
+                                {chat.tag}
+                              </span>
+                            )}
+                            {isSelected && (
+                              <span className="text-[10px] bg-[#7C3AED] text-white font-bold px-2 py-0.5 rounded-full">
+                                Active
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between mt-0.5 text-xs text-[#667085]">
+                          <span className="truncate pr-2">
+                            {lastMsg?.text || (chat.phone ? chat.phone : 'No messages yet')}
+                          </span>
+                          {lastMsg && (
+                            <span className="text-[10px] text-[#98A2B3] shrink-0 font-mono">
+                              {lastMsg.time}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Add New Contact Button in Sheet */}
+            <div className="p-3 border-t border-[#EAECF0] bg-white shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMobileContactPickerOpen(false);
+                  setIsAddContactModalOpen(true);
+                }}
+                className="w-full py-2.5 bg-[#F4F0FD] hover:bg-[#EDE5FA] text-[#7C3AED] border border-[#E9D8FD] rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Create New Contact</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Contact Modal */}
       {isAddContactModalOpen && (
