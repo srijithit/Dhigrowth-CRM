@@ -57,6 +57,7 @@ import {
   recordWalletRecharge,
 } from './walletService.js';
 import { setManualMode, isManualMode } from './manualAgentStore.js';
+import { getMetaWhatsAppInsights } from './metaInsightsService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1347,6 +1348,21 @@ app.post('/api/broadcasts/test-send', async (req, res) => {
     const result = await sendTestBroadcast(req.body || {});
     res.json(result);
   } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 15. Meta WhatsApp Business Account Official Insights
+app.get('/api/meta-insights', async (req, res) => {
+  try {
+    const workspaceId = req.query.workspaceId || req.headers['x-workspace-id'] || process.env.VITE_DEFAULT_WORKSPACE_ID || 'b0000000-0000-0000-0000-000000000001';
+    const username = req.query.username || req.headers['x-username'] || 'sri';
+    const timeRange = req.query.timeRange || '30d';
+
+    const insights = await getMetaWhatsAppInsights({ workspaceId, username, timeRange });
+    res.json(insights);
+  } catch (err) {
+    console.error('[MetaInsights] Route error:', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
