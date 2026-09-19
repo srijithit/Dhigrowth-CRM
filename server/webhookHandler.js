@@ -681,14 +681,21 @@ async function handleMessageStatusUpdates(statuses) {
   for (const st of statuses) {
     const status = st.status; // 'delivered', 'read', 'failed'
     const externalId = st.id;
+    let errorCode = null;
+    let errorMessage = null;
     if (st.errors && st.errors.length > 0) {
       console.warn(`⚠️ [Meta Status] Message ${externalId} FAILED with error:`, JSON.stringify(st.errors));
+      errorCode = st.errors[0]?.code ? String(st.errors[0].code) : null;
+      errorMessage = st.errors[0]?.message || st.errors[0]?.title || JSON.stringify(st.errors[0]);
     }
     if (externalId && status) {
-      console.log(`📬 [Meta Status Update] ${externalId} -> ${status}`);
+      console.log(`📬 [Meta Status Update] ${externalId} -> ${status}${errorCode ? ` (Error ${errorCode}: ${errorMessage})` : ''}`);
+      const updateData = { status };
+      if (errorCode) updateData.error_code = errorCode;
+      if (errorMessage) updateData.error_message = errorMessage;
       await supabase
         .from('messages')
-        .update({ status })
+        .update(updateData)
         .eq('external_message_id', externalId);
     }
   }
