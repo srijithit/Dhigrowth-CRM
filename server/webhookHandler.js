@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { sendWhatsAppMessage, sendInstagramMessage, sendMessengerMessage } from './metaService.js';
+import { sendWhatsAppMessage, sendWhatsAppInteractiveButtons, sendInstagramMessage, sendMessengerMessage } from './metaService.js';
 import { generateAIResponse } from './aiService.js';
 import { getTenantByPhoneNumberId } from './tenantMetaManager.js';
 import { isManualMode } from './manualAgentStore.js';
@@ -74,7 +74,7 @@ export const handleInboundWebhook = async (req, res) => {
           const phoneNumberId =
             change.metadata?.phone_number_id ||
             process.env.META_WHATSAPP_PHONE_NUMBER_ID ||
-            '1349867994870208';
+            '1272943605907701';
           const matchedTenant = getTenantByPhoneNumberId(phoneNumberId);
           const tenantWorkspaceId = matchedTenant?.workspaceId || DEFAULT_WORKSPACE_ID;
           const tenantAccessToken =
@@ -364,47 +364,73 @@ async function processIncomingChatMessage({
       return;
     }
 
-    // 4. Inbound Greeting Auto-Trigger: If client says 'hi', 'hello', etc., automatically send approved 'hi' template with interactive buttons!
+    // 4. Inbound Greeting Auto-Trigger: If client says 'hi', 'hello', etc., dispatch interactive buttons greeting!
     const cleanMsg = (messageText || '').toLowerCase().trim();
     const isGreeting = ['hi', 'hello', 'hey', 'start', 'menu', 'hlo', 'hai', 'hola'].includes(cleanMsg) || cleanMsg === 'hi!' || cleanMsg === 'hello!';
 
     if (channelType === 'whatsapp' && isGreeting && phoneNumberId && accessToken) {
-      console.log(`🚀 [WebhookHandler] Inbound greeting "${messageText}" received from ${customerName}. Dispatching official approved "hi" template...`);
-      let templateDispatched = false;
+      console.log(`🚀 [WebhookHandler] Inbound greeting "${messageText}" received from ${customerName}. Dispatching interactive greeting / approved template...`);
+      let dispatchedWamid = null;
+      const welcomeContent = "Hello sri! 👋 Welcome to DhiGrowth IT Services.\n\nAre you looking to scale your business with custom App Development, AI Auto-Pilot Bots, or WhatsApp CRM Automation?\n\nTap below to connect with our team! 🚀\n\n[Buttons: Yes, I'm interested | Tell me more]";
       const cleanPhone = (recipientPhone || senderIdentifier).replace(/[^0-9]/g, '');
 
       try {
-        const tplRes = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            messaging_product: 'whatsapp',
-            recipient_type: 'individual',
-            to: cleanPhone,
-            type: 'template',
-            template: {
-              name: 'hi',
-              language: { code: 'en' },
-            },
-          }),
+        // Priority 1: Interactive Button Message (Session message - 0 cost, instant delivery, not rate-limited by marketing frequency caps)
+        const interactiveRes = await sendWhatsAppInteractiveButtons({
+          phoneNumberId,
+          accessToken,
+          recipientPhone: cleanPhone,
+          headerText: 'DhiGrowth IT Services',
+          bodyText: "Hello Sri! 👋 Welcome to DhiGrowth IT Services.\n\nAre you looking to scale your business with custom App Development, AI Auto-Pilot Bots, or WhatsApp CRM Automation?\n\nTap below to connect with our team! 🚀",
+          footerText: 'Tap an option to respond:',
+          buttons: [
+            { id: 'btn_yes', title: "Yes, I'm interested" },
+            { id: 'btn_more', title: 'Tell me more' },
+          ],
         });
 
-        const tplData = await tplRes.json();
-        if (tplRes.ok && tplData.messages?.[0]?.id) {
-          templateDispatched = true;
-          console.log(`✅ [WebhookHandler] Official "hi" template delivered to ${cleanPhone} (Meta WAMID: ${tplData.messages[0].id})`);
-        } else {
-          console.warn('[WebhookHandler] Meta template note:', tplData?.error?.message);
+        if (interactiveRes?.messages?.[0]?.id) {
+          dispatchedWamid = interactiveRes.messages[0].id;
+          console.log(`✅ [WebhookHandler] Interactive greeting delivered to ${cleanPhone} (Meta WAMID: ${dispatchedWamid})`);
         }
-      } catch (tErr) {
-        console.warn('[WebhookHandler] Error sending template on hi:', tErr.message);
+      } catch (iErr) {
+        console.warn('[WebhookHandler] Interactive button note:', iErr.message);
       }
 
-      if (templateDispatched) {
-        const welcomeText = "Hello sri! 👋 Welcome to DhiGrowth IT Services.\n \nAre you looking to scale your business with custom App Development, AI Auto-Pilot Bots, or WhatsApp CRM Automation?\n \nTap below to connect with our team! 🚀\n\n[Buttons: Yes, I'm interested | Tell me more]";
+      // Priority 2: Fallback to approved template "hi" if interactive button fails
+      if (!dispatchedWamid) {
+        try {
+          const tplRes = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              messaging_product: 'whatsapp',
+              recipient_type: 'individual',
+              to: cleanPhone,
+              type: 'template',
+              template: {
+                name: 'hi',
+                language: { code: 'en' },
+              },
+            }),
+          });
+
+          const tplData = await tplRes.json();
+          if (tplRes.ok && tplData.messages?.[0]?.id) {
+            dispatchedWamid = tplData.messages[0].id;
+            console.log(`✅ [WebhookHandler] Fallback "hi" template delivered to ${cleanPhone} (Meta WAMID: ${dispatchedWamid})`);
+          } else {
+            console.warn('[WebhookHandler] Meta template note:', tplData?.error?.message);
+          }
+        } catch (tErr) {
+          console.warn('[WebhookHandler] Error sending fallback template on hi:', tErr.message);
+        }
+      }
+
+      if (dispatchedWamid) {
         await supabase.from('messages').insert([
           {
             workspace_id: effectiveWorkspaceId,
@@ -413,29 +439,40 @@ async function processIncomingChatMessage({
             direction: 'outbound',
             ai_generated: true,
             type: 'text',
-            content: welcomeText,
-            status: 'delivered',
+            content: welcomeContent,
+            status: 'sent',
+            external_message_id: dispatchedWamid,
           },
         ]);
 
         await supabase
           .from('conversations')
           .update({
-            last_message_text: welcomeText,
+            last_message_text: welcomeContent,
             last_message_at: new Date().toISOString(),
             unread_count: 0,
           })
           .eq('id', conversationId);
 
-        console.log('✨ Inbound "hi" response completed via approved Meta template!\n');
+        console.log(`✨ Inbound greeting response completed! (Meta WAMID: ${dispatchedWamid})\n`);
         return;
       }
     }
 
-    // Button quick-reply: "Yes, I'm interested"
-    if (cleanMsg.includes("yes, i'm interested") || cleanMsg === 'btn_yes') {
+    // Button quick-reply: "Yes, I'm interested" / "btn_yes" / "yes"
+    const isYesClick = cleanMsg.includes("yes, i'm interested") || cleanMsg.includes("yes, interested") || cleanMsg === 'btn_yes' || cleanMsg === 'yes';
+    if (isYesClick) {
       const respText = "Awesome! 🚀 We're thrilled to connect. What type of project are you looking to build?\n\n1️⃣ Mobile App or Web Platform\n2️⃣ WhatsApp AI Auto-Pilot & CRM\n3️⃣ Custom Software / Workflow Automation\n\nReply with your preference and our solutions team will assist you!";
-      if (sendReply) await sendReply(respText);
+      let outWamid = null;
+      if (sendReply) {
+        try {
+          const res = await sendReply(respText);
+          outWamid = res?.messages?.[0]?.id || null;
+          console.log(`✅ [WebhookHandler] Dispatched "Yes" reply to WhatsApp (WAMID: ${outWamid})`);
+        } catch (err) {
+          console.warn('[WebhookHandler] sendReply error on yes button:', err.message);
+        }
+      }
       await supabase.from('messages').insert([{
         workspace_id: effectiveWorkspaceId,
         conversation_id: conversationId,
@@ -444,16 +481,27 @@ async function processIncomingChatMessage({
         ai_generated: true,
         type: 'text',
         content: respText,
-        status: 'delivered',
+        status: outWamid ? 'sent' : 'failed',
+        external_message_id: outWamid,
       }]);
       await supabase.from('conversations').update({ last_message_text: respText, last_message_at: new Date().toISOString(), unread_count: 0 }).eq('id', conversationId);
       return;
     }
 
-    // Button quick-reply: "Tell me more"
-    if (cleanMsg.includes("tell me more") || cleanMsg === 'btn_more') {
+    // Button quick-reply: "Tell me more" / "btn_more" / "tell me"
+    const isMoreClick = cleanMsg.includes("tell me more") || cleanMsg.includes("tell me") || cleanMsg === 'btn_more' || cleanMsg === 'more';
+    if (isMoreClick) {
       const respText = "At DhiGrowth IT Services, we help businesses grow with powerful technology:\n\n💻 Custom Apps & High-Converting Websites\n🤖 Meta-Approved WhatsApp Cloud API Automation\n📈 Omnichannel CRM & AI Sales Concierges\n\n👉 Learn more at: https://dhigrowth.com\n\nHow can we help your business today?";
-      if (sendReply) await sendReply(respText);
+      let outWamid = null;
+      if (sendReply) {
+        try {
+          const res = await sendReply(respText);
+          outWamid = res?.messages?.[0]?.id || null;
+          console.log(`✅ [WebhookHandler] Dispatched "Tell me more" reply to WhatsApp (WAMID: ${outWamid})`);
+        } catch (err) {
+          console.warn('[WebhookHandler] sendReply error on tell me more:', err.message);
+        }
+      }
       await supabase.from('messages').insert([{
         workspace_id: effectiveWorkspaceId,
         conversation_id: conversationId,
@@ -462,7 +510,8 @@ async function processIncomingChatMessage({
         ai_generated: true,
         type: 'text',
         content: respText,
-        status: 'delivered',
+        status: outWamid ? 'sent' : 'failed',
+        external_message_id: outWamid,
       }]);
       await supabase.from('conversations').update({ last_message_text: respText, last_message_at: new Date().toISOString(), unread_count: 0 }).eq('id', conversationId);
       return;
@@ -483,10 +532,12 @@ async function processIncomingChatMessage({
     console.log(`💬 AI Reply: "${aiResponseText.slice(0, 80)}..." ${aiImageUrl ? `(Image: ${aiImageUrl})` : ''}`);
 
     // 5. Dispatch reply via Meta Graph API
+    let aiWamid = null;
     if (sendReply) {
       try {
-        await sendReply(aiResponseText, aiImageUrl);
-        console.log(`📤 Outbound reply dispatched via Meta ${channelType.toUpperCase()} API.`);
+        const sendResult = await sendReply(aiResponseText, aiImageUrl);
+        aiWamid = sendResult?.messages?.[0]?.id || null;
+        console.log(`📤 Outbound reply dispatched via Meta ${channelType.toUpperCase()} API. (WAMID: ${aiWamid})`);
       } catch (err) {
         console.warn(`[WebhookHandler] Could not dispatch live outbound reply:`, err.message);
       }
@@ -503,7 +554,8 @@ async function processIncomingChatMessage({
         type: aiImageUrl ? 'image' : 'text',
         content: aiResponseText,
         media_url: aiImageUrl || null,
-        status: 'delivered',
+        status: aiWamid ? 'sent' : 'failed',
+        external_message_id: aiWamid,
       },
     ]);
 
@@ -532,7 +584,11 @@ async function handleMessageStatusUpdates(statuses) {
   for (const st of statuses) {
     const status = st.status; // 'delivered', 'read', 'failed'
     const externalId = st.id;
+    if (st.errors && st.errors.length > 0) {
+      console.warn(`⚠️ [Meta Status] Message ${externalId} FAILED with error:`, JSON.stringify(st.errors));
+    }
     if (externalId && status) {
+      console.log(`📬 [Meta Status Update] ${externalId} -> ${status}`);
       await supabase
         .from('messages')
         .update({ status })

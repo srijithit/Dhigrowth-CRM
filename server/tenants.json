@@ -22,36 +22,5 @@
     },
     "status": "active",
     "createdAt": "2026-09-10T00:00:00.000Z"
-  },
-  {
-    "id": "b1a0a9dd26af-9d29-b53e-7fd6-c592f69f2bc5",
-    "workspaceId": "b1a0a9dd26af-9d29-b53e-7fd6-c592f69f2bc5",
-    "name": "maddy",
-    "username": "maddy",
-    "email": "maddy@gmail.com",
-    "companyName": "mma",
-    "slug": "maddy",
-    "role": "CRM User",
-    "plan": "Pro Plan",
-    "isAdmin": false,
-    "isExternalClient": false,
-    "passwordHash": "$2b$10$/WMB0j.bAfshitvui6pb5ufGQuCBi.bHn8za2y6tYMMJJUpMZpWT.",
-    "password": "maddy2",
-    "permissions": {
-      "sendDueToAll": true,
-      "teamInbox": true,
-      "metaKeys": true,
-      "aiStudio": true,
-      "fileManager": true,
-      "invoicing": true,
-      "send_due_all": true,
-      "team_inbox": true,
-      "ai_studio": true,
-      "meta_api": true,
-      "crm_leads": true,
-      "campaigns": true
-    },
-    "status": "active",
-    "createdAt": "2026-09-16T10:57:18.078Z"
   }
 ]
