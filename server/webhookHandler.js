@@ -517,8 +517,95 @@ async function processIncomingChatMessage({
       return;
     }
 
-    // 5. Generate AI Concierge Response for custom questions
-    console.log('🤖 Dhigrowth AI Concierge is generating response with history context...');
+    // Option 1: Mobile App or Web Platform
+    const isOption1 = cleanMsg === '1' || cleanMsg === '1️⃣' || cleanMsg.includes('mobile app') || cleanMsg === 'app';
+    if (isOption1) {
+      const respText = "Awesome choice! 📱 We engineer high-performance iOS, Android, and Web applications built for scalability with Flutter, React Native, and robust cloud APIs.\n\nCould you tell us what type of app you have in mind (e.g., E-commerce, Booking, On-Demand, or SaaS) and any key features you need?";
+      let outWamid = null;
+      if (sendReply) {
+        try {
+          const res = await sendReply(respText);
+          outWamid = res?.messages?.[0]?.id || null;
+          console.log(`✅ [WebhookHandler] Dispatched Option 1 reply to WhatsApp (WAMID: ${outWamid})`);
+        } catch (err) {
+          console.warn('[WebhookHandler] sendReply error on option 1:', err.message);
+        }
+      }
+      await supabase.from('messages').insert([{
+        workspace_id: effectiveWorkspaceId,
+        conversation_id: conversationId,
+        channel_id: channelId,
+        direction: 'outbound',
+        ai_generated: true,
+        type: 'text',
+        content: respText,
+        status: outWamid ? 'sent' : 'failed',
+        external_message_id: outWamid,
+      }]);
+      await supabase.from('conversations').update({ last_message_text: respText, last_message_at: new Date().toISOString(), unread_count: 0 }).eq('id', conversationId);
+      return;
+    }
+
+    // Option 2: WhatsApp AI Auto-Pilot & CRM
+    const isOption2 = cleanMsg === '2' || cleanMsg === '2️⃣' || cleanMsg.includes('whatsapp crm') || cleanMsg.includes('crm') || cleanMsg.includes('auto-pilot');
+    if (isOption2) {
+      const respText = "Supercharge your business with WhatsApp Automation! 💬🤖\n\nWe provide:\n• Official Meta WhatsApp Cloud API setup\n• AI Sales Concierges (24/7 auto-pilot replies)\n• Automated Broadcast Campaigns & Lead Funnels\n• Multi-Agent Team Inbox\n\nHow many incoming leads or customer inquiries do you manage each day?";
+      let outWamid = null;
+      if (sendReply) {
+        try {
+          const res = await sendReply(respText);
+          outWamid = res?.messages?.[0]?.id || null;
+          console.log(`✅ [WebhookHandler] Dispatched Option 2 reply to WhatsApp (WAMID: ${outWamid})`);
+        } catch (err) {
+          console.warn('[WebhookHandler] sendReply error on option 2:', err.message);
+        }
+      }
+      await supabase.from('messages').insert([{
+        workspace_id: effectiveWorkspaceId,
+        conversation_id: conversationId,
+        channel_id: channelId,
+        direction: 'outbound',
+        ai_generated: true,
+        type: 'text',
+        content: respText,
+        status: outWamid ? 'sent' : 'failed',
+        external_message_id: outWamid,
+      }]);
+      await supabase.from('conversations').update({ last_message_text: respText, last_message_at: new Date().toISOString(), unread_count: 0 }).eq('id', conversationId);
+      return;
+    }
+
+    // Option 3: Custom Software / Workflow Automation
+    const isOption3 = cleanMsg === '3' || cleanMsg === '3️⃣' || cleanMsg.includes('custom software') || cleanMsg.includes('workflow') || cleanMsg.includes('automation');
+    if (isOption3) {
+      const respText = "Fantastic! 💻 We build enterprise-grade custom software, tailored web portals, and workflow automations to save your team hours every day.\n\nCould you describe the main operational bottleneck or workflow you are looking to automate?";
+      let outWamid = null;
+      if (sendReply) {
+        try {
+          const res = await sendReply(respText);
+          outWamid = res?.messages?.[0]?.id || null;
+          console.log(`✅ [WebhookHandler] Dispatched Option 3 reply to WhatsApp (WAMID: ${outWamid})`);
+        } catch (err) {
+          console.warn('[WebhookHandler] sendReply error on option 3:', err.message);
+        }
+      }
+      await supabase.from('messages').insert([{
+        workspace_id: effectiveWorkspaceId,
+        conversation_id: conversationId,
+        channel_id: channelId,
+        direction: 'outbound',
+        ai_generated: true,
+        type: 'text',
+        content: respText,
+        status: outWamid ? 'sent' : 'failed',
+        external_message_id: outWamid,
+      }]);
+      await supabase.from('conversations').update({ last_message_text: respText, last_message_at: new Date().toISOString(), unread_count: 0 }).eq('id', conversationId);
+      return;
+    }
+
+    // 5. Generate AI Concierge Response for all other words and questions
+    console.log(`🤖 Dhigrowth AI Concierge is generating response for: "${messageText}" with history context...`);
     const aiResult = await generateAIResponse({
       customerName,
       customerMessage: messageText,
@@ -539,7 +626,17 @@ async function processIncomingChatMessage({
         aiWamid = sendResult?.messages?.[0]?.id || null;
         console.log(`📤 Outbound reply dispatched via Meta ${channelType.toUpperCase()} API. (WAMID: ${aiWamid})`);
       } catch (err) {
-        console.warn(`[WebhookHandler] Could not dispatch live outbound reply:`, err.message);
+        console.warn(`[WebhookHandler] Could not dispatch live outbound reply with media:`, err.message);
+        if (aiImageUrl) {
+          try {
+            console.log('Retrying with plain-text fallback...');
+            const fallbackRes = await sendReply(aiResponseText, null);
+            aiWamid = fallbackRes?.messages?.[0]?.id || null;
+            console.log(`📤 Plain-text fallback dispatched via Meta (WAMID: ${aiWamid})`);
+          } catch (fbErr) {
+            console.error(`[WebhookHandler] Text fallback also failed:`, fbErr.message);
+          }
+        }
       }
     }
 
