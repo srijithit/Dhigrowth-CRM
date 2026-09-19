@@ -144,7 +144,7 @@ app.post('/api/test-inbound', async (req, res) => {
                 messaging_product: 'whatsapp',
                 metadata: {
                   display_phone_number: '16505551111',
-                  phone_number_id: process.env.META_WHATSAPP_PHONE_NUMBER_ID || '1349867994870208',
+                  phone_number_id: process.env.META_WHATSAPP_PHONE_NUMBER_ID || '1272943605907701',
                 },
                 contacts: [{ profile: { name }, wa_id: phone }],
                 messages: [
