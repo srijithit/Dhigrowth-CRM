@@ -251,7 +251,41 @@ app.post('/api/send-manual-message', async (req, res) => {
 
         metaResult = await response.json();
         if (!response.ok) {
-          console.error('[Manual Send] Meta API error:', metaResult);
+          console.warn('[Manual Send] Meta API error:', metaResult?.error?.message);
+
+          // If 24-hour window is closed (Error 131047), automatically dispatch official approved template hello_world to unlock the window!
+          if (metaResult?.error?.code === 131047) {
+            console.log(`🔄 [Manual Send] 24h window closed for ${cleanPhone}. Automatically dispatching approved "hello_world" template...`);
+            try {
+              const hwRes = await fetch(
+                `https://graph.facebook.com/v20.0/${sendPhoneId}/messages`,
+                {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${sendToken}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    messaging_product: 'whatsapp',
+                    recipient_type: 'individual',
+                    to: cleanPhone,
+                    type: 'template',
+                    template: {
+                      name: 'hello_world',
+                      language: { code: 'en_US' },
+                    },
+                  }),
+                }
+              );
+              const hwData = await hwRes.json();
+              if (hwRes.ok && hwData?.messages?.[0]?.id) {
+                metaResult = hwData;
+                console.log('✅ [Manual Send] Approved template "hello_world" delivered to', cleanPhone, 'WAMID:', hwData.messages[0].id);
+              }
+            } catch (hwErr) {
+              console.warn('[Manual Send] hello_world template dispatch note:', hwErr.message);
+            }
+          }
         } else {
           console.log('✅ Dispatched successfully to WhatsApp phone via Phone ID:', sendPhoneId, 'Meta ID:', metaResult.messages?.[0]?.id);
         }
