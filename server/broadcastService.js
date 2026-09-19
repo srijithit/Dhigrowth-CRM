@@ -598,6 +598,46 @@ export function cancelScheduledCampaign(workspaceId, campaignId) {
 }
 
 /**
+ * Update an existing broadcast campaign
+ */
+export function updateCampaign(workspaceId, campaignId, updates = {}) {
+  const campaigns = campaignStore.workspaces[workspaceId] || [];
+  const idx = campaigns.findIndex((c) => c.id === campaignId);
+  if (idx === -1) {
+    throw new Error(`Campaign ${campaignId} not found`);
+  }
+
+  const existing = campaigns[idx];
+  const updated = {
+    ...existing,
+    ...updates,
+    id: existing.id,
+    createdAt: existing.createdAt,
+    updatedAt: new Date().toISOString(),
+  };
+
+  campaigns[idx] = updated;
+  saveCampaignsToDisk();
+  return updated;
+}
+
+/**
+ * Delete a broadcast campaign
+ */
+export function deleteCampaign(workspaceId, campaignId) {
+  const campaigns = campaignStore.workspaces[workspaceId] || [];
+  const beforeLen = campaigns.length;
+  campaignStore.workspaces[workspaceId] = campaigns.filter((c) => c.id !== campaignId);
+
+  if (campaignStore.workspaces[workspaceId].length === beforeLen) {
+    throw new Error(`Campaign ${campaignId} not found`);
+  }
+
+  saveCampaignsToDisk();
+  return { success: true, deletedId: campaignId };
+}
+
+/**
  * Background loop checking for scheduled campaigns
  */
 let schedulerInterval = null;

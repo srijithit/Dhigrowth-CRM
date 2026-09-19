@@ -45,6 +45,8 @@ import {
   initBroadcastStore,
   getWorkspaceCampaigns,
   createBroadcastCampaign,
+  updateCampaign,
+  deleteCampaign,
   executeBroadcast,
   sendTestBroadcast,
   cancelScheduledCampaign,
@@ -1379,6 +1381,28 @@ app.post('/api/broadcasts/:id/send-now', async (req, res) => {
     const workspaceId = req.body?.workspaceId || process.env.VITE_DEFAULT_WORKSPACE_ID || 'b0000000-0000-0000-0000-000000000001';
     const campaign = await executeBroadcast(workspaceId, campaignId);
     res.json({ success: true, campaign });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.put('/api/broadcasts/:id', (req, res) => {
+  try {
+    const campaignId = req.params.id;
+    const workspaceId = req.body?.workspaceId || req.query.workspaceId || process.env.VITE_DEFAULT_WORKSPACE_ID || 'b0000000-0000-0000-0000-000000000001';
+    const updated = updateCampaign(workspaceId, campaignId, req.body || {});
+    res.json({ success: true, campaign: updated });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/broadcasts/:id', (req, res) => {
+  try {
+    const campaignId = req.params.id;
+    const workspaceId = req.query.workspaceId || req.body?.workspaceId || process.env.VITE_DEFAULT_WORKSPACE_ID || 'b0000000-0000-0000-0000-000000000001';
+    const result = deleteCampaign(workspaceId, campaignId);
+    res.json({ success: true, ...result });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

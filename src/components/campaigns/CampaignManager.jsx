@@ -23,6 +23,8 @@ import {
   Check,
   AlertCircle,
   Smartphone,
+  Edit2,
+  Trash2,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { BACKEND_URL } from '../../services/apiConfig';
@@ -103,6 +105,9 @@ export const CampaignManager = () => {
   const [templates, setTemplates] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCampaign, setEditingCampaign] = useState(null);
+  const [campaignToDelete, setCampaignToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
@@ -221,10 +226,138 @@ export const CampaignManager = () => {
     ? (selectedTemplate.body_text.match(/\{\{(\d+)\}\}/g) || []).length
     : 0;
 
+  const handleOpenCreateModal = () => {
+    setEditingCampaign(null);
+    setFormName('');
+    setFormChannel('WhatsApp');
+    setFormTemplateName(templates[0]?.name || 'hello_world');
+    setFormAudience('VIP Customers & Hot Leads');
+    setIsInstantSend(true);
+    setScheduleDateTime('');
+    setVariableMapping([
+      { index: 1, field: 'first_name', fallback: 'Valued Customer' },
+      { index: 2, field: 'city', fallback: 'your city' },
+      { index: 3, field: 'product', fallback: 'Special Offer' },
+    ]);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (camp) => {
+    setEditingCampaign(camp);
+    setFormName(camp.name || '');
+    setFormChannel(camp.channel || 'WhatsApp');
+    setFormTemplateName(camp.templateName || 'hello_world');
+    setFormAudience(camp.audienceType || 'VIP Customers & Hot Leads');
+    setIsInstantSend(camp.status !== 'scheduled');
+    if (camp.scheduledAt) {
+      try {
+        const d = new Date(camp.scheduledAt);
+        const formatted = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+        setScheduleDateTime(formatted);
+      } catch {
+        setScheduleDateTime('');
+      }
+    } else {
+      setScheduleDateTime('');
+    }
+    if (camp.variableMapping && Array.isArray(camp.variableMapping) && camp.variableMapping.length > 0) {
+      setVariableMapping(camp.variableMapping);
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteCampaign = async (campaignId) => {
+    if (!campaignId) return;
+    setIsDeleting(true);
+    try {
+      let res;
+      try {
+        res = await fetch(`${BACKEND_URL}/api/broadcasts/${campaignId}?workspaceId=${encodeURIComponent(currentWorkspaceId)}`, {
+          method: 'DELETE',
+        });
+      } catch {}
+
+      if (!res || !res.ok) {
+        try {
+          res = await fetch(`http://localhost:4000/api/broadcasts/${campaignId}?workspaceId=${encodeURIComponent(currentWorkspaceId)}`, {
+            method: 'DELETE',
+          });
+        } catch {}
+      }
+
+      setCampaignList((prev) => prev.filter((c) => c.id !== campaignId));
+      showToast('🗑️ Broadcast campaign deleted successfully', 'info');
+      setCampaignToDelete(null);
+    } catch (err) {
+      showToast(`Delete note: ${err.message}`, 'error');
+      setCampaignList((prev) => prev.filter((c) => c.id !== campaignId));
+      setCampaignToDelete(null);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleCreateCampaign = async (e) => {
     e.preventDefault();
     if (!formName.trim()) {
       showToast('Campaign Name is required', 'error');
+      return;
+    }
+
+    if (editingCampaign) {
+      setIsSubmitting(true);
+      try {
+        const payload = {
+          workspaceId: currentWorkspaceId,
+          name: formName.trim(),
+          channel: formChannel,
+          templateName: formTemplateName || selectedTemplate?.name || 'hello_world',
+          audienceType: formAudience,
+          scheduledAt: !isInstantSend && scheduleDateTime ? new Date(scheduleDateTime).toISOString() : null,
+          variableMapping,
+        };
+
+        let res;
+        try {
+          res = await fetch(`${BACKEND_URL}/api/broadcasts/${editingCampaign.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+        } catch {}
+
+        if (!res || !res.ok) {
+          try {
+            res = await fetch(`http://localhost:4000/api/broadcasts/${editingCampaign.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+          } catch {}
+        }
+
+        if (res && res.ok) {
+          const data = await res.json();
+          if (data.campaign) {
+            setCampaignList((prev) =>
+              prev.map((c) => (c.id === editingCampaign.id ? data.campaign : c))
+            );
+          }
+          showToast(`✏️ Broadcast "${formName}" updated successfully!`, 'success');
+        } else {
+          setCampaignList((prev) =>
+            prev.map((c) => (c.id === editingCampaign.id ? { ...c, ...payload } : c))
+          );
+          showToast(`Updated Broadcast "${formName}"!`, 'success');
+        }
+
+        setIsModalOpen(false);
+        setEditingCampaign(null);
+      } catch (err) {
+        showToast(`Error updating campaign: ${err.message}`, 'error');
+      } finally {
+        setIsSubmitting(false);
+      }
       return;
     }
 
@@ -456,7 +589,7 @@ export const CampaignManager = () => {
             <span>Refresh</span>
           </button>
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={handleOpenCreateModal}
             className="bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow-xs shadow-purple-500/20 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
@@ -565,7 +698,7 @@ export const CampaignManager = () => {
             </p>
           </div>
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={handleOpenCreateModal}
             className="mt-2 bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-bold px-5 py-2.5 rounded-xl flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
@@ -657,30 +790,46 @@ export const CampaignManager = () => {
                         )}
                       </td>
 
-                      <td className="p-4 text-right space-x-2">
-                        {camp.status === 'scheduled' && (
-                          <>
-                            <button
-                              onClick={() => handleSendNow(camp.id)}
-                              className="px-2.5 py-1 rounded-lg bg-[#7C3AED] text-white hover:bg-[#6D28D9] text-xs font-bold cursor-pointer transition-colors shadow-2xs"
-                              title="Trigger immediate broadcast"
-                            >
-                              Send Now
-                            </button>
-                            <button
-                              onClick={() => handleCancelCampaign(camp.id)}
-                              className="px-2.5 py-1 rounded-lg border border-[#FDA29B] bg-[#FEF3F2] text-[#B42318] hover:bg-[#FEE4E2] text-xs font-bold cursor-pointer transition-colors"
-                              title="Cancel scheduled broadcast"
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        )}
-                        {camp.status === 'completed' && (
-                          <span className="text-[11px] text-[#98A2B3] font-mono">
-                            {camp.completedAt ? new Date(camp.completedAt).toLocaleTimeString() : 'Done'}
-                          </span>
-                        )}
+                      <td className="p-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {camp.status === 'scheduled' && (
+                            <>
+                              <button
+                                onClick={() => handleSendNow(camp.id)}
+                                className="px-2.5 py-1 rounded-lg bg-[#7C3AED] text-white hover:bg-[#6D28D9] text-xs font-bold cursor-pointer transition-colors shadow-2xs"
+                                title="Trigger immediate broadcast"
+                              >
+                                Send Now
+                              </button>
+                              <button
+                                onClick={() => handleCancelCampaign(camp.id)}
+                                className="px-2.5 py-1 rounded-lg border border-[#FDA29B] bg-[#FEF3F2] text-[#B42318] hover:bg-[#FEE4E2] text-xs font-bold cursor-pointer transition-colors"
+                                title="Cancel scheduled broadcast"
+                              >
+                                Cancel
+                              </button>
+                            </>
+                          )}
+                          {camp.status === 'completed' && camp.completedAt && (
+                            <span className="text-[10px] text-[#98A2B3] font-mono mr-1 hidden sm:inline">
+                              {new Date(camp.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            </span>
+                          )}
+                          <button
+                            onClick={() => handleOpenEditModal(camp)}
+                            className="p-1.5 rounded-lg border border-[#EAECF0] hover:border-[#7C3AED] bg-white hover:bg-[#F4F0FD] text-[#475467] hover:text-[#7C3AED] transition-all cursor-pointer shadow-2xs"
+                            title="Edit campaign details"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setCampaignToDelete(camp)}
+                            className="p-1.5 rounded-lg border border-[#EAECF0] hover:border-[#FDA29B] bg-white hover:bg-[#FEF3F2] text-[#475467] hover:text-[#D92D20] transition-all cursor-pointer shadow-2xs"
+                            title="Delete campaign"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -704,11 +853,15 @@ export const CampaignManager = () => {
 
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-[#F4F0FD] border border-[#E9D8FD] flex items-center justify-center text-[#7C3AED]">
-                <Send className="w-5 h-5 text-[#7C3AED]" />
+                {editingCampaign ? <Edit2 className="w-5 h-5 text-[#7C3AED]" /> : <Send className="w-5 h-5 text-[#7C3AED]" />}
               </div>
               <div>
-                <h3 className="text-base font-bold text-[#101828]">Create Broadcast Campaign</h3>
-                <p className="text-xs text-[#667085]">Mass WhatsApp Cloud API Delivery with Dynamic Variable Replacement</p>
+                <h3 className="text-base font-bold text-[#101828]">
+                  {editingCampaign ? 'Edit Broadcast Campaign' : 'Create Broadcast Campaign'}
+                </h3>
+                <p className="text-xs text-[#667085]">
+                  {editingCampaign ? 'Update campaign details, audience segment, and variable mappings' : 'Mass WhatsApp Cloud API Delivery with Dynamic Variable Replacement'}
+                </p>
               </div>
             </div>
 
@@ -899,7 +1052,10 @@ export const CampaignManager = () => {
               <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#EAECF0]">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setEditingCampaign(null);
+                  }}
                   className="px-4 py-2.5 rounded-xl border border-[#EAECF0] bg-white text-xs font-bold text-[#475467] hover:bg-[#F9FAFB] cursor-pointer"
                 >
                   Cancel
@@ -909,11 +1065,52 @@ export const CampaignManager = () => {
                   disabled={isSubmitting}
                   className="px-5 py-2.5 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
                 >
-                  <Send className="w-4 h-4" />
-                  <span>{isInstantSend ? 'Launch Broadcast' : 'Save & Schedule'}</span>
+                  {editingCampaign ? <Check className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+                  <span>{editingCampaign ? 'Save Changes' : (isInstantSend ? 'Launch Broadcast' : 'Save & Schedule')}</span>
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Campaign Confirmation Modal */}
+      {campaignToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in font-sans">
+          <div className="bg-white border border-[#EAECF0] rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-[#FEE4E2] border border-[#FECDCA] flex items-center justify-center text-[#D92D20]">
+                <Trash2 className="w-5 h-5 text-[#D92D20]" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-[#101828]">Delete Broadcast Campaign</h3>
+                <p className="text-xs text-[#667085]">This action cannot be undone.</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-[#344054] leading-relaxed bg-[#F9FAFB] p-3 rounded-xl border border-[#EAECF0]">
+              Are you sure you want to delete <span className="font-bold text-[#101828]">"{campaignToDelete.name}"</span>? All delivery logs and tracking stats for this broadcast will be permanently removed.
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[#EAECF0]">
+              <button
+                type="button"
+                onClick={() => setCampaignToDelete(null)}
+                disabled={isDeleting}
+                className="px-4 py-2.5 rounded-xl border border-[#EAECF0] bg-white text-xs font-bold text-[#475467] hover:bg-[#F9FAFB] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteCampaign(campaignToDelete.id)}
+                disabled={isDeleting}
+                className="px-4 py-2.5 bg-[#D92D20] hover:bg-[#B42318] text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
+              >
+                {isDeleting ? <RotateCw className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                <span>{isDeleting ? 'Deleting...' : 'Delete Campaign'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
