@@ -478,13 +478,86 @@ export async function sendTestBroadcast({
 
   let sendResult;
   if (token && phoneId && !token.includes('placeholder')) {
-    sendResult = await sendWhatsAppMessage({
-      phoneNumberId: phoneId,
-      accessToken: token,
-      recipientPhone: cleanPhone,
-      text: resolvedText,
-      imageUrl: template.header_type === 'IMAGE' ? template.header_content : undefined,
-    });
+    const isHelloWorld = template.name === 'hello_world';
+    try {
+      if (isHelloWorld) {
+        const hwRes = await fetch(`${GRAPH_BASE_URL}/${phoneId}/messages`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            recipient_type: 'individual',
+            to: cleanPhone,
+            type: 'template',
+            template: {
+              name: 'hello_world',
+              language: { code: 'en_US' },
+            },
+          }),
+        });
+        sendResult = await hwRes.json();
+      } else {
+        const templateComponents = buildTemplateParameters(template, sampleContact, variableMapping);
+        const tplRes = await fetch(`${GRAPH_BASE_URL}/${phoneId}/messages`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            recipient_type: 'individual',
+            to: cleanPhone,
+            type: 'template',
+            template: {
+              name: template.name,
+              language: { code: template.language || 'en_US' },
+              components: templateComponents,
+            },
+          }),
+        });
+        sendResult = await tplRes.json();
+
+        if (!tplRes.ok) {
+          console.warn('[Broadcast Test] Template send failed, trying direct text or hello_world:', sendResult?.error?.message);
+          try {
+            sendResult = await sendWhatsAppMessage({
+              phoneNumberId: phoneId,
+              accessToken: token,
+              recipientPhone: cleanPhone,
+              text: resolvedText,
+              imageUrl: template.header_type === 'IMAGE' ? template.header_content : undefined,
+            });
+          } catch (textErr) {
+            console.warn('[Broadcast Test] Text send failed, sending hello_world:', textErr.message);
+            const hwRes = await fetch(`${GRAPH_BASE_URL}/${phoneId}/messages`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                messaging_product: 'whatsapp',
+                recipient_type: 'individual',
+                to: cleanPhone,
+                type: 'template',
+                template: {
+                  name: 'hello_world',
+                  language: { code: 'en_US' },
+                },
+              }),
+            });
+            sendResult = await hwRes.json();
+          }
+        }
+      }
+    } catch (apiErr) {
+      console.error('[Broadcast Test] Error:', apiErr.message);
+      sendResult = { error: apiErr.message };
+    }
   } else {
     sendResult = {
       simulated: true,

@@ -25,8 +25,20 @@ import {
   Smartphone,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { BACKEND_URL } from '../../services/apiConfig';
 
 export const FALLBACK_BROADCAST_TEMPLATES = [
+  {
+    id: 'tpl_hello_world',
+    name: 'hello_world',
+    category: 'UTILITY',
+    language: 'en_US',
+    status: 'APPROVED',
+    header_type: 'NONE',
+    header_content: null,
+    body_text: 'Welcome and congratulations!! This message demonstrates your ability to send a WhatsApp message notification from the Cloud API, hosted by Meta. Thank you for taking the time to test with us.',
+    footer_text: 'Dhigrowth Meta WhatsApp Cloud API',
+  },
   {
     id: 'tpl_hi_1789625763989',
     name: 'hi',
@@ -123,7 +135,7 @@ export const CampaignManager = () => {
     try {
       let res;
       try {
-        res = await fetch(`/api/broadcasts?workspaceId=${encodeURIComponent(currentWorkspaceId)}`);
+        res = await fetch(`${BACKEND_URL}/api/broadcasts?workspaceId=${encodeURIComponent(currentWorkspaceId)}`);
       } catch {}
 
       if (!res || !res.ok) {
@@ -133,9 +145,13 @@ export const CampaignManager = () => {
       }
 
       if (res && res.ok) {
-        const data = await res.json();
-        if (data.campaigns) {
-          setCampaignList(data.campaigns);
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const data = await res.json();
+          if (data.campaigns && Array.isArray(data.campaigns)) {
+            setCampaignList(data.campaigns);
+            return;
+          }
         }
       }
     } catch (err) {
@@ -149,7 +165,7 @@ export const CampaignManager = () => {
     try {
       let res;
       try {
-        res = await fetch(`/api/meta/templates?workspaceId=${encodeURIComponent(currentWorkspaceId)}`);
+        res = await fetch(`${BACKEND_URL}/api/meta/templates?workspaceId=${encodeURIComponent(currentWorkspaceId)}`);
       } catch {}
 
       if (!res || !res.ok) {
@@ -159,13 +175,16 @@ export const CampaignManager = () => {
       }
 
       if (res && res.ok) {
-        const data = await res.json();
-        if (data.templates && data.templates.length > 0) {
-          setTemplates(data.templates);
-          if (!formTemplateName) {
-            setFormTemplateName(data.templates[0].name);
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const data = await res.json();
+          if (data.templates && data.templates.length > 0) {
+            setTemplates(data.templates);
+            if (!formTemplateName) {
+              setFormTemplateName(data.templates[0].name);
+            }
+            return;
           }
-          return;
         }
       }
     } catch (err) {
@@ -224,7 +243,7 @@ export const CampaignManager = () => {
 
       let res;
       try {
-        res = await fetch('/api/broadcasts/create', {
+        res = await fetch(`${BACKEND_URL}/api/broadcasts/create`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -301,7 +320,7 @@ export const CampaignManager = () => {
 
       let res;
       try {
-        res = await fetch('/api/broadcasts/test-send', {
+        res = await fetch(`${BACKEND_URL}/api/broadcasts/test-send`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -336,7 +355,7 @@ export const CampaignManager = () => {
       showToast('Triggering immediate broadcast dispatch...', 'info');
       let res;
       try {
-        res = await fetch(`/api/broadcasts/${campaignId}/send-now`, {
+        res = await fetch(`${BACKEND_URL}/api/broadcasts/${campaignId}/send-now`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ workspaceId: currentWorkspaceId }),
@@ -364,7 +383,7 @@ export const CampaignManager = () => {
     try {
       let res;
       try {
-        res = await fetch(`/api/broadcasts/${campaignId}/cancel`, {
+        res = await fetch(`${BACKEND_URL}/api/broadcasts/${campaignId}/cancel`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ workspaceId: currentWorkspaceId }),
