@@ -58,6 +58,15 @@ import {
   createRazorpayOrder,
   recordWalletRecharge,
 } from './walletService.js';
+import {
+  initAutomationsStore,
+  getWorkspaceAutomations,
+  createAutomation,
+  updateAutomation,
+  deleteAutomation,
+  toggleAutomationStatus,
+  testTriggerAutomation,
+} from './automationsService.js';
 import { setManualMode, isManualMode } from './manualAgentStore.js';
 import { getMetaWhatsAppInsights } from './metaInsightsService.js';
 
@@ -70,6 +79,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 initTemplateStore();
 initBroadcastStore();
 initWalletStore();
+initAutomationsStore();
 
 const META_CONFIG_FILE = path.resolve(__dirname, 'metaConfig.json');
 
@@ -1439,6 +1449,70 @@ app.get('/api/meta-insights', async (req, res) => {
     res.json(insights);
   } catch (err) {
     console.error('[MetaInsights] Route error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 16. Automations Engine API
+app.get('/api/automations', (req, res) => {
+  try {
+    const workspaceId = req.query.workspaceId || process.env.VITE_DEFAULT_WORKSPACE_ID || 'b0000000-0000-0000-0000-000000000001';
+    const automations = getWorkspaceAutomations(workspaceId);
+    res.json({ success: true, automations });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/automations', (req, res) => {
+  try {
+    const auto = createAutomation(req.body || {});
+    res.json({ success: true, automation: auto });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.put('/api/automations/:id', (req, res) => {
+  try {
+    const autoId = req.params.id;
+    const workspaceId = req.body?.workspaceId || req.query.workspaceId || process.env.VITE_DEFAULT_WORKSPACE_ID || 'b0000000-0000-0000-0000-000000000001';
+    const updated = updateAutomation(workspaceId, autoId, req.body || {});
+    res.json({ success: true, automation: updated });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/automations/:id', (req, res) => {
+  try {
+    const autoId = req.params.id;
+    const workspaceId = req.query.workspaceId || req.body?.workspaceId || process.env.VITE_DEFAULT_WORKSPACE_ID || 'b0000000-0000-0000-0000-000000000001';
+    const result = deleteAutomation(workspaceId, autoId);
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/automations/:id/toggle', (req, res) => {
+  try {
+    const autoId = req.params.id;
+    const workspaceId = req.body?.workspaceId || req.query.workspaceId || process.env.VITE_DEFAULT_WORKSPACE_ID || 'b0000000-0000-0000-0000-000000000001';
+    const auto = toggleAutomationStatus(workspaceId, autoId);
+    res.json({ success: true, automation: auto });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/automations/:id/test', (req, res) => {
+  try {
+    const autoId = req.params.id;
+    const workspaceId = req.body?.workspaceId || req.query.workspaceId || process.env.VITE_DEFAULT_WORKSPACE_ID || 'b0000000-0000-0000-0000-000000000001';
+    const result = testTriggerAutomation(workspaceId, autoId);
+    res.json(result);
+  } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
