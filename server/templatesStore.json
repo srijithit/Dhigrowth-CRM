@@ -2,24 +2,29 @@
   "workspaces": {
     "b0000000-0000-0000-0000-000000000001": [
       {
-        "id": "tpl_hi_1789625763989",
+        "id": "tpl_hi_4105083089797368",
         "name": "hi",
-        "category": "UTILITY",
-        "language": "en_US",
+        "category": "MARKETING",
+        "language": "en",
         "status": "APPROVED",
-        "header_type": "NONE",
-        "header_content": null,
-        "body_text": "👋 *Hello {{1}}!*\n\nWelcome to *DhiGrowth IT Services* 🚀\n\nWe help businesses grow with powerful digital solutions:\n\n💻 *App & Website Development*\n🤖 *AI Solutions & Automation*\n📈 *Business Development Solutions*\n💬 *WhatsApp CRM & Automation*\n\n🎯 Looking to take your business to the next level?\n\n👉 *Explore our services:* {{3}}\n\n📩 *Custom Requirement:* {{2}}\n\n*DhiGrowth IT Services* — Building Technology. Growing Businesses. 🚀",
-        "footer_text": "hi, hello",
-        "buttons": [],
-        "variables": [
-          "var_1",
-          "var_2",
-          "var_3"
+        "header_type": "TEXT",
+        "header_content": "DhiGrowth IT Services",
+        "body_text": "Hello sri! 👋 Welcome to DhiGrowth IT Services.\n \nAre you looking to scale your business with custom App Development, AI Auto-Pilot Bots, or WhatsApp CRM Automation?\n \nTap below to connect with our team! 🚀\nTap an option to respond:",
+        "footer_text": "Tap an option to respond:",
+        "buttons": [
+          {
+            "type": "QUICK_REPLY",
+            "text": "Yes, I'm interested"
+          },
+          {
+            "type": "QUICK_REPLY",
+            "text": "Tell me more"
+          }
         ],
-        "syncedWithMeta": false,
+        "variables": [],
+        "syncedWithMeta": true,
         "createdAt": "2026-09-17T06:16:03.989Z",
-        "updatedAt": "2026-09-17T06:22:00.000Z"
+        "updatedAt": "2026-09-19T05:10:00.000Z"
       },
       {
         "id": "tpl_test_product_launch_1789562723381",

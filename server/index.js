@@ -361,8 +361,8 @@ app.post('/api/send-template-message', async (req, res) => {
         type: 'template',
         template: {
           name: matchedTemplate.name,
-          language: { code: matchedTemplate.language || 'en_US' },
-          ...(matchedTemplate.name === 'hello_world'
+          language: { code: matchedTemplate.language || (matchedTemplate.name === 'hello_world' ? 'en_US' : 'en') },
+          ...(matchedTemplate.name === 'hello_world' || matchedTemplate.name === 'hi' || !matchedTemplate.variables || matchedTemplate.variables.length === 0
             ? {}
             : {
                 components: [

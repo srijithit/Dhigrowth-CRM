@@ -121,6 +121,9 @@ export const handleInboundWebhook = async (req, res) => {
               externalMessageId: message.id,
               channelId: 'd0000000-0000-0000-0000-000000000001',
               workspaceId: tenantWorkspaceId,
+              phoneNumberId,
+              accessToken: tenantAccessToken,
+              recipientPhone: senderPhone,
               sendReply: async (replyText, imageUrl) => {
                 return sendWhatsAppMessage({
                   phoneNumberId,
@@ -209,6 +212,9 @@ async function processIncomingChatMessage({
   externalMessageId,
   channelId,
   workspaceId = DEFAULT_WORKSPACE_ID,
+  phoneNumberId,
+  accessToken,
+  recipientPhone,
   sendReply,
 }) {
   const isValidUuid = (id) => typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
@@ -358,7 +364,111 @@ async function processIncomingChatMessage({
       return;
     }
 
-    // 4. Generate AI Concierge Response
+    // 4. Inbound Greeting Auto-Trigger: If client says 'hi', 'hello', etc., automatically send approved 'hi' template with interactive buttons!
+    const cleanMsg = (messageText || '').toLowerCase().trim();
+    const isGreeting = ['hi', 'hello', 'hey', 'start', 'menu', 'hlo', 'hai', 'hola'].includes(cleanMsg) || cleanMsg === 'hi!' || cleanMsg === 'hello!';
+
+    if (channelType === 'whatsapp' && isGreeting && phoneNumberId && accessToken) {
+      console.log(`🚀 [WebhookHandler] Inbound greeting "${messageText}" received from ${customerName}. Dispatching official approved "hi" template...`);
+      let templateDispatched = false;
+      const cleanPhone = (recipientPhone || senderIdentifier).replace(/[^0-9]/g, '');
+
+      try {
+        const tplRes = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            recipient_type: 'individual',
+            to: cleanPhone,
+            type: 'template',
+            template: {
+              name: 'hi',
+              language: { code: 'en' },
+            },
+          }),
+        });
+
+        const tplData = await tplRes.json();
+        if (tplRes.ok && tplData.messages?.[0]?.id) {
+          templateDispatched = true;
+          console.log(`✅ [WebhookHandler] Official "hi" template delivered to ${cleanPhone} (Meta WAMID: ${tplData.messages[0].id})`);
+        } else {
+          console.warn('[WebhookHandler] Meta template note:', tplData?.error?.message);
+        }
+      } catch (tErr) {
+        console.warn('[WebhookHandler] Error sending template on hi:', tErr.message);
+      }
+
+      if (templateDispatched) {
+        const welcomeText = "Hello sri! 👋 Welcome to DhiGrowth IT Services.\n \nAre you looking to scale your business with custom App Development, AI Auto-Pilot Bots, or WhatsApp CRM Automation?\n \nTap below to connect with our team! 🚀\n\n[Buttons: Yes, I'm interested | Tell me more]";
+        await supabase.from('messages').insert([
+          {
+            workspace_id: effectiveWorkspaceId,
+            conversation_id: conversationId,
+            channel_id: channelId,
+            direction: 'outbound',
+            ai_generated: true,
+            type: 'text',
+            content: welcomeText,
+            status: 'delivered',
+          },
+        ]);
+
+        await supabase
+          .from('conversations')
+          .update({
+            last_message_text: welcomeText,
+            last_message_at: new Date().toISOString(),
+            unread_count: 0,
+          })
+          .eq('id', conversationId);
+
+        console.log('✨ Inbound "hi" response completed via approved Meta template!\n');
+        return;
+      }
+    }
+
+    // Button quick-reply: "Yes, I'm interested"
+    if (cleanMsg.includes("yes, i'm interested") || cleanMsg === 'btn_yes') {
+      const respText = "Awesome! 🚀 We're thrilled to connect. What type of project are you looking to build?\n\n1️⃣ Mobile App or Web Platform\n2️⃣ WhatsApp AI Auto-Pilot & CRM\n3️⃣ Custom Software / Workflow Automation\n\nReply with your preference and our solutions team will assist you!";
+      if (sendReply) await sendReply(respText);
+      await supabase.from('messages').insert([{
+        workspace_id: effectiveWorkspaceId,
+        conversation_id: conversationId,
+        channel_id: channelId,
+        direction: 'outbound',
+        ai_generated: true,
+        type: 'text',
+        content: respText,
+        status: 'delivered',
+      }]);
+      await supabase.from('conversations').update({ last_message_text: respText, last_message_at: new Date().toISOString(), unread_count: 0 }).eq('id', conversationId);
+      return;
+    }
+
+    // Button quick-reply: "Tell me more"
+    if (cleanMsg.includes("tell me more") || cleanMsg === 'btn_more') {
+      const respText = "At DhiGrowth IT Services, we help businesses grow with powerful technology:\n\n💻 Custom Apps & High-Converting Websites\n🤖 Meta-Approved WhatsApp Cloud API Automation\n📈 Omnichannel CRM & AI Sales Concierges\n\n👉 Learn more at: https://dhigrowth.com\n\nHow can we help your business today?";
+      if (sendReply) await sendReply(respText);
+      await supabase.from('messages').insert([{
+        workspace_id: effectiveWorkspaceId,
+        conversation_id: conversationId,
+        channel_id: channelId,
+        direction: 'outbound',
+        ai_generated: true,
+        type: 'text',
+        content: respText,
+        status: 'delivered',
+      }]);
+      await supabase.from('conversations').update({ last_message_text: respText, last_message_at: new Date().toISOString(), unread_count: 0 }).eq('id', conversationId);
+      return;
+    }
+
+    // 5. Generate AI Concierge Response for custom questions
     console.log('🤖 Dhigrowth AI Concierge is generating response with history context...');
     const aiResult = await generateAIResponse({
       customerName,
