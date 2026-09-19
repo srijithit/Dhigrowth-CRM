@@ -67,6 +67,15 @@ import {
   toggleAutomationStatus,
   testTriggerAutomation,
 } from './automationsService.js';
+import {
+  initDripStore,
+  getWorkspaceDrips,
+  createDripCampaign,
+  updateDripCampaign,
+  deleteDripCampaign,
+  toggleDripStatus,
+  testTriggerDrip,
+} from './dripService.js';
 import { setManualMode, isManualMode } from './manualAgentStore.js';
 import { getMetaWhatsAppInsights } from './metaInsightsService.js';
 
@@ -80,6 +89,7 @@ initTemplateStore();
 initBroadcastStore();
 initWalletStore();
 initAutomationsStore();
+initDripStore();
 
 const META_CONFIG_FILE = path.resolve(__dirname, 'metaConfig.json');
 
@@ -1516,6 +1526,73 @@ app.post('/api/automations/:id/test', (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
+// Drip Campaigns API
+app.get('/api/drips', (req, res) => {
+  try {
+    const workspaceId = req.query.workspaceId || process.env.VITE_DEFAULT_WORKSPACE_ID || 'b0000000-0000-0000-0000-000000000001';
+    const drips = getWorkspaceDrips(workspaceId);
+    res.json({ success: true, drips });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/drips', (req, res) => {
+  try {
+    const workspaceId = req.body?.workspaceId || req.query.workspaceId || process.env.VITE_DEFAULT_WORKSPACE_ID || 'b0000000-0000-0000-0000-000000000001';
+    const { name, category, trigger, delay, steps } = req.body;
+    const drip = createDripCampaign({ workspaceId, name, category, trigger, delay, steps });
+    res.json({ success: true, drip });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.put('/api/drips/:id', (req, res) => {
+  try {
+    const dripId = req.params.id;
+    const workspaceId = req.body?.workspaceId || req.query.workspaceId || process.env.VITE_DEFAULT_WORKSPACE_ID || 'b0000000-0000-0000-0000-000000000001';
+    const updated = updateDripCampaign(workspaceId, dripId, req.body);
+    res.json({ success: true, drip: updated });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/drips/:id', (req, res) => {
+  try {
+    const dripId = req.params.id;
+    const workspaceId = req.query.workspaceId || req.body?.workspaceId || process.env.VITE_DEFAULT_WORKSPACE_ID || 'b0000000-0000-0000-0000-000000000001';
+    const result = deleteDripCampaign(workspaceId, dripId);
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/drips/:id/toggle', (req, res) => {
+  try {
+    const dripId = req.params.id;
+    const workspaceId = req.body?.workspaceId || req.query.workspaceId || process.env.VITE_DEFAULT_WORKSPACE_ID || 'b0000000-0000-0000-0000-000000000001';
+    const drip = toggleDripStatus(workspaceId, dripId);
+    res.json({ success: true, drip });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/drips/:id/test', (req, res) => {
+  try {
+    const dripId = req.params.id;
+    const workspaceId = req.body?.workspaceId || req.query.workspaceId || process.env.VITE_DEFAULT_WORKSPACE_ID || 'b0000000-0000-0000-0000-000000000001';
+    const result = testTriggerDrip(workspaceId, dripId);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 
 app.listen(PORT, () => {
   console.log(`\n================================================================`);

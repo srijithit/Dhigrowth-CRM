@@ -2,6 +2,78 @@
   "workspaces": {
     "b0000000-0000-0000-0000-000000000001": [
       {
+        "id": "camp_1789800884516_trt7",
+        "name": "test",
+        "channel": "WhatsApp",
+        "templateName": "hello_world",
+        "status": "completed",
+        "audienceType": "VIP Customers & Hot Leads",
+        "targetCount": 5,
+        "sentCount": 5,
+        "deliveredCount": 5,
+        "readCount": 4,
+        "repliedCount": 1,
+        "failedCount": 0,
+        "recipients": [],
+        "variableMapping": [
+          {
+            "index": 1,
+            "field": "first_name",
+            "fallback": "Valued Customer"
+          },
+          {
+            "index": 2,
+            "field": "city",
+            "fallback": "your city"
+          },
+          {
+            "index": 3,
+            "field": "product",
+            "fallback": "Special Offer"
+          }
+        ],
+        "scheduledAt": null,
+        "createdAt": "2026-09-19T06:54:44.516Z",
+        "completedAt": "2026-09-19T06:54:49.811Z",
+        "logs": [
+          {
+            "phone": "919876543210",
+            "name": "Srijith R",
+            "status": "sent",
+            "messageId": "wamid.HBgMOTE5ODc2NTQzMjEwFQIAERgSRjhERDE3MkFFN0NCMUI3RTFFAA==",
+            "timestamp": "2026-09-19T06:54:46.051Z"
+          },
+          {
+            "phone": "919876543211",
+            "name": "Maddy S",
+            "status": "sent",
+            "messageId": "wamid.HBgMOTE5ODc2NTQzMjExFQIAERgSMUUwRUU5QzU4NjREMjE1REVGAA==",
+            "timestamp": "2026-09-19T06:54:46.927Z"
+          },
+          {
+            "phone": "919876543212",
+            "name": "Vikram Mehta",
+            "status": "sent",
+            "messageId": "wamid.HBgMOTE5ODc2NTQzMjEyFQIAERgSNzMxRTU5QUVCMTA1MEQ5RTBGAA==",
+            "timestamp": "2026-09-19T06:54:47.991Z"
+          },
+          {
+            "phone": "919876543213",
+            "name": "Ananya Sharma",
+            "status": "sent",
+            "messageId": "wamid.HBgMOTE5ODc2NTQzMjEzFQIAERgSRTNENDU3Nzk4MkQyM0JDMzc1AA==",
+            "timestamp": "2026-09-19T06:54:48.808Z"
+          },
+          {
+            "phone": "919876543214",
+            "name": "Karthik Raja",
+            "status": "sent",
+            "messageId": "wamid.HBgMOTE5ODc2NTQzMjE0FQIAERgSMzMwNEVBN0YxQkRGMjBGNDU3AA==",
+            "timestamp": "2026-09-19T06:54:49.749Z"
+          }
+        ]
+      },
+      {
         "id": "camp_1789626607841_1x6b",
         "name": "promotion",
         "channel": "WhatsApp",

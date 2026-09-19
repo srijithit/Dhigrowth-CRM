@@ -1825,7 +1825,7 @@ export const TeamInbox = () => {
               rows={2}
               placeholder={
                 isSriUser && isNewContact
-                  ? `✨ New Contact: Sri can click 'Send First Template' to dispatch Meta-approved 'hi' template and get their reply!`
+                  ? `✨ New Contact: Sri can click 'Send First Template' to dispatch Meta-approved 'hello_world' template and get their reply!`
                   : !isAiAutoPilot
                     ? `👤 Manual Agent Active: Type message to send directly to WhatsApp (${activeChat.phone})... (AI reply is paused)`
                     : `🤖 AI Auto-Pilot Active: Type message as agent, or test inbound inquiry...`
