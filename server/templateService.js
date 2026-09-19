@@ -9,8 +9,22 @@ const TEMPLATES_STORE_FILE = path.resolve(__dirname, 'templatesStore.json');
 const META_GRAPH_VERSION = 'v20.0';
 const GRAPH_BASE_URL = `https://graph.facebook.com/${META_GRAPH_VERSION}`;
 
-// Default initial starter templates approved by Meta
 export const STARTER_TEMPLATES = [
+  {
+    id: 'tpl_hello_world',
+    name: 'hello_world',
+    category: 'UTILITY',
+    language: 'en_US',
+    status: 'APPROVED',
+    header_type: 'TEXT',
+    header_content: 'DhiGrowth IT Services',
+    body_text: 'Welcome and congratulations!! This message demonstrates your ability to send a WhatsApp message notification from the Cloud API, hosted by Meta. Thank you for taking the time to test with us.',
+    footer_text: 'Tap an option to respond:',
+    buttons: [],
+    variables: [],
+    syncedWithMeta: true,
+    updatedAt: new Date().toISOString(),
+  },
   {
     id: 'tpl_hi',
     name: 'hi',

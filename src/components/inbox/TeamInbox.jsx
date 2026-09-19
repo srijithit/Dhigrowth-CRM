@@ -549,14 +549,7 @@ export const TeamInbox = () => {
         if (res && res.ok) {
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {
-            setTemplateOptions((prev) => {
-              const merged = [...data];
-              if (!merged.some((t) => t.name === 'hi')) {
-                const hiTpl = prev.find((t) => t.name === 'hi');
-                if (hiTpl) merged.unshift(hiTpl);
-              }
-              return merged;
-            });
+            setTemplateOptions(data);
           }
         }
       } catch (err) {
@@ -736,6 +729,13 @@ export const TeamInbox = () => {
       if (typeof openCheckout === 'function') {
         openCheckout('Growth', 'monthly', 'razorpay');
       }
+      return;
+    }
+
+    if (isNewContact) {
+      showToast('⚠️ New contact: Meta policy requires sending an Approved Template to initiate chat and open the 24h window.', 'info');
+      setSelectedTemplateName('hello_world');
+      setIsTemplateSendModalOpen(true);
       return;
     }
 
